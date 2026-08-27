@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---- 유저 프로필 / 동의 설정 ----
+    // 본인만 읽고 쓸 수 있다. 워커도 유저 본인 ID token 으로 접근하므로 같은 규칙을 탄다.
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // ---- CPX 기록 ----
+    match /records/{recordId} {
+      // 본인 기록만 읽기/삭제 가능
+      allow read, delete: if request.auth != null
+                           && resource.data.uid == request.auth.uid;
+
+      // 새 기록은 로그인한 본인 uid로만 생성 가능.
+      // 웹 수동 입력과 플러그인 자동 업로드 모두 이 경로를 쓴다.
+      // 긴 텍스트는 1500자씩 잘린 배열로 들어온다 (Firestore 색인 항목 크기 제한 회피).
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.source in ['manual', 'plugin']
+                    && (!('transcriptChunks' in request.resource.data)
+                        || request.resource.data.transcriptChunks.size() <= 500)
+                    && (!('evaluationChunks' in request.resource.data)
+                        || request.resource.data.evaluationChunks.size() <= 50);
+
+      // 기록 수정은 막음
+      allow update: if false;
+    }
+  }
+}

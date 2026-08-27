@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CPX 기록판</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">CPX 기록판</span>
+    <nav id="navAuthed" class="hidden">
+      <span class="who" id="whoName"></span>
+      <a href="#" id="btnLogout">로그아웃</a>
+    </nav>
+  </header>
+
+  <main class="container">
+
+    <!-- 로그인/회원가입 -->
+    <section id="authSection" class="hidden">
+      <div class="auth-card">
+        <div class="tabs">
+          <button id="tabLogin" class="tab active">로그인</button>
+          <button id="tabRegister" class="tab">회원가입</button>
+        </div>
+
+        <form id="loginForm" class="auth-form">
+          <label>이메일<input type="email" id="loginEmail" required /></label>
+          <label>비밀번호<input type="password" id="loginPassword" required /></label>
+          <button type="submit" class="btn primary">로그인</button>
+          <p class="err" id="loginErr"></p>
+        </form>
+
+        <form id="registerForm" class="auth-form hidden">
+          <label>닉네임<input type="text" id="registerNickname" required /></label>
+          <label>이메일<input type="email" id="registerEmail" required /></label>
+          <label>비밀번호 (6자 이상)<input type="password" id="registerPassword" required minlength="6" /></label>
+
+          <div class="consent">
+            <p class="consent-title">저장되는 내용</p>
+            <ul>
+              <li>항상 저장: 케이스 주제, 점수(총점·병력청취·신체진찰·PPI), 등급, 총평, 채점 결과 전문</li>
+              <li>선택 저장: <strong>문진 대화 전문</strong> — 환자와 주고받은 내용을 그대로 보관해 나중에 복기할 수 있습니다</li>
+              <li>기록은 본인 계정에서만 보이며, 계정을 삭제하면 함께 지워집니다</li>
+            </ul>
+            <label class="check">
+              <input type="checkbox" id="registerConsent" checked />
+              <span>문진 대화 전문도 함께 저장합니다 (나중에 설정에서 변경 가능)</span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn primary">가입하기</button>
+          <p class="err" id="registerErr"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- 대시보드 -->
+    <section id="dashboardSection" class="hidden">
+
+      <nav class="subnav">
+        <button class="subtab active" data-view="records">내 기록</button>
+        <button class="subtab" data-view="pair">기기 연결</button>
+        <button class="subtab" data-view="settings">설정</button>
+      </nav>
+
+      <!-- ===== 기록 ===== -->
+      <div id="viewRecords">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>내 기록 (<span id="recordCount">0</span>건)</h2>
+            <span class="avg" id="avgScore"></span>
+          </div>
+          <p class="empty hidden" id="emptyMsg">아직 기록이 없습니다. <b>기기 연결</b> 탭에서 Claude Code와 연결하면 연습이 끝날 때마다 자동으로 쌓입니다.</p>
+          <div class="table-wrap">
+            <table id="recordTable" class="hidden">
+              <thead>
+                <tr><th>날짜</th><th>주제</th><th>총점</th><th>병력</th><th>진찰</th><th>PPI</th><th>총평</th><th></th><th></th></tr>
+              </thead>
+              <tbody id="recordBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <details class="panel manual">
+          <summary>직접 입력하기</summary>
+          <p class="hint">플러그인 없이 연습했거나 자동 업로드가 실패했을 때 사용하세요.</p>
+          <form id="recordForm" class="record-form">
+            <div class="row">
+              <label>케이스 주제<input type="text" id="fTopic" placeholder="예: 흉통" /></label>
+              <label>총점 (0~100)<input type="number" id="fTotal" min="0" max="100" /></label>
+            </div>
+            <div class="row">
+              <label>병력청취 (/60)<input type="number" id="fHistory" min="0" max="60" /></label>
+              <label>신체진찰 (/20)<input type="number" id="fPe" min="0" max="20" /></label>
+              <label>PPI (/20)<input type="number" id="fPpi" min="0" max="20" /></label>
+            </div>
+            <label>총평 / 메모<textarea id="fNote" rows="3" placeholder="개선점, 놓친 Red flag 등"></textarea></label>
+            <button type="submit" class="btn primary">저장</button>
+          </form>
+        </details>
+      </div>
+
+      <!-- ===== 기기 연결 ===== -->
+      <div id="viewPair" class="hidden">
+        <div class="panel">
+          <h2>Claude Code와 연결</h2>
+          <p class="hint">한 번만 해두면 이후 연습 결과가 자동으로 이 계정에 쌓입니다.</p>
+
+          <ol class="steps">
+            <li>
+              <b>플러그인 설치</b> — 터미널에서
+              <pre class="code" id="installCmd">claude plugin marketplace add raphael4040-ash/cpx-marketplace</pre>
+              그다음 Claude Code 안에서 <code>/plugin install cpx@cpx-marketplace</code>
+            </li>
+            <li>
+              <b>연결 코드 발급</b>
+              <div class="pair-box">
+                <button class="btn primary" id="btnMakeToken">연결 코드 만들기</button>
+                <textarea id="pairToken" class="token" rows="4" readonly placeholder="버튼을 누르면 여기에 코드가 표시됩니다"></textarea>
+                <div class="pair-actions hidden" id="pairActions">
+                  <button class="btn small" id="btnCopyToken">복사</button>
+                  <span class="copied hidden" id="copiedMsg">복사됨</span>
+                </div>
+              </div>
+              <p class="warn">
+                이 코드는 <b>비밀번호와 같은 힘을 가집니다.</b> 본인 컴퓨터에만 붙여넣고, 남에게 보내거나
+                채팅·깃허브에 올리지 마세요. 유출된 것 같으면 <b>설정 → 연결 해제</b>로 즉시 무효화하세요.
+              </p>
+            </li>
+            <li>
+              <b>Claude Code에 붙여넣기</b>
+              <pre class="code">/cpx:pair &lt;위에서 복사한 코드&gt;</pre>
+            </li>
+            <li>
+              <b>연습 시작</b> — 아무 폴더에서나 <code>/cpx:start</code> → 문진 → <code>진찰</code> → <code>평가</code>.
+              평가가 끝나면 자동으로 여기에 기록됩니다.
+            </li>
+          </ol>
+        </div>
+      </div>
+
+      <!-- ===== 설정 ===== -->
+      <div id="viewSettings" class="hidden">
+        <div class="panel">
+          <h2>저장 설정</h2>
+          <label class="check big">
+            <input type="checkbox" id="setConsent" />
+            <span>문진 대화 전문도 저장하기</span>
+          </label>
+          <p class="hint">
+            끄면 이후 업로드부터 대화 내용이 전송되지 않고 점수와 총평만 저장됩니다.
+            이미 저장된 전사는 그대로 남으니, 지우려면 아래에서 해당 기록을 삭제하세요.
+          </p>
+          <p class="ok hidden" id="settingsSaved">저장되었습니다</p>
+        </div>
+
+        <div class="panel danger">
+          <h2>연결 해제</h2>
+          <p class="hint">
+            발급한 연결 코드를 모두 무효화합니다. 연결된 기기의 자동 업로드가 즉시 멈추고,
+            다시 쓰려면 연결 코드를 새로 만들어 <code>/cpx:pair</code> 를 다시 실행하면 됩니다.
+          </p>
+          <p class="warn">
+            코드가 실제로 유출됐다면 이것만으로는 부족합니다. 무효화는 <b>업로드 경로만</b> 막을 뿐,
+            코드에 담긴 로그인 자격 자체는 살아있습니다. <b>비밀번호를 함께 변경</b>하세요.
+          </p>
+          <button class="btn" id="btnRevoke">모든 연결 코드 무효화</button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- 기록 상세 -->
+  <div id="detailBackdrop" class="backdrop hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h3 id="detailTitle">기록 상세</h3>
+        <button class="btn small ghost" id="btnCloseDetail">닫기</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-tabs">
+          <button class="dtab active" data-pane="eval">채점 결과</button>
+          <button class="dtab" data-pane="script">문진 전사</button>
+        </div>
+        <pre class="detail-pane" id="paneEval"></pre>
+        <pre class="detail-pane hidden" id="paneScript"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
