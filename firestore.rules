@@ -3,22 +3,70 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // 기록판 주인(관리자)의 uid. 규칙에 직접 박아두면 부트스트랩 절차가 필요 없고,
+    // 어떤 문서를 조작해도 관리자 권한을 가로챌 수 없다.
+    function ownerUid() { return 'S4b2Zqzff2XHNznL1Wcq6RiZVGv1'; }
+
+    function isSignedIn() { return request.auth != null; }
+    function isOwner() { return isSignedIn() && request.auth.uid == ownerUid(); }
+
+    function userDoc(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    // 가입 승인제 on/off. config/app 문서가 없으면 꺼진 것으로 본다.
+    function approvalRequired() {
+      return exists(/databases/$(database)/documents/config/app)
+             && get(/databases/$(database)/documents/config/app).data.requireApproval == true;
+    }
+
+    // 관리자는 항상 통과. 승인제가 꺼져 있으면 로그인만으로 통과.
+    function isApproved() {
+      return isOwner()
+             || !approvalRequired()
+             || (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+                 && userDoc(request.auth.uid).approved == true);
+    }
+
+    // ---- 앱 설정 (승인제 스위치) ----
+    // 모든 로그인 사용자가 읽을 수 있어야 "승인 대기" 화면을 띄울 수 있다.
+    match /config/app {
+      allow read: if isSignedIn();
+      allow write: if isOwner();
+    }
+
     // ---- 유저 프로필 / 동의 설정 ----
-    // 본인만 읽고 쓸 수 있다. 워커도 유저 본인 ID token 으로 접근하므로 같은 규칙을 탄다.
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // 본인 + 관리자(대기자 목록을 보려면 필요)
+      allow read: if isOwner() || (isSignedIn() && request.auth.uid == userId);
+
+      // 관리자는 승인 상태를 포함해 무엇이든 쓸 수 있다.
+      allow write: if isOwner();
+
+      // 본인은 승인 상태를 스스로 만들 수 없다 (self-approval 차단).
+      allow create: if isSignedIn()
+                    && request.auth.uid == userId
+                    && !('approved' in request.resource.data);
+
+      // 본인이 고칠 수 있는 필드를 화이트리스트로 못박는다.
+      allow update: if isSignedIn()
+                    && request.auth.uid == userId
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                         .hasOnly(['nickname', 'email', 'consentTranscript',
+                                   'consentAt', 'tokenVersion']);
     }
 
     // ---- CPX 기록 ----
     match /records/{recordId} {
       // 본인 기록만 읽기/삭제 가능
-      allow read, delete: if request.auth != null
+      allow read, delete: if isSignedIn()
                            && resource.data.uid == request.auth.uid;
 
-      // 새 기록은 로그인한 본인 uid로만 생성 가능.
+      // 새 기록은 로그인한 본인 uid로만, 그리고 승인된 계정만 생성 가능.
       // 웹 수동 입력과 플러그인 자동 업로드 모두 이 경로를 쓴다.
       // 긴 텍스트는 1500자씩 잘린 배열로 들어온다 (Firestore 색인 항목 크기 제한 회피).
-      allow create: if request.auth != null
+      allow create: if isSignedIn()
+                    && isApproved()
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.source in ['manual', 'plugin']
                     && (!('transcriptChunks' in request.resource.data)

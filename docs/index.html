@@ -56,6 +56,18 @@
       </div>
     </section>
 
+    <!-- 승인 대기 -->
+    <section id="pendingSection" class="hidden">
+      <div class="panel">
+        <h2>관리자 승인 대기 중</h2>
+        <p class="hint">
+          이 기록판은 관리자 승인을 받은 계정만 쓸 수 있습니다.
+          승인이 끝나면 다시 로그인할 필요 없이 바로 이용할 수 있습니다.
+        </p>
+        <p class="hint" id="pendingWho"></p>
+      </div>
+    </section>
+
     <!-- 대시보드 -->
     <section id="dashboardSection" class="hidden">
 
@@ -63,6 +75,7 @@
         <button class="subtab active" data-view="records">내 기록</button>
         <button class="subtab" data-view="pair">기기 연결</button>
         <button class="subtab" data-view="settings">설정</button>
+        <button class="subtab hidden" data-view="admin" id="tabAdmin">관리자</button>
       </nav>
 
       <!-- ===== 기록 ===== -->
@@ -170,6 +183,37 @@
         </div>
       </div>
 
+      <!-- ===== 관리자 ===== -->
+      <div id="viewAdmin" class="hidden">
+        <div class="panel">
+          <h2>가입 승인제</h2>
+          <label class="check big">
+            <input type="checkbox" id="setRequireApproval" />
+            <span>새 계정은 관리자 승인을 받아야 쓸 수 있음</span>
+          </label>
+          <p class="hint">
+            끄면 누구든 가입 즉시 이용할 수 있습니다. 켰을 때 이미 승인되지 않은 계정은
+            아래 목록에서 승인해야 기록을 남길 수 있습니다. 관리자 본인은 항상 예외입니다.
+          </p>
+          <p class="ok hidden" id="adminSaved">저장되었습니다</p>
+        </div>
+
+        <div class="panel">
+          <h2>계정 목록 (<span id="adminCount">0</span>명)</h2>
+          <p class="empty hidden" id="adminEmpty">가입한 계정이 없습니다.</p>
+          <div class="table-scroll">
+            <table id="adminTable" class="hidden">
+              <thead>
+                <tr>
+                  <th>닉네임</th><th>이메일</th><th>가입일</th><th>상태</th><th></th>
+                </tr>
+              </thead>
+              <tbody id="adminBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </section>
 
   </main>
@@ -186,7 +230,7 @@
           <button class="dtab active" data-pane="eval">채점 결과</button>
           <button class="dtab" data-pane="script">문진 전사</button>
         </div>
-        <pre class="detail-pane" id="paneEval"></pre>
+        <div class="detail-pane md" id="paneEval"></div>
         <pre class="detail-pane hidden" id="paneScript"></pre>
       </div>
     </div>

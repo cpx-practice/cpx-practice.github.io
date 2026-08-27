@@ -279,3 +279,37 @@ td.score { font-weight: 700; }
   font-size: 0.85rem;
   line-height: 1.7;
 }
+
+/* 채점 결과 탭 — 마크다운 렌더링 (문진 전사 탭은 그대로 pre 평문) */
+.detail-pane.md { white-space: normal; }
+.md > *:first-child { margin-top: 0; }
+.md h2 { margin: 18px 0 8px; font-size: 0.95rem; }
+.md h3 { margin: 16px 0 8px; font-size: 0.9rem; }
+.md h4 { margin: 14px 0 6px; font-size: 0.85rem; color: var(--muted); }
+.md p { margin: 8px 0; }
+.md ul, .md ol { margin: 8px 0; padding-left: 20px; }
+.md li { margin: 5px 0; }
+.md hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+.md code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 0.85em;
+}
+/* 표가 넓으면 모달 전체가 아니라 표 안에서만 가로 스크롤되게 한다. */
+.md .table-scroll { overflow-x: auto; margin: 8px 0 14px; }
+.md table { min-width: 360px; }
+.md th, .md td { font-size: 0.82rem; padding: 6px 8px; }
+
+/* 넓은 표는 패널 밖으로 넘치지 않고 표 안에서 가로 스크롤한다. */
+.table-scroll { overflow-x: auto; }
+.status-pill {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid var(--border);
+}
+.status-pill.on { color: #2f7a4a; border-color: #2f7a4a; }
+.status-pill.wait { color: var(--accent); border-color: var(--accent); }
