@@ -73,6 +73,11 @@ const settingsSaved = $("settingsSaved");
 
 const pendingSection = $("pendingSection");
 const tabAdmin = $("tabAdmin");
+const viewAdmin = $("viewAdmin");
+// 관리자가 아니면 관리자 UI 를 숨기는 것이 아니라 DOM 에서 통째로 떼낸다.
+// 다시 붙일 수 있도록 원래 부모를 미리 기억해둔다 (둘 다 부모의 마지막 자식이다).
+const adminNavHost = tabAdmin.parentElement;
+const adminViewHost = viewAdmin.parentElement;
 const setRequireApproval = $("setRequireApproval");
 const adminSaved = $("adminSaved");
 
@@ -101,7 +106,6 @@ const views = {
   records: $("viewRecords"),
   pair: $("viewPair"),
   settings: $("viewSettings"),
-  admin: $("viewAdmin"),
 };
 document.querySelectorAll(".subtab").forEach((btn) => {
   btn.addEventListener("click", () => {
@@ -204,7 +208,7 @@ onAuthStateChanged(auth, async (user) => {
   $("installCmd").textContent = `claude plugin marketplace add ${MARKETPLACE}`;
   setConsent.checked = profile.consentTranscript === true;
 
-  tabAdmin.classList.toggle("hidden", !isAdmin);
+  setAdminUi(isAdmin);
   if (isAdmin) {
     setRequireApproval.checked = appConfig.requireApproval === true;
     watchUsers();
@@ -437,6 +441,20 @@ function closeDetail() {
 
 
 // ---------- 관리자: 가입 승인제 ----------
+
+// 관리자가 아닌 계정에서는 탭도 본문도 문서에 남지 않는다.
+function setAdminUi(on) {
+  if (on) {
+    if (!tabAdmin.isConnected) adminNavHost.appendChild(tabAdmin);
+    if (!viewAdmin.isConnected) adminViewHost.appendChild(viewAdmin);
+    tabAdmin.classList.remove("hidden");
+    views.admin = viewAdmin;
+    return;
+  }
+  tabAdmin.remove();
+  viewAdmin.remove();
+  delete views.admin;
+}
 // 관리자 uid 는 firestore.rules 의 ownerUid() 와 반드시 같아야 한다.
 // 규칙이 실제 통제를 하고, 여기 화면은 그 상태를 보여줄 뿐이다.
 
@@ -466,7 +484,11 @@ setRequireApproval.addEventListener("change", async () => {
     setTimeout(() => adminSaved.classList.add("hidden"), 3000);
   } catch {
     setRequireApproval.checked = !on;
-    alert("설정을 저장하지 못했습니다. 관리자 계정인지 확인해주세요.");
+    alert(
+      "설정을 저장하지 못했습니다.\n" +
+        "Firestore 규칙이 아직 배포되지 않았을 가능성이 큽니다 — " +
+        "Firebase 콘솔 > Firestore Database > 규칙 에서 firestore.rules 를 게시해주세요."
+    );
   }
 });
 
@@ -532,7 +554,10 @@ async function setApproved(u, next) {
       { merge: true }
     );
   } catch {
-    alert("변경하지 못했습니다. 관리자 계정인지 확인해주세요.");
+    alert(
+      "변경하지 못했습니다.\n" +
+        "Firestore 규칙이 아직 배포되지 않았을 가능성이 큽니다."
+    );
   }
 }
 
