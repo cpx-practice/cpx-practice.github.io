@@ -4,7 +4,15 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>CPX 기록판</title>
+<meta name="color-scheme" content="light dark" />
 <link rel="stylesheet" href="style.css" />
+<script>
+  // 저장된 테마를 첫 페인트 전에 입힌다 — 안 그러면 다크모드에서 흰 화면이 한 번 번쩍인다.
+  try {
+    const t = localStorage.getItem("cpx-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch {}
+</script>
 </head>
 <body>
   <header class="topbar">
@@ -13,6 +21,7 @@
       <span class="who" id="whoName"></span>
       <a href="#" id="btnLogout">로그아웃</a>
     </nav>
+    <button id="btnTheme" class="theme-toggle" type="button" aria-label="화면 밝기 전환"></button>
   </header>
 
   <main class="container">
@@ -73,7 +82,8 @@
 
       <nav class="subnav">
         <button class="subtab active" data-view="records">내 기록</button>
-        <button class="subtab" data-view="pair">기기 연결</button>
+        <button class="subtab" data-view="analysis">분석</button>
+        <button class="subtab" data-view="pair">Claude Code 연결</button>
         <button class="subtab" data-view="settings">설정</button>
         <button class="subtab hidden" data-view="admin" id="tabAdmin">관리자</button>
       </nav>
@@ -85,11 +95,31 @@
             <h2>내 기록 (<span id="recordCount">0</span>건)</h2>
             <span class="avg" id="avgScore"></span>
           </div>
-          <p class="empty hidden" id="emptyMsg">아직 기록이 없습니다. <b>기기 연결</b> 탭에서 Claude Code와 연결하면 연습이 끝날 때마다 자동으로 쌓입니다.</p>
+
+          <div class="filters" id="filters">
+            <input type="search" id="fltQuery" class="flt-search" placeholder="주제·총평 검색" aria-label="주제와 총평 검색" />
+            <select id="fltTopic" aria-label="주제로 거르기"><option value="">모든 주제</option></select>
+            <select id="fltPeriod" aria-label="기간으로 거르기">
+              <option value="0">전체 기간</option>
+              <option value="7">최근 7일</option>
+              <option value="30">최근 30일</option>
+              <option value="90">최근 90일</option>
+            </select>
+            <select id="fltSort" aria-label="정렬 기준">
+              <option value="new">최신순</option>
+              <option value="old">오래된순</option>
+              <option value="high">총점 높은순</option>
+              <option value="low">총점 낮은순</option>
+            </select>
+            <button type="button" class="btn ghost small hidden" id="fltReset">초기화</button>
+          </div>
+
+          <p class="empty hidden" id="emptyMsg">아직 기록이 없습니다. <b>Claude Code 연결</b> 탭에서 연결해두면 연습이 끝날 때마다 자동으로 쌓입니다.</p>
+          <p class="empty hidden" id="noMatchMsg">조건에 맞는 기록이 없습니다.</p>
           <div class="table-wrap">
             <table id="recordTable" class="hidden">
               <thead>
-                <tr><th>날짜</th><th>주제</th><th>총점</th><th>병력</th><th>진찰</th><th>PPI</th><th>총평</th><th></th><th></th></tr>
+                <tr><th>날짜</th><th>주제</th><th>총점</th><th>병력</th><th>진찰</th><th>PPI</th><th>총평</th><th></th></tr>
               </thead>
               <tbody id="recordBody"></tbody>
             </table>
@@ -115,7 +145,52 @@
         </details>
       </div>
 
-      <!-- ===== 기기 연결 ===== -->
+      <!-- ===== 분석 ===== -->
+      <div id="viewAnalysis" class="hidden">
+        <p class="empty panel hidden" id="analysisEmpty">
+          채점된 기록이 아직 없습니다. <code>/cpx:start</code> 로 한 케이스를 끝내고 <code>평가</code>까지 받으면 여기에 쌓입니다.
+        </p>
+
+        <div id="analysisBody" class="hidden">
+          <div class="tiles" id="tiles"></div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>총점 추이</h2>
+              <span class="legend"><span class="legend-line"></span>총점<span class="legend-ref"></span>전체 평균</span>
+            </div>
+            <div class="chart" id="trendChart"></div>
+          </div>
+
+          <div class="panel">
+            <h2>영역별 성취율</h2>
+            <p class="hint" id="sectionNote"></p>
+            <div class="sbars" id="sectionBars"></div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>케이스 커버리지 (<span id="coverDone">0</span> / <span id="coverTotal">58</span>)</h2>
+              <span class="legend">
+                평균점수
+                <span class="swatch b1"></span><span class="swatch b2"></span><span class="swatch b3"></span><span class="swatch b4"></span>
+                <span class="swatch-cap">낮음 → 높음</span>
+              </span>
+            </div>
+            <p class="hint">국시원 48개 임상표현 + 기본진료술기 3개. 점선 칩은 아직 해보지 않은 케이스입니다.</p>
+            <div class="cover-grid" id="coverGrid"></div>
+            <p class="hint warn-inline hidden" id="coverUnmatched"></p>
+          </div>
+
+          <div class="panel">
+            <h2>다음 연습 추천</h2>
+            <p class="hint">안 해본 케이스를 먼저, 그다음 평균이 낮은 케이스를 고릅니다.</p>
+            <ul class="reco" id="recoList"></ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Claude Code 연결 ===== -->
       <div id="viewPair" class="hidden">
         <div class="panel">
           <h2>Claude Code와 연결</h2>

@@ -64,7 +64,7 @@ const firebaseConfig = {
 };
 ```
 
-이 값을 `public/app.js` 맨 위 `firebaseConfig` 에 붙여넣습니다.
+이 값을 `docs/app.js` 맨 위 `firebaseConfig` 에 붙여넣습니다.
 
 > **이 값은 비밀이 아닙니다.** 웹앱을 열면 누구나 볼 수 있는 공개 식별자이고,
 > 실제 접근 통제는 보안 규칙이 합니다. 그대로 커밋해도 됩니다.
@@ -104,8 +104,9 @@ Blaze로 올리라는 안내가 보여도 **올리지 마세요.** Spark에서�
 
 | 파일 | 바꿀 것 |
 |---|---|
-| `public/app.js` | `firebaseConfig` — 1-4에서 복사한 값 |
-| `public/app.js` | `MARKETPLACE` — 플러그인 GitHub 레포 (`아이디/cpx-marketplace`) |
+| `docs/app.js` | `firebaseConfig` — 1-4에서 복사한 값 |
+| `docs/app.js` | `MARKETPLACE` — 플러그인 GitHub 레포 (`아이디/cpx-marketplace`) |
+| `docs/app.js` | `OWNER_UID` — 관리자 uid. `firestore.rules` 의 `ownerUid()` 와 같아야 합니다 |
 
 ---
 
@@ -114,14 +115,14 @@ Blaze로 올리라는 안내가 보여도 **올리지 마세요.** Spark에서�
 Firebase Hosting은 CLI가 있어야 하므로 쓰지 않습니다. GitHub Pages가 무료이고 Node도 필요 없습니다.
 
 1. GitHub에서 레포를 만듭니다 (예: `cpx-tracker`, **Public**).
-2. `public/` 폴더 안의 세 파일(`index.html`, `app.js`, `style.css`)을 레포 **최상단**에 올립니다.
+2. `docs/` 폴더째 올립니다 — `index.html`, `style.css`, `app.js`, `analytics.js`, `topics.js` 다섯 파일입니다.
    웹 UI에서 **Add file → Upload files** 로 드래그해도 되고, git을 써도 됩니다:
 
 ```bash
 git init && git add . && git commit -m "CPX 기록판" && git branch -M main
 ```
 
-3. 레포 **Settings → Pages** → Source를 **Deploy from a branch**, 브랜치 `main` / 폴더 `/ (root)` 로 저장.
+3. 레포 **Settings → Pages** → Source를 **Deploy from a branch**, 브랜치 `main` / 폴더 `/docs` 로 저장.
 4. 몇 분 뒤 `https://<아이디>.github.io/cpx-tracker/` 가 열립니다.
 
 ### 3-1. 승인된 도메인 추가 — 빠뜨리면 로그인이 안 됩니다
@@ -132,7 +133,7 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 이걸 안 하면 로그인 시 `auth/unauthorized-domain` 오류가 납니다.
 
 > 드래그앤드롭이 더 편하면 **Cloudflare Pages**(Workers & Pages → Create → Pages →
-> Upload assets)로 `public` 폴더를 통째로 올려도 됩니다. 이 경우 승인된 도메인에는
+> Upload assets)로 `docs` 폴더를 통째로 올려도 됩니다. 이 경우 승인된 도메인에는
 > `<프로젝트>.pages.dev` 를 추가하세요.
 
 ---
@@ -159,6 +160,39 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 긴 문자열을 그대로 넣으면 색인 항목 상한(7.5KiB)에 걸려 쓰기가 실패하기 때문에 조각내어 저장합니다.
 
 ---
+
+### 웹앱 파일 구성
+
+| 파일 | 하는 일 |
+|---|---|
+| `docs/index.html` | 화면 뼈대. 대시보드는 내 기록 / 분석 / Claude Code 연결 / 설정 (+관리자) 탭 |
+| `docs/app.js` | Firebase 인증·구독, 기록 표, 검색·필터·정렬, 테마 토글, 관리자 화면 |
+| `docs/analytics.js` | 분석 탭 — 요약 타일, 총점 추이 그래프, 영역별 성취율, 커버리지, 다음 연습 추천 |
+| `docs/topics.js` | 케이스 뱅크 목록(58개)과 이름 맞추기 |
+| `docs/style.css` | 색 토큰(라이트/다크), 컴포넌트, 좁은 화면 대응 |
+
+`analytics.js` 는 Firestore 를 직접 만지지 않습니다. `app.js` 가 넘겨준 기록 배열만 받아 계산하므로,
+집계 로직은 브라우저 없이도 노드에서 그대로 불러 검증할 수 있습니다.
+
+### `docs/topics.js` 는 플러그인 쪽 목록과 짝입니다
+
+커버리지는 기록의 `topic` 문자열을 케이스 뱅크 이름에 맞춰 셉니다. 그 목록이 `docs/topics.js` 의
+`TOPICS` 이고, 원본은 플러그인의 `skills/start/refs/topics.md` 입니다.
+**스킬에서 케이스를 더하거나 이름을 바꾸면 `topics.js` 도 같이 고쳐야** 합니다.
+안 고치면 그 기록은 커버리지에서 빠지고, 분석 탭 커버리지 패널 아래에
+"케이스 뱅크에서 이름을 찾지 못한 기록" 으로 이름이 그대로 표시됩니다 — 어긋난 걸 알아채라고 남긴 표시입니다.
+
+표기가 조금 흔들리는 정도(공백·괄호·슬래시 차이)는 자동으로 흡수하고, 그걸로도 안 되는 흔한 다른 이름은
+각 항목의 `aliases` 에 넣어 같은 케이스로 셉니다 (예: `흉통` → `가슴통증`).
+
+### 색
+
+색은 전부 `style.css` 맨 위 CSS 변수입니다. 라이트 값을 `:root` 에 두고, OS 다크 설정과
+사용자 토글(`html[data-theme]`) 두 경우에 다시 덮어씁니다. 화면 밝기는 자동 / 밝게 / 어둡게 세 가지로
+돌아가며 `localStorage` 에 남습니다.
+
+`--viz-1` ~ `--viz-4` 는 점수 밴드(<70 / 70 / 80 / 90+)에 쓰는 단일 색상 순서 램프이고,
+두 모드 모두 명도 단조·단계 간격·배경 대비 검사를 통과시킨 값입니다. 눈대중으로 바꾸지 마세요.
 
 ## 5. 한계
 

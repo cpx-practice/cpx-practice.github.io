@@ -42,6 +42,9 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
+import { renderAnalytics, onResize } from "./analytics.js";
+import { TOPICS, matchTopic } from "./topics.js";
+
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -65,6 +68,8 @@ const recordForm = $("recordForm");
 const recordBody = $("recordBody");
 const recordTable = $("recordTable");
 const emptyMsg = $("emptyMsg");
+const noMatchMsg = $("noMatchMsg");
+const filtersBar = $("filters");
 const recordCount = $("recordCount");
 const avgScore = $("avgScore");
 
@@ -104,6 +109,7 @@ tabRegister.addEventListener("click", () => {
 // ---------- 대시보드 탭 ----------
 const views = {
   records: $("viewRecords"),
+  analysis: $("viewAnalysis"),
   pair: $("viewPair"),
   settings: $("viewSettings"),
 };
@@ -114,8 +120,37 @@ document.querySelectorAll(".subtab").forEach((btn) => {
     for (const [name, el] of Object.entries(views)) {
       el.classList.toggle("hidden", name !== btn.dataset.view);
     }
+    // 숨어 있는 동안에는 컨테이너 너비가 0이라 선 그래프를 그릴 수 없다. 보일 때 다시 그린다.
+    if (btn.dataset.view === "analysis") renderAnalytics(currentRows);
   });
 });
+
+// ---------- 테마 ----------
+// 셋 중 하나다: light / dark / (저장값 없음 = OS 설정 따라감).
+const btnTheme = $("btnTheme");
+
+function currentTheme() {
+  return document.documentElement.dataset.theme || "auto";
+}
+function applyTheme(next) {
+  if (next === "auto") {
+    delete document.documentElement.dataset.theme;
+    localStorage.removeItem("cpx-theme");
+  } else {
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem("cpx-theme", next);
+  }
+  const label = { auto: "자동", light: "밝게", dark: "어둡게" }[next];
+  btnTheme.textContent = { auto: "◐", light: "☀", dark: "☾" }[next];
+  btnTheme.title = `화면: ${label} (눌러서 전환)`;
+}
+btnTheme.addEventListener("click", () => {
+  const order = ["auto", "light", "dark"];
+  applyTheme(order[(order.indexOf(currentTheme()) + 1) % order.length]);
+});
+applyTheme(currentTheme());
+
+window.addEventListener("resize", onResize);
 
 // ---------- 인증 ----------
 loginForm.addEventListener("submit", async (e) => {
@@ -256,7 +291,7 @@ $("btnRevoke").addEventListener("click", async () => {
   profile.tokenVersion = next;
   $("pairToken").value = "";
   $("pairActions").classList.add("hidden");
-  alert("무효화했습니다. 기기 연결 탭에서 코드를 새로 발급하세요.");
+  alert("무효화했습니다. Claude Code 연결 탭에서 코드를 새로 발급하세요.");
 });
 
 // ---------- 페어링 코드 ----------
@@ -333,8 +368,89 @@ function watchRecords(uid) {
   unsubscribeRecords = onSnapshot(q, (snapshot) => {
     currentRows = [];
     snapshot.forEach((d) => currentRows.push({ id: d.id, ...d.data() }));
-    renderRecords(currentRows);
+    refreshViews();
   });
+}
+
+// 기록이 바뀌면 표·필터 선택지·분석을 한꺼번에 맞춘다.
+function refreshViews() {
+  syncTopicFilter();
+  renderRecords(applyFilters(currentRows));
+  // 숨어 있는 탭은 너비가 0이라 그래프가 찌그러진다. 보일 때만 그린다.
+  if (!views.analysis.classList.contains("hidden")) renderAnalytics(currentRows);
+}
+
+// ---------- 검색 · 필터 · 정렬 ----------
+const fltQuery = $("fltQuery");
+const fltTopic = $("fltTopic");
+const fltPeriod = $("fltPeriod");
+const fltSort = $("fltSort");
+const fltReset = $("fltReset");
+
+for (const c of [fltQuery, fltTopic, fltPeriod, fltSort]) {
+  c.addEventListener("input", () => renderRecords(applyFilters(currentRows)));
+}
+fltReset.addEventListener("click", () => {
+  fltQuery.value = "";
+  fltTopic.value = "";
+  fltPeriod.value = "0";
+  fltSort.value = "new";
+  renderRecords(applyFilters(currentRows));
+});
+
+// 주제 드롭다운에는 실제로 기록이 있는 주제만 넣는다. 케이스 뱅크 순서를 따르고,
+// 뱅크에 없는 이름(직접 입력 등)은 뒤에 따로 붙인다.
+function syncTopicFilter() {
+  const seen = new Set(currentRows.map((r) => (r.topic || "").trim()).filter(Boolean));
+  const known = TOPICS.filter((t) => [...seen].some((s) => matchTopic(s)?.name === t.name)).map((t) => t.name);
+  const extra = [...seen].filter((s) => !matchTopic(s)).sort();
+  const opts = [...known, ...extra];
+
+  const prev = fltTopic.value;
+  fltTopic.innerHTML =
+    '<option value="">모든 주제</option>' +
+    opts.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  // 고르고 있던 주제가 아직 목록에 있으면 선택을 유지한다.
+  fltTopic.value = opts.includes(prev) ? prev : "";
+}
+
+function applyFilters(rows) {
+  const q = fltQuery.value.trim().toLowerCase();
+  const topic = fltTopic.value;
+  const days = parseInt(fltPeriod.value, 10) || 0;
+  const cutoff = days ? Date.now() - days * 86400000 : 0;
+
+  let out = rows.filter((r) => {
+    if (topic) {
+      const raw = (r.topic || "").trim();
+      const same = matchTopic(raw)?.name === matchTopic(topic)?.name;
+      if (!(raw === topic || (matchTopic(topic) && same))) return false;
+    }
+    if (cutoff) {
+      const at = r.createdAt?.seconds ? r.createdAt.seconds * 1000 : 0;
+      // 서버 타임스탬프가 아직 안 붙은 새 기록은 거르지 않는다.
+      if (at && at < cutoff) return false;
+    }
+    if (q) {
+      const hay = `${r.topic || ""} ${r.note || ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  const at = (r) => r.createdAt?.seconds || 0;
+  const sc = (r) => (typeof r.totalScore === "number" ? r.totalScore : -1);
+  const sorters = {
+    new: (a, b) => at(b) - at(a),
+    old: (a, b) => at(a) - at(b),
+    high: (a, b) => sc(b) - sc(a) || at(b) - at(a),
+    low: (a, b) => sc(a) - sc(b) || at(b) - at(a),
+  };
+  out = [...out].sort(sorters[fltSort.value] || sorters.new);
+
+  const filtering = Boolean(q || topic || days || fltSort.value !== "new");
+  fltReset.classList.toggle("hidden", !filtering);
+  return out;
 }
 
 function fmtDate(ts) {
@@ -345,22 +461,29 @@ function fmtDate(ts) {
 }
 
 function renderRecords(rows) {
-  recordCount.textContent = rows.length;
+  const total = currentRows.length;
+  const filtered = rows.length !== total;
+  recordCount.textContent = filtered ? `${rows.length} / ${total}` : total;
+
+  // 기록이 아예 없는 것과, 있는데 조건에 안 걸린 것은 다른 안내를 낸다.
+  emptyMsg.classList.toggle("hidden", total !== 0);
+  noMatchMsg.classList.toggle("hidden", !(total > 0 && rows.length === 0));
+  filtersBar.classList.toggle("hidden", total === 0);
 
   if (rows.length === 0) {
-    emptyMsg.classList.remove("hidden");
     recordTable.classList.add("hidden");
     avgScore.textContent = "";
     recordBody.innerHTML = "";
     return;
   }
 
-  emptyMsg.classList.add("hidden");
   recordTable.classList.remove("hidden");
 
   const scored = rows.filter((r) => typeof r.totalScore === "number");
   avgScore.textContent = scored.length
-    ? `평균 총점: ${(scored.reduce((s, r) => s + r.totalScore, 0) / scored.length).toFixed(1)}점`
+    ? `${filtered ? "선택 범위 " : ""}평균 총점: ${(
+        scored.reduce((s, r) => s + r.totalScore, 0) / scored.length
+      ).toFixed(1)}점`
     : "";
 
   recordBody.innerHTML = "";
@@ -370,16 +493,16 @@ function renderRecords(rows) {
       r.evaluationChunks?.length || r.transcriptChunks?.length || r.evaluationText || r.transcript
     );
     const tr = document.createElement("tr");
+    // data-label 은 좁은 화면에서 표가 카드로 접힐 때 각 칸의 이름표로 쓰인다.
     tr.innerHTML = `
-      <td>${fmtDate(r.createdAt)}</td>
-      <td>${escapeHtml(r.topic || "")}${r.source === "plugin" ? '<span class="pill">자동</span>' : ""}</td>
-      <td class="score">${dash(r.totalScore)}</td>
-      <td>${dash(r.historyScore)}</td>
-      <td>${dash(r.peScore)}</td>
-      <td>${dash(r.ppiScore)}</td>
-      <td class="note">${escapeHtml(r.note || "")}</td>
-      <td>${hasDetail ? '<button class="btn ghost small js-detail">보기</button>' : ""}</td>
-      <td><button class="btn ghost small js-del">삭제</button></td>
+      <td data-label="날짜">${fmtDate(r.createdAt)}</td>
+      <td data-label="주제">${escapeHtml(r.topic || "")}${r.source === "plugin" ? '<span class="pill">자동</span>' : ""}</td>
+      <td data-label="총점" class="score">${dash(r.totalScore)}</td>
+      <td data-label="병력">${dash(r.historyScore)}</td>
+      <td data-label="진찰">${dash(r.peScore)}</td>
+      <td data-label="PPI">${dash(r.ppiScore)}</td>
+      <td data-label="총평" class="note">${escapeHtml(r.note || "")}</td>
+      <td class="actions">${hasDetail ? '<button class="btn ghost small js-detail">보기</button>' : ""}<button class="btn ghost small js-del">삭제</button></td>
     `;
     const detailBtn = tr.querySelector(".js-detail");
     if (detailBtn) detailBtn.addEventListener("click", () => openDetail(r));
