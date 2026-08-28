@@ -25,14 +25,11 @@
   --danger-border: #e8cfc6;
   --danger-text: #a34a2c;
   --backdrop: rgba(43, 38, 33, 0.45);
-  --shadow: 0 8px 28px rgba(43, 38, 33, 0.16);
 
   --viz-1: #dfa48e;
   --viz-2: #cd7c5d;
   --viz-3: #b5563b;
   --viz-4: #8a3a24;
-  --viz-line: #b5563b;
-  --viz-grid: #ece8e0;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -57,14 +54,11 @@
     --danger-border: #55392b;
     --danger-text: #e8a98d;
     --backdrop: rgba(0, 0, 0, 0.62);
-    --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
 
     --viz-1: #844836;
     --viz-2: #ac5d42;
     --viz-3: #d07d5a;
     --viz-4: #efa386;
-    --viz-line: #d4785f;
-    --viz-grid: #322d26;
   }
 }
 
@@ -89,14 +83,11 @@
   --danger-border: #55392b;
   --danger-text: #e8a98d;
   --backdrop: rgba(0, 0, 0, 0.62);
-  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
 
   --viz-1: #844836;
   --viz-2: #ac5d42;
   --viz-3: #d07d5a;
   --viz-4: #efa386;
-  --viz-line: #d4785f;
-  --viz-grid: #322d26;
 }
 
 * { box-sizing: border-box; }
@@ -439,72 +430,7 @@ td.score { font-weight: 700; }
 .filters select { flex: 0 0 auto; }
 .filters .btn { align-self: center; }
 
-/* ---------- 요약 타일 ---------- */
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 12px;
-}
-.tile {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-}
-.tile-label { font-size: 0.78rem; color: var(--muted); }
-.tile-value { font-size: 1.9rem; font-weight: 700; line-height: 1.1; }
-.tile-unit { font-size: 1rem; font-weight: 500; color: var(--muted); }
-.tile-sub { font-size: 0.76rem; color: var(--muted); }
-/* 오르내림은 색만으로 말하지 않는다 — 화살표 글리프가 같이 붙는다. */
-.tile-sub.up { color: var(--ok); }
-.tile-sub.down { color: var(--accent); }
-
-/* ---------- 그래프 공통 ---------- */
-.chart { position: relative; }
-.viz { display: block; max-width: 100%; }
-.viz-grid { stroke: var(--viz-grid); stroke-width: 1; }
-.viz-tick { fill: var(--muted); font-size: 10px; }
-.viz-line {
-  fill: none;
-  stroke: var(--viz-line);
-  stroke-width: 2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-/* 겹치는 마크는 배경색 2px 링으로 떼어 놓는다. */
-.viz-dot { fill: var(--viz-line); stroke: var(--panel); stroke-width: 2; }
-.viz-ref { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.8; }
-.viz-ref-label { fill: var(--muted); font-size: 10px; }
-.viz-cross { stroke: var(--muted); stroke-width: 1; opacity: 0.6; }
-.viz-hot { fill: var(--viz-line); stroke: var(--panel); stroke-width: 2; }
-
-.viz-tip {
-  position: absolute;
-  z-index: 5;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 132px;
-  padding: 8px 10px;
-  border-radius: 9px;
-  border: 1px solid var(--border);
-  background: var(--panel);
-  box-shadow: var(--shadow);
-  font-size: 0.76rem;
-  line-height: 1.35;
-}
-.viz-tip-head { display: flex; flex-direction: column; gap: 1px; font-weight: 600; }
-.viz-tip-date { font-weight: 400; color: var(--muted); font-size: 0.7rem; }
-.viz-tip-total { font-weight: 700; font-size: 0.86rem; }
-.viz-tip-row { color: var(--muted); }
-
 .legend { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: var(--muted); }
-.legend-line { width: 14px; height: 2px; border-radius: 1px; background: var(--viz-line); }
-.legend-ref { width: 14px; border-top: 1px dashed var(--muted); }
 .swatch { width: 14px; height: 10px; border-radius: 2px; }
 .swatch.b1 { background: var(--viz-1); }
 .swatch.b2 { background: var(--viz-2); }
@@ -513,7 +439,6 @@ td.score { font-weight: 700; }
 .swatch-cap { margin-left: 2px; }
 
 .muted { color: var(--muted); }
-.small { font-size: 0.85rem; }
 
 /* ---------- 영역별 성취율 ---------- */
 .sbars { display: flex; flex-direction: column; gap: 4px; }
@@ -587,16 +512,6 @@ td.score { font-weight: 700; }
 
 .warn-inline { color: var(--warn-text); margin-top: 12px; margin-bottom: 0; }
 
-/* ---------- 다음 연습 추천 ---------- */
-.reco { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.reco li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 0.85rem;
-}
-.reco-why { color: var(--muted); font-size: 0.78rem; }
 
 td.actions { white-space: nowrap; }
 td.actions .btn + .btn { margin-left: 4px; }
@@ -654,17 +569,6 @@ td.actions .btn + .btn { margin-left: 4px; }
   .cover-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .sbar { grid-template-columns: 78px 1fr auto; gap: 8px; font-size: 0.8rem; }
 
-  /* 타일 3개를 2열로 깔면 마지막 칸이 비어 어색하다. 한 줄에 하나씩, 값은 오른쪽에. */
-  .tiles { grid-template-columns: 1fr; gap: 8px; }
-  .tile {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    padding: 11px 14px;
-  }
-  .tile-label { grid-column: 1; grid-row: 1; }
-  .tile-sub { grid-column: 1; grid-row: 2; }
-  .tile-value { grid-column: 2; grid-row: 1 / span 2; font-size: 1.55rem; }
   .modal { max-height: 92vh; }
   .backdrop { padding: 10px; }
 }
@@ -737,3 +641,25 @@ td.actions .btn + .btn { margin-left: 4px; }
   .attempts li { flex-wrap: wrap; gap: 4px 8px; }
   .att-sect { flex-basis: 100%; }
 }
+
+/* ---------- 커버리지 칩 → 케이스별 점수로 이동 ---------- */
+/* 해본 케이스 칩은 button 이라 브라우저 기본 서식을 걷어내고 .chip 모양을 되돌린다. */
+.chip.done {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.chip.done:hover { border-color: var(--accent); }
+.chip.done:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* 칩에서 넘어온 줄이 어디인지 잠깐 짚어준다. */
+.case-row.flash > td { background: var(--warn-bg); }
+.case-row > td { transition: background 0.25s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .case-row > td { transition: none; }
+}
+
+.attempts li .btn { margin-left: auto; flex: 0 0 auto; }
+.att-none { margin-left: auto; flex: 0 0 auto; color: var(--muted); font-size: 0.72rem; }

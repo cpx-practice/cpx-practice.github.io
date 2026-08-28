@@ -42,7 +42,7 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
-import { renderAnalytics, onResize } from "./analytics.js";
+import { renderAnalytics } from "./analytics.js";
 import { TOPICS, matchTopic } from "./topics.js";
 
 const app = initializeApp(firebaseConfig);
@@ -120,8 +120,7 @@ document.querySelectorAll(".subtab").forEach((btn) => {
     for (const [name, el] of Object.entries(views)) {
       el.classList.toggle("hidden", name !== btn.dataset.view);
     }
-    // 숨어 있는 동안에는 컨테이너 너비가 0이라 선 그래프를 그릴 수 없다. 보일 때 다시 그린다.
-    if (btn.dataset.view === "analysis") renderAnalytics(currentRows);
+    if (btn.dataset.view === "analysis") drawAnalytics();
   });
 });
 
@@ -150,7 +149,6 @@ btnTheme.addEventListener("click", () => {
 });
 applyTheme(currentTheme());
 
-window.addEventListener("resize", onResize);
 
 // ---------- 인증 ----------
 loginForm.addEventListener("submit", async (e) => {
@@ -376,8 +374,13 @@ function watchRecords(uid) {
 function refreshViews() {
   syncTopicFilter();
   renderRecords(applyFilters(currentRows));
-  // 숨어 있는 탭은 너비가 0이라 그래프가 찌그러진다. 보일 때만 그린다.
-  if (!views.analysis.classList.contains("hidden")) renderAnalytics(currentRows);
+  if (!views.analysis.classList.contains("hidden")) drawAnalytics();
+}
+
+// 분석 탭은 필터를 타지 않는다 — 전체 기록으로 그린다.
+// 회차별 "면담 보기" 는 기록 탭과 같은 상세 모달을 쓰므로 여는 함수를 넘겨준다.
+function drawAnalytics() {
+  renderAnalytics(currentRows, { onOpenRecord: openDetail });
 }
 
 // ---------- 검색 · 필터 · 정렬 ----------
