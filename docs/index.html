@@ -158,24 +158,6 @@
             <div class="sbars" id="sectionBars"></div>
           </div>
 
-          <div class="panel hidden" id="missedPanel">
-            <div class="panel-header">
-              <h2>자주 놓친 항목</h2>
-              <button type="button" class="btn ghost small hidden" id="missedMore"></button>
-            </div>
-            <p class="hint">저장된 채점 결과에서 X·△ 표시를 모아 셌습니다. △는 0.5회로 칩니다.</p>
-            <p class="empty hidden" id="missedEmpty"></p>
-            <div class="table-scroll" id="missedWrap">
-              <table id="missedTable">
-                <thead>
-                  <tr><th>항목</th><th>영역</th><th class="num">놓침</th><th class="num">놓침률</th></tr>
-                </thead>
-                <tbody id="missedBody"></tbody>
-              </table>
-            </div>
-            <p class="hint warn-inline hidden" id="missedNote"></p>
-          </div>
-
           <div class="panel">
             <div class="panel-header">
               <h2>케이스별 점수 (<span id="coverDone">0</span> / <span id="coverTotal">58</span> 해봄)</h2>
@@ -186,7 +168,9 @@
             </p>
 
             <div class="filters">
-              <input type="search" id="caseQuery" class="flt-search" placeholder="케이스 검색" aria-label="케이스 이름 검색" />
+              <input type="search" id="caseQuery" class="flt-search" list="caseNames"
+                     placeholder="케이스 검색" aria-label="케이스 이름 검색" autocomplete="off" />
+              <datalist id="caseNames"></datalist>
               <select id="caseSort" aria-label="케이스 정렬 기준"></select>
               <select id="caseScope" aria-label="보여줄 케이스 범위">
                 <option value="all">전체</option>
