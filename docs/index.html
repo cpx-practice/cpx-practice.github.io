@@ -170,6 +170,26 @@
 
           <div class="panel">
             <div class="panel-header">
+              <h2>케이스별 점수</h2>
+              <select id="caseSort" class="case-sort hidden" aria-label="케이스 정렬 기준"></select>
+            </div>
+            <p class="hint">케이스를 누르면 회차별 점수가 펼쳐집니다. 병력 / 진찰 / PPI 는 그 케이스의 영역별 평균입니다.</p>
+            <p class="empty hidden" id="caseEmpty">채점된 케이스가 아직 없습니다.</p>
+            <div class="table-scroll hidden" id="caseTableWrap">
+              <table id="caseTable">
+                <thead>
+                  <tr>
+                    <th>케이스</th><th class="num">횟수</th><th class="num">평균</th><th class="num">최고</th>
+                    <th class="num">최근</th><th class="num sect">병력</th><th class="num sect">진찰</th><th class="num sect">PPI</th>
+                  </tr>
+                </thead>
+                <tbody id="caseBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
               <h2>케이스 커버리지 (<span id="coverDone">0</span> / <span id="coverTotal">58</span>)</h2>
               <span class="legend">
                 평균점수

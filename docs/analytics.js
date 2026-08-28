@@ -62,21 +62,37 @@ export function computeStats(rows) {
       if (r.topic) unmatched.add(r.topic);
       continue;
     }
-    if (!byTopic.has(t.name)) byTopic.set(t.name, { scores: [], last: 0 });
-    const e = byTopic.get(t.name);
-    e.scores.push(r.totalScore);
-    e.last = Math.max(e.last, r.createdAt?.seconds || 0);
+    if (!byTopic.has(t.name)) byTopic.set(t.name, { attempts: [] });
+    // scored 는 rows(최신순)를 그대로 거른 것이라 attempts 도 최신순으로 쌓인다.
+    byTopic.get(t.name).attempts.push({
+      total: r.totalScore,
+      history: r.historyScore,
+      pe: r.peScore,
+      ppi: r.ppiScore,
+      at: r.createdAt?.seconds || 0,
+      date: r.createdAt?.toDate ? r.createdAt.toDate() : null,
+    });
   }
 
   const coverage = TOPICS.map((t) => {
     const e = byTopic.get(t.name);
-    if (!e) return { topic: t, count: 0, mean: null, best: null, last: 0 };
+    if (!e) {
+      return { topic: t, count: 0, mean: null, best: null, latest: null, last: 0, attempts: [], sect: {} };
+    }
+    const scores = e.attempts.map((a) => a.total);
+    const sect = {};
+    for (const k of ["history", "pe", "ppi"]) {
+      sect[k] = avg(e.attempts.map((a) => a[k]).filter((v) => typeof v === "number"));
+    }
     return {
       topic: t,
-      count: e.scores.length,
-      mean: avg(e.scores),
-      best: Math.max(...e.scores),
-      last: e.last,
+      count: scores.length,
+      mean: avg(scores),
+      best: Math.max(...scores),
+      latest: e.attempts[0].total, // 가장 최근 회차의 총점
+      last: Math.max(...e.attempts.map((a) => a.at)),
+      attempts: e.attempts,
+      sect,
     };
   });
 
@@ -128,8 +144,24 @@ function recommend(stats) {
 // ---------- 그리기 ----------
 
 let lastStats = null;
+let wired = false;
+
+// 정렬 드롭다운은 한 번만 채우고 한 번만 묶는다.
+function wireOnce() {
+  if (wired) return;
+  wired = true;
+  const sel = el("caseSort");
+  sel.innerHTML = Object.entries(CASE_SORTS)
+    .map(([k, v]) => `<option value="${k}">${v.label}</option>`)
+    .join("");
+  sel.value = "weak";
+  sel.addEventListener("change", () => {
+    if (lastStats) renderCases(lastStats);
+  });
+}
 
 export function renderAnalytics(rows) {
+  wireOnce();
   const stats = computeStats(rows);
   lastStats = stats;
 
@@ -147,6 +179,7 @@ export function renderAnalytics(rows) {
   renderTiles(stats);
   renderTrend(stats);
   renderSections(stats);
+  renderCases(stats);
   renderCoverage(stats);
   renderRecommend(stats);
 }
@@ -349,6 +382,94 @@ function renderSections(s) {
   el("sectionNote").textContent = showWeak
     ? `배점 대비 성취율이 가장 낮은 영역은 ${weakest.label}입니다 (${Math.round(weakest.pct)}%).`
     : "";
+}
+
+// --- 케이스별 점수 ---
+// 해본 케이스만 한 줄씩. 줄을 누르면 그 케이스의 회차별 점수가 펼쳐진다.
+
+const CASE_SORTS = {
+  weak: { label: "평균 낮은순", fn: (a, b) => a.mean - b.mean },
+  strong: { label: "평균 높은순", fn: (a, b) => b.mean - a.mean },
+  most: { label: "많이 해본순", fn: (a, b) => b.count - a.count || a.mean - b.mean },
+  recent: { label: "최근 연습순", fn: (a, b) => b.last - a.last },
+  bank: { label: "케이스 순서", fn: null }, // coverage 배열 순서가 곧 뱅크 순서
+};
+
+// 펼쳐둔 케이스는 다시 그려도 그대로 열려 있게 이름으로 기억한다.
+const openCases = new Set();
+
+function renderCases(s) {
+  const done = s.coverage.filter((c) => c.count > 0);
+  el("caseEmpty").classList.toggle("hidden", done.length > 0);
+  el("caseTableWrap").classList.toggle("hidden", done.length === 0);
+  el("caseSort").classList.toggle("hidden", done.length === 0);
+  if (!done.length) return;
+
+  const sort = CASE_SORTS[el("caseSort").value] || CASE_SORTS.weak;
+  const rows = sort.fn ? [...done].sort(sort.fn) : done;
+
+  const n = (v) => (typeof v === "number" ? round1(v) : "-");
+  const body = el("caseBody");
+  body.innerHTML = "";
+
+  for (const c of rows) {
+    const open = openCases.has(c.topic.name);
+    const tr = document.createElement("tr");
+    tr.className = "case-row" + (open ? " open" : "");
+    tr.tabIndex = 0;
+    tr.setAttribute("role", "button");
+    tr.setAttribute("aria-expanded", String(open));
+    tr.innerHTML =
+      `<td data-label="케이스" class="case-name"><span class="caret">${open ? "▾" : "▸"}</span>${esc(c.topic.name)}</td>` +
+      `<td data-label="횟수" class="num">${c.count}</td>` +
+      `<td data-label="평균" class="num mean">` +
+      `<span class="cell-val">${n(c.mean)}</span>` +
+      `<span class="cell-meter b${band(c.mean)}"><span style="width:${Math.max(2, Math.min(100, c.mean))}%"></span></span>` +
+      `</td>` +
+      `<td data-label="최고" class="num">${c.best}</td>` +
+      `<td data-label="최근" class="num">${c.latest}</td>` +
+      `<td data-label="병력" class="num sect">${n(c.sect.history)}</td>` +
+      `<td data-label="진찰" class="num sect">${n(c.sect.pe)}</td>` +
+      `<td data-label="PPI" class="num sect">${n(c.sect.ppi)}</td>`;
+
+    const detail = document.createElement("tr");
+    detail.className = "case-detail" + (open ? "" : " hidden");
+    detail.innerHTML =
+      `<td colspan="8"><ol class="attempts">` +
+      c.attempts
+        .map((a) => {
+          const d = a.date
+            ? `${a.date.getFullYear()}-${pad2(a.date.getMonth() + 1)}-${pad2(a.date.getDate())}`
+            : "날짜 없음";
+          return (
+            `<li><span class="att-date">${d}</span>` +
+            `<span class="att-total">${a.total}</span>` +
+            `<span class="att-sect">병력 ${n(a.history)} · 진찰 ${n(a.pe)} · PPI ${n(a.ppi)}</span></li>`
+          );
+        })
+        .join("") +
+      `</ol></td>`;
+
+    const toggle = () => {
+      const nowOpen = !openCases.has(c.topic.name);
+      if (nowOpen) openCases.add(c.topic.name);
+      else openCases.delete(c.topic.name);
+      tr.classList.toggle("open", nowOpen);
+      tr.setAttribute("aria-expanded", String(nowOpen));
+      tr.querySelector(".caret").textContent = nowOpen ? "▾" : "▸";
+      detail.classList.toggle("hidden", !nowOpen);
+    };
+    tr.addEventListener("click", toggle);
+    tr.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        toggle();
+      }
+    });
+
+    body.appendChild(tr);
+    body.appendChild(detail);
+  }
 }
 
 // --- 케이스 커버리지 ---

@@ -668,3 +668,72 @@ td.actions .btn + .btn { margin-left: 4px; }
   .modal { max-height: 92vh; }
   .backdrop { padding: 10px; }
 }
+
+/* ---------- 케이스별 점수 ---------- */
+.case-sort { font-size: 0.78rem; padding: 4px 8px; }
+
+#caseTable { font-size: 0.82rem; }
+#caseTable th.num, #caseTable td.num { text-align: right; font-variant-numeric: tabular-nums; }
+#caseTable td { vertical-align: middle; }
+
+.case-row { cursor: pointer; }
+.case-row:hover td, .case-row:focus-visible td { background: var(--inset); }
+.case-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.case-name { display: flex; align-items: center; gap: 6px; word-break: keep-all; }
+.caret { color: var(--muted); font-size: 0.7rem; width: 0.8em; flex: 0 0 auto; }
+
+/* 평균 칸은 숫자가 값을 말하고, 아래 막대는 훑어보기용이다. */
+#caseTable td.mean { min-width: 66px; }
+.cell-val { display: block; }
+.cell-meter {
+  display: block;
+  height: 3px;
+  margin-top: 3px;
+  border-radius: 2px;
+  background: var(--border);
+  overflow: hidden;
+}
+.cell-meter > span { display: block; height: 100%; border-radius: 2px; }
+.cell-meter.b1 > span { background: var(--viz-1); }
+.cell-meter.b2 > span { background: var(--viz-2); }
+.cell-meter.b3 > span { background: var(--viz-3); }
+.cell-meter.b4 > span { background: var(--viz-4); }
+
+.case-detail > td { padding: 0 8px 10px; border-bottom: 1px solid var(--border); }
+.attempts {
+  margin: 0;
+  padding: 8px 10px;
+  list-style: none;
+  counter-reset: att;
+  background: var(--inset);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.attempts li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+.attempts li::before {
+  counter-increment: att;
+  content: counter(att) "회";
+  flex: 0 0 auto;
+  min-width: 2.4em;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.att-date { flex: 0 0 auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+.att-total { flex: 0 0 auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.att-sect { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 640px) {
+  /* 8칸을 가로로 밀지 않게 영역별 평균은 접는다 — 펼친 회차 목록에 그대로 있다. */
+  #caseTable .sect { display: none; }
+  #caseTable { font-size: 0.78rem; }
+  #caseTable th, #caseTable td { padding: 6px 5px; }
+  .attempts li { flex-wrap: wrap; gap: 4px 8px; }
+  .att-sect { flex-basis: 100%; }
+}

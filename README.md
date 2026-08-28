@@ -17,20 +17,41 @@ Claude Code (유저 PC)          Cloudflare Worker            Firebase
 
 ## 0. 필요한 도구
 
-**Node.js는 필요 없습니다.** 이 PC에 이미 있는 `git` 과 `curl` 만으로 전부 됩니다.
-Firebase CLI(`firebase-tools`)와 Wrangler는 둘 다 npm 패키지라 쓰지 않고,
-대신 **웹 대시보드**에서 같은 일을 합니다.
-
-| 원래 CLI로 하던 것 | 대신 |
+| 무엇을 | 어떻게 |
 |---|---|
-| `firebase deploy` (규칙) | Firebase 콘솔 → Firestore → **규칙** 탭에 붙여넣기 |
-| `firebase deploy` (색인) | Firebase 콘솔 → Firestore → **색인** 탭에서 생성 |
-| `firebase deploy` (호스팅) | **GitHub Pages** (Firebase Hosting은 CLI 전용이라 사용 안 함) |
-| `wrangler deploy` | Cloudflare 대시보드의 온라인 편집기에 붙여넣기 |
+| Firestore 규칙·색인 | `firebase deploy --only firestore` — CLI 설치 완료 (아래 참고) |
+| 웹앱 호스팅 | **GitHub Pages** — `docs/` 를 푸시하면 자동. Firebase Hosting 은 안 씁니다 |
+| Cloudflare 워커 | Cloudflare 대시보드의 온라인 편집기에 붙여넣기 (Wrangler 미설치) |
 
-> 나중에 Node를 설치하면 `firebase-tools` + `wrangler` 로 이 저장소의
-> `firebase.json` / `firestore.indexes.json` / `wrangler.toml` 을 그대로 써서
-> 명령 한 줄로 배포할 수 있습니다. 그 파일들은 남겨뒀습니다.
+워커만 여전히 손으로 올립니다. 나머지 둘은 명령으로 끝납니다.
+
+### 규칙·색인은 CLI로 배포합니다 (2026-08-28 설정)
+
+작업 PC에는 firebase-tools 를 깔아뒀습니다. 콘솔에 붙여넣지 않고 명령 한 줄로 배포합니다.
+
+```bash
+firebase deploy --only firestore:rules,firestore:indexes
+```
+
+이 저장소 최상단에서 실행하면 `.firebaserc` 의 프로젝트(`cpx-tracker`)로 갑니다.
+규칙만/색인만 따로 올리려면 `--only firestore:rules` 또는 `--only firestore:indexes`.
+
+처음 한 번은 로그인이 필요합니다 (브라우저가 열립니다):
+
+```bash
+firebase login
+```
+
+호스팅은 계속 GitHub Pages 를 씁니다 — `firebase deploy --only hosting` 은 쓰지 마세요.
+두 곳에 같은 사이트가 생겨 어느 쪽이 최신인지 헷갈립니다.
+
+> 설치 위치는 `~/.firebase-cli/` 이고 `~/bin/firebase` 래퍼로 부릅니다.
+> 전역 설치(`npm i -g`)는 npm prefix 가 Program Files 라 관리자 권한이 필요해서 피했습니다.
+> 이 PC의 node 는 한컴 번들 경로에만 있어서 래퍼가 PATH 를 직접 잡아줍니다.
+> 다른 PC에서는 node 를 깔고 `npm i -g firebase-tools` 하면 그만입니다.
+
+아래 콘솔 수동 절차(1-5, 1-6)는 CLI를 못 쓸 때의 대안으로 남겨둡니다.
+콘솔에서 손으로 고쳤다면 이 저장소의 `firestore.rules` / `firestore.indexes.json` 에도 같은 내용을 반영하세요.
 
 ---
 
@@ -167,7 +188,7 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 |---|---|
 | `docs/index.html` | 화면 뼈대. 대시보드는 내 기록 / 분석 / Claude Code 연결 / 설정 (+관리자) 탭 |
 | `docs/app.js` | Firebase 인증·구독, 기록 표, 검색·필터·정렬, 테마 토글, 관리자 화면 |
-| `docs/analytics.js` | 분석 탭 — 요약 타일, 총점 추이 그래프, 영역별 성취율, 커버리지, 다음 연습 추천 |
+| `docs/analytics.js` | 분석 탭 — 요약 타일, 총점 추이 그래프, 영역별 성취율, 케이스별 점수, 커버리지, 다음 연습 추천 |
 | `docs/topics.js` | 케이스 뱅크 목록(58개)과 이름 맞추기 |
 | `docs/style.css` | 색 토큰(라이트/다크), 컴포넌트, 좁은 화면 대응 |
 
