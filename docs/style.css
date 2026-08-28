@@ -753,8 +753,25 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .md code, .md table { background: none; }
   .md th, .md td { border-bottom: 1px solid #bbb; }
 
-  /* 표와 항목이 페이지 경계에서 잘리지 않게. */
-  .md table, .md tr, .md li { break-inside: avoid; }
-  .md h2, .md h3 { break-after: avoid; }
+  /* 페이지가 넘어갈 때 항목이 반으로 잘리지 않게 한다.
+     걸치는 항목은 쪼개지 말고 통째로 다음 장으로 밀라는 뜻이다.
+     break-inside 를 못 읽는 뷰어를 위해 옛 이름도 함께 준다. */
+  .md tr, .md li, .md p, .md h2, .md h3, .md h4, .md table {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  /* 제목만 페이지 맨 아래에 남고 내용이 다음 장으로 넘어가는 것도 막는다. */
+  .md h2, .md h3, .md h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  /* 표는 여러 장에 걸쳐도 되지만, 걸치면 장마다 열 이름을 다시 낸다. */
+  .md tbody { page-break-inside: auto; break-inside: auto; }
+  .md thead { display: table-header-group; }
+  /* 문단이 한두 줄만 떨어져 나가는 것도 막는다. */
+  .md p, .md li, .detail-pane { orphans: 3; widows: 3; }
+  /* 문진 전사는 새 장에서 시작한다 — 채점표 꼬리에 붙으면 읽기 나쁘다. */
+  .printing #paneScript { page-break-before: always; break-before: page; }
+
   .md .table-scroll { overflow: visible; }
 }

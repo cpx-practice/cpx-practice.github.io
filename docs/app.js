@@ -464,9 +464,8 @@ function renderRecords(rows) {
   recordBody.innerHTML = "";
   for (const r of rows) {
     const dash = (v) => (typeof v === "number" ? v : "-");
-    const hasDetail = Boolean(
-      r.evaluationChunks?.length || r.transcriptChunks?.length || r.evaluationText || r.transcript
-    );
+    // 본문이 따로 있으면 기록에 표시만 남는다. 구버전 기록은 본문이 문서 안에 있다.
+    const hasDetail = Boolean(r.hasEvaluation || r.hasTranscript) || hasInlineBody(r);
     const tr = document.createElement("tr");
     // data-label 은 좁은 화면에서 표가 카드로 접힐 때 각 칸의 이름표로 쓰인다.
     tr.innerHTML = `
@@ -488,6 +487,14 @@ function renderRecords(rows) {
 
 async function deleteRecord(id) {
   if (!confirm("이 기록을 삭제할까요? 저장된 전사도 함께 지워집니다.")) return;
+  // 본문을 먼저 지운다. 반대 순서로 하다 중간에 실패하면 주인 없는 전사가 남는다 —
+  // 지웠다고 생각한 대화가 남아 있는 쪽이, 목록에 흔적이 남는 쪽보다 나쁘다.
+  try {
+    await deleteDoc(doc(db, "recordDetails", id));
+  } catch {
+    // 본문이 아예 없는 구버전 기록이면 여기서 실패하는 것이 정상이다.
+  }
+  detailCache.delete(id);
   await deleteDoc(doc(db, "records", id));
 }
 
@@ -510,22 +517,40 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeDetail();
 });
 
-// 모달이 지금 띄우고 있는 기록. 내려받기 버튼이 이것을 쓴다.
+// 기록 본문(채점 원문·문진 전사)은 recordDetails/{id} 에 따로 있고, 열 때만 가져온다.
+// 목록에 딸려오면 열어보지도 않을 전사까지 전부 내려받게 된다.
+// 2026-08-29 이전 기록은 본문이 records 문서 안에 그대로 있어서 그대로 읽는다.
+const detailCache = new Map();
+
+function hasInlineBody(r) {
+  return Boolean(
+    r?.evaluationChunks?.length || r?.transcriptChunks?.length || r?.evaluationText || r?.transcript
+  );
+}
+
+async function loadBody(r) {
+  if (hasInlineBody(r)) return r; // 구버전 기록
+  if (!(r.hasEvaluation || r.hasTranscript)) return {};
+  if (detailCache.has(r.id)) return detailCache.get(r.id);
+  const snap = await getDoc(doc(db, "recordDetails", r.id));
+  const body = snap.exists() ? snap.data() : {};
+  detailCache.set(r.id, body);
+  return body;
+}
+
+// 모달이 지금 띄우고 있는 기록과 그 본문. 내려받기 버튼이 이 둘을 쓴다.
 let currentDetail = null;
+let currentBody = null;
+// 본문을 가져오는 동안 사용자가 다른 기록을 열 수 있다. 늦게 도착한 응답이
+// 새로 연 기록의 화면을 덮어쓰지 않도록 열 때마다 번호를 매긴다.
+let detailToken = 0;
 
-function openDetail(r) {
+async function openDetail(r) {
   currentDetail = r;
+  const token = ++detailToken;
   $("detailTitle").textContent = `${r.topic || "무작위"} · ${fmtDateTime(r.createdAt)}`;
-
-  const evalText = joinChunks(r.evaluationChunks, r.evaluationText);
-  $("paneEval").innerHTML = evalText
-    ? renderMarkdown(evalText)
-    : '<p class="muted">(채점 결과 원문이 저장되지 않은 기록입니다)</p>';
-
-  const script = joinChunks(r.transcriptChunks, r.transcript);
-  $("paneScript").textContent = script
-    ? script + (r.transcriptTruncated ? "\n\n— 앞부분이 길어 잘렸습니다 —" : "")
-    : "(문진 전사가 저장되지 않은 기록입니다)";
+  $("paneEval").innerHTML = '<p class="muted">불러오는 중…</p>';
+  $("paneScript").textContent = "불러오는 중…";
 
   const bits = [];
   if (typeof r.totalScore === "number") bits.push(`총점 ${r.totalScore}`);
@@ -541,10 +566,36 @@ function openDetail(r) {
 
   document.querySelectorAll(".dtab")[0].click();
   backdrop.classList.remove("hidden");
+
+  let body;
+  try {
+    body = await loadBody(r);
+  } catch {
+    if (token !== detailToken) return;
+    $("paneEval").innerHTML = '<p class="muted">본문을 불러오지 못했습니다. 잠시 후 다시 열어보세요.</p>';
+    $("paneScript").textContent = "본문을 불러오지 못했습니다.";
+    return;
+  }
+  // 그새 다른 기록을 열었으면 이 응답은 버린다.
+  if (token !== detailToken) return;
+  currentBody = body;
+
+  const evalText = joinChunks(body.evaluationChunks, body.evaluationText);
+  $("paneEval").innerHTML = evalText
+    ? renderMarkdown(evalText)
+    : '<p class="muted">(채점 결과 원문이 저장되지 않은 기록입니다)</p>';
+
+  const script = joinChunks(body.transcriptChunks, body.transcript);
+  $("paneScript").textContent = script
+    ? script + (body.transcriptTruncated ? "\n\n— 앞부분이 길어 잘렸습니다 —" : "")
+    : "(문진 전사가 저장되지 않은 기록입니다)";
 }
 
 function closeDetail() {
   backdrop.classList.add("hidden");
+  // 다음에 열 응답이 닫힌 모달을 채우지 않게 번호를 넘긴다.
+  detailToken += 1;
+  currentBody = null;
 }
 
 
@@ -553,9 +604,19 @@ function closeDetail() {
 // .md 는 파일로 바로 저장한다. PDF 는 브라우저 인쇄로 넘긴다 —
 // 만드는 쪽 설명은 export.js 와 style.css 의 @media print 에 있다.
 
-$("btnSaveMd").addEventListener("click", () => {
+$("btnSaveMd").addEventListener("click", async () => {
   if (!currentDetail) return;
-  downloadText(detailFilename(currentDetail, "md"), recordToMarkdown(currentDetail), "text/markdown");
+  // 본문이 아직 안 왔으면 기다렸다 만든다 — 점수만 든 파일이 나가면 안 된다.
+  const body = currentBody || (await loadBody(currentDetail).catch(() => null));
+  if (!body) {
+    alert("본문을 불러오지 못했습니다. 잠시 후 다시 시도해주세요.");
+    return;
+  }
+  downloadText(
+    detailFilename(currentDetail, "md"),
+    recordToMarkdown({ ...currentDetail, ...body }),
+    "text/markdown"
+  );
 });
 
 $("btnSavePdf").addEventListener("click", () => {

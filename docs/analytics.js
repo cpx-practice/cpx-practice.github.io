@@ -204,10 +204,16 @@ const CASE_SORTS = {
 // 펼쳐둔 케이스는 다시 그려도 그대로 열려 있게 이름으로 기억한다.
 const openCases = new Set();
 
-// 기록에 채점 결과나 문진 전사가 실제로 들어 있는지. 구버전 기록은 단일 문자열이었다.
+// 회차에 볼 만한 본문이 있는지. 본문 자체는 recordDetails/{id} 에 따로 있고 열 때만 가져오므로,
+// 여기서는 기록에 남은 가벼운 표시만 본다. 2026-08-29 이전 기록은 본문이 문서 안에 그대로 있다.
 function hasDetail(r) {
   return Boolean(
-    r?.evaluationChunks?.length || r?.transcriptChunks?.length || r?.evaluationText || r?.transcript
+    r?.hasEvaluation ||
+      r?.hasTranscript ||
+      r?.evaluationChunks?.length ||
+      r?.transcriptChunks?.length ||
+      r?.evaluationText ||
+      r?.transcript
   );
 }
 
