@@ -271,9 +271,6 @@ function trendPane(c) {
 }
 
 function renderCases(s) {
-  el("coverDone").textContent = s.doneCount;
-  el("coverTotal").textContent = s.coverage.length;
-
   const rows = filterCases(s);
   const filtering =
     Boolean(el("caseQuery").value.trim()) ||
