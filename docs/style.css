@@ -534,7 +534,7 @@ td.actions .btn + .btn { margin-left: 4px; }
 .case-sort { font-size: 0.78rem; padding: 4px 8px; }
 
 #caseTable { font-size: 0.82rem; }
-#caseTable th.num, #caseTable td.num { text-align: right; font-variant-numeric: tabular-nums; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 #caseTable td { vertical-align: middle; }
 
 .case-row { cursor: pointer; }
@@ -626,3 +626,19 @@ td.actions .btn + .btn { margin-left: 4px; }
   background: var(--panel);
   border-bottom: 1px solid var(--border);
 }
+
+/* ---------- 자주 놓친 항목 ---------- */
+#missedTable { font-size: 0.82rem; }
+#missedTable td { vertical-align: middle; }
+.miss-name { word-break: keep-all; }
+.miss-sect { color: var(--muted); white-space: nowrap; }
+.miss-of { color: var(--muted); font-weight: 400; }
+#missedTable td.mean { min-width: 62px; }
+
+@media (max-width: 640px) {
+  /* 영역은 항목명 아래로 접어 넣지 않고 통째로 뺀다 — 항목명만으로 어디 것인지 대개 안다. */
+  #missedTable .miss-sect, #missedTable thead th:nth-child(2) { display: none; }
+  #missedTable { font-size: 0.78rem; }
+  #missedTable th, #missedTable td { padding: 6px 5px; }
+}
+.cell-meter.miss > span { background: var(--viz-3); }

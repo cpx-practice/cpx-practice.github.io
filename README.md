@@ -136,7 +136,7 @@ Blaze로 올리라는 안내가 보여도 **올리지 마세요.** Spark에서�
 Firebase Hosting은 CLI가 있어야 하므로 쓰지 않습니다. GitHub Pages가 무료이고 Node도 필요 없습니다.
 
 1. GitHub에서 레포를 만듭니다 (예: `cpx-tracker`, **Public**).
-2. `docs/` 폴더째 올립니다 — `index.html`, `style.css`, `app.js`, `analytics.js`, `topics.js` 다섯 파일입니다.
+2. `docs/` 폴더째 올립니다 — `index.html`, `style.css`, `app.js`, `analytics.js`, `evaluation.js`, `topics.js` 여섯 파일입니다.
    웹 UI에서 **Add file → Upload files** 로 드래그해도 되고, git을 써도 됩니다:
 
 ```bash
@@ -188,7 +188,8 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 |---|---|
 | `docs/index.html` | 화면 뼈대. 대시보드는 내 기록 / 분석 / Claude Code 연결 / 설정 (+관리자) 탭 |
 | `docs/app.js` | Firebase 인증·구독, 기록 표, 검색·필터·정렬, 기록 상세 모달, 테마 토글, 관리자 화면 |
-| `docs/analytics.js` | 분석 탭 — 영역별 성취율, 케이스별 점수(검색·범위·정렬) |
+| `docs/analytics.js` | 분석 탭 — 영역별 성취율, 자주 놓친 항목, 케이스별 점수(검색·범위·정렬) |
+| `docs/evaluation.js` | 채점 결과 원문에서 항목별 O/△/X 를 읽어 놓친 항목을 집계 |
 | `docs/topics.js` | 케이스 뱅크 목록(58개)과 이름 맞추기 |
 | `docs/style.css` | 색 토큰(라이트/다크), 컴포넌트, 좁은 화면 대응 |
 
@@ -201,6 +202,17 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 펼쳐지고 회차마다 "면담 보기" 로 채점 결과와 문진 전사를 볼 수 있습니다. 안 해본 케이스는
 "미실시" 로 흐리게 한 줄만 남습니다 — 커버리지를 따로 두지 않고 이 표가 겸합니다.
 검색창에 케이스 이름을 넣으면 한 건만 띄울 수 있고, 표기가 조금 달라도(공백·괄호·슬래시) 찾습니다.
+
+### 자주 놓친 항목은 채점 원문을 되읽어 셉니다
+
+플러그인이 올린 채점 결과는 마크다운 표입니다. `evaluation.js` 가 그 표에서 항목명과
+O/△/X 를 뽑아 "몇 번 나왔고 몇 번 놓쳤는지" 를 셉니다 (△는 0.5회). 표에 별도 필드를
+만들지 않고 이미 저장된 원문을 다시 읽는 방식이라, 지난 기록에도 소급 적용됩니다.
+
+열 순서는 스킬이 못박지 않으므로 헤더 이름(`평가`/`결과` 등)으로 먼저 찾고, 그것도 안 되면
+O/△/X 가 가장 많이 든 열을 평가 열로 봅니다. ○ ✗ 같은 다른 기호도 같은 것으로 읽습니다.
+그래도 못 읽은 기록은 버리지 않고 세어서 패널 아래에 "N건은 항목표를 읽지 못했습니다" 로
+알립니다 — 집계가 조용히 새지 않게 하려는 것입니다.
 
 "면담 보기" 가 띄우는 모달은 기록 탭이 쓰는 것과 같은 것입니다. `app.js` 가
 `renderAnalytics(rows, { onOpenRecord })` 로 여는 함수를 넘겨주므로 `analytics.js` 는

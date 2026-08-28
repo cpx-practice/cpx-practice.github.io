@@ -1,7 +1,8 @@
-// 분석 탭 — 기록 배열 하나만 받아서 영역별 성취율과 케이스별 점수를 그린다.
+// 분석 탭 — 기록 배열 하나만 받아서 영역별 성취율·자주 놓친 항목·케이스별 점수를 그린다.
 // Firestore 를 직접 만지지 않는다 (app.js 가 넘겨준 rows 로만 계산).
 
 import { TOPICS, matchTopic, normalizeTopic } from "./topics.js";
+import { aggregateMissed } from "./evaluation.js";
 
 const MAX = { history: 60, pe: 20, ppi: 20 };
 
@@ -95,6 +96,7 @@ export function computeStats(rows) {
     coverage,
     doneCount,
     unmatched: [...unmatched],
+    ...aggregateMissed(scored),
   };
 }
 
@@ -121,6 +123,10 @@ function wireOnce() {
   sel.addEventListener("change", redraw);
   el("caseScope").addEventListener("change", redraw);
   el("caseQuery").addEventListener("input", redraw);
+  el("missedMore").addEventListener("click", () => {
+    missedExpanded = !missedExpanded;
+    if (lastStats) renderMissed(lastStats);
+  });
   el("caseReset").addEventListener("click", () => {
     el("caseQuery").value = "";
     el("caseScope").value = "all";
@@ -147,6 +153,7 @@ export function renderAnalytics(rows, opts = {}) {
   body.classList.remove("hidden");
 
   renderSections(stats);
+  renderMissed(stats);
   renderCases(stats);
 }
 
@@ -180,6 +187,77 @@ function renderSections(s) {
   el("sectionNote").textContent = showWeak
     ? `배점 대비 성취율이 가장 낮은 영역은 ${weakest.label}입니다 (${Math.round(weakest.pct)}%).`
     : "";
+}
+
+
+// --- 자주 놓친 항목 ---
+// 저장된 채점 원문에서 X·△ 를 모아 센다. 기본은 상위 8개만 보여주고 펼칠 수 있다.
+
+const MISSED_TOP = 8;
+let missedExpanded = false;
+
+function renderMissed(s) {
+  const panel = el("missedPanel");
+  const empty = el("missedEmpty");
+  const wrap = el("missedWrap");
+  const more = el("missedMore");
+  const note = el("missedNote");
+
+  // 못 읽은 기록이 있으면 조용히 넘어가지 않고 몇 건인지 알린다.
+  const unread = s.evalWithText - s.evalParsed;
+  note.classList.toggle("hidden", unread <= 0);
+  if (unread > 0) {
+    note.textContent = `채점 결과 ${s.evalWithText}건 중 ${unread}건은 항목표를 읽지 못해 집계에서 빠졌습니다.`;
+  }
+
+  if (s.evalWithText === 0) {
+    empty.textContent =
+      "채점 결과 원문이 저장된 기록이 없습니다. 플러그인으로 연습하면 채점 결과가 함께 올라옵니다.";
+    empty.classList.remove("hidden");
+    wrap.classList.add("hidden");
+    more.classList.add("hidden");
+    panel.classList.remove("hidden");
+    return;
+  }
+
+  if (s.missed.length === 0) {
+    empty.textContent = "놓친 항목이 없습니다.";
+    empty.classList.remove("hidden");
+    wrap.classList.add("hidden");
+    more.classList.add("hidden");
+    panel.classList.remove("hidden");
+    return;
+  }
+
+  panel.classList.remove("hidden");
+  empty.classList.add("hidden");
+  wrap.classList.remove("hidden");
+
+  const rows = missedExpanded ? s.missed : s.missed.slice(0, MISSED_TOP);
+  // 0.5 회 단위가 나올 수 있으니 정수일 때만 소수점을 뗀다.
+  const cnt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+  el("missedBody").innerHTML = rows
+    .map((m) => {
+      const pct = Math.round(m.rate * 100);
+      return (
+        `<tr>` +
+        `<td data-label="항목" class="miss-name">${esc(m.item)}</td>` +
+        `<td data-label="영역" class="miss-sect">${esc(m.section || "-")}</td>` +
+        `<td data-label="놓침" class="num">${cnt(m.missCount)}<span class="miss-of"> / ${m.seen}</span></td>` +
+        `<td data-label="놓침률" class="num mean">` +
+        `<span class="cell-val">${pct}%</span>` +
+        // 밴드(90/80/70)는 점수용 눈금이라 놓침률에 그대로 쓰면 어긋난다.
+        // 크기는 막대 길이와 옆의 숫자가 말하므로 색은 한 가지로 고정한다.
+        `<span class="cell-meter miss"><span style="width:${Math.max(2, pct)}%"></span></span>` +
+        `</td>` +
+        `</tr>`
+      );
+    })
+    .join("");
+
+  more.classList.toggle("hidden", s.missed.length <= MISSED_TOP);
+  more.textContent = missedExpanded ? "접기" : `전체 ${s.missed.length}개 보기`;
 }
 
 // --- 케이스별 점수 ---
