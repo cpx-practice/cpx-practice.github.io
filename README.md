@@ -136,7 +136,7 @@ Blaze로 올리라는 안내가 보여도 **올리지 마세요.** Spark에서�
 Firebase Hosting은 CLI가 있어야 하므로 쓰지 않습니다. GitHub Pages가 무료이고 Node도 필요 없습니다.
 
 1. GitHub에서 레포를 만듭니다 (예: `cpx-tracker`, **Public**).
-2. `docs/` 폴더째 올립니다 — `index.html`, `style.css`, `app.js`, `analytics.js`, `topics.js` 다섯 파일입니다.
+2. `docs/` 폴더째 올립니다 — `index.html`, `style.css`, `app.js`, `analytics.js`, `export.js`, `topics.js` 여섯 파일입니다.
    웹 UI에서 **Add file → Upload files** 로 드래그해도 되고, git을 써도 됩니다:
 
 ```bash
@@ -193,6 +193,7 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 — 기록은 전부 플러그인이 올립니다. `firestore.rules` 는 여전히 `source` 로 `manual` 도 받는데,
 지난 기록이 그 값을 갖고 있어서 그대로 뒀습니다.
 | `docs/analytics.js` | 분석 탭 — 영역별 성취율, 케이스별 점수(검색·범위·정렬, 펼치면 회차와 성적 추이) |
+| `docs/export.js` | 기록 한 건을 마크다운으로 바꾸고 파일로 내려주기 |
 | `docs/topics.js` | 케이스 뱅크 목록(58개)과 이름 맞추기 |
 | `docs/style.css` | 색 토큰(라이트/다크), 컴포넌트, 좁은 화면 대응 |
 
@@ -217,6 +218,24 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 한때 여기에 "자주 놓친 항목"(채점 원문에서 X·△ 를 긁어 집계)이 있었습니다. 2026-08-29 에
 성적 추이로 바꾸면서 `docs/evaluation.js` 와 함께 뺐습니다 — 되살리려면 git 이력에 있습니다.
 그 기능은 채점 원문의 표 형식에 기대는 반면 추이는 점수 필드만 쓰므로, 형식이 흔들려도 깨지지 않습니다.
+
+### 면담 내려받기 — .md 와 PDF
+
+기록 상세 모달 오른쪽 위에 `.md` 와 `PDF` 버튼이 있습니다.
+
+`.md` 는 `CPX_가슴통증_2026-08-29.md` 로 바로 저장됩니다. 제목·일시·점수·채점 결과·문진 전사가
+한 파일에 담깁니다. 전사는 줄바꿈이 곧 뜻이라 코드 블록에 넣는데, 전사 안에 백틱 울타리가 있으면
+블록이 거기서 닫히므로 가장 긴 것보다 한 칸 긴 울타리를 씁니다. 점수 전달용 `cpx-record` 블록은 뺍니다.
+
+`PDF` 는 브라우저 인쇄 대화상자를 엽니다 — 거기서 대상을 "PDF로 저장"으로 고르면 됩니다.
+jsPDF 류로 직접 만들지 않은 이유는 한글입니다. 그런 라이브러리는 한글 폰트를 통째로 실어야 하고
+(수 MB) 안 실으면 글자가 깨집니다. 인쇄는 의존성이 없고, 글자가 선택·검색되는 PDF 가 나옵니다.
+대신 저장 위치와 파일명을 사용자가 고르는 단계가 하나 낍니다.
+
+인쇄용 규칙은 `style.css` 의 `@media print` 에 있습니다. 화면에서는 채점 결과와 문진 전사가
+탭으로 갈려 있지만 인쇄물에는 둘 다 담깁니다 — `app.js` 가 인쇄 직전 `<html>` 에 `.printing` 을
+붙였다가 끝나면 뗍니다. 숨은 탭의 `.hidden`(`display:none !important`)을 이기려고
+`#paneScript.hidden` 처럼 id 를 끼워 특이도를 올려 뒀으니, 선택자를 줄이면 인쇄가 깨집니다.
 
 "면담 보기" 가 띄우는 모달은 기록 탭이 쓰는 것과 같은 것입니다. `app.js` 가
 `renderAnalytics(rows, { onOpenRecord })` 로 여는 함수를 넘겨주므로 `analytics.js` 는

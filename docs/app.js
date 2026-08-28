@@ -43,6 +43,13 @@ import {
 
 import { renderAnalytics } from "./analytics.js";
 import { TOPICS, matchTopic } from "./topics.js";
+import {
+  joinChunks,
+  fmtDateTime,
+  detailFilename,
+  recordToMarkdown,
+  downloadText,
+} from "./export.js";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -428,13 +435,6 @@ function applyFilters(rows) {
   return out;
 }
 
-function fmtDate(ts) {
-  if (!ts || !ts.toDate) return "";
-  const d = ts.toDate();
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
 function renderRecords(rows) {
   const total = currentRows.length;
   const filtered = rows.length !== total;
@@ -470,7 +470,7 @@ function renderRecords(rows) {
     const tr = document.createElement("tr");
     // data-label 은 좁은 화면에서 표가 카드로 접힐 때 각 칸의 이름표로 쓰인다.
     tr.innerHTML = `
-      <td data-label="날짜">${fmtDate(r.createdAt)}</td>
+      <td data-label="날짜">${fmtDateTime(r.createdAt)}</td>
       <td data-label="주제">${escapeHtml(r.topic || "")}${r.source === "plugin" ? '<span class="pill">자동</span>' : ""}</td>
       <td data-label="총점" class="score">${dash(r.totalScore)}</td>
       <td data-label="병력">${dash(r.historyScore)}</td>
@@ -493,6 +493,7 @@ async function deleteRecord(id) {
 
 // ---------- 상세 보기 ----------
 const backdrop = $("detailBackdrop");
+const detailMeta = $("detailMeta");
 document.querySelectorAll(".dtab").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".dtab").forEach((b) => b.classList.remove("active"));
@@ -509,15 +510,12 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeDetail();
 });
 
-// 긴 텍스트는 Firestore 색인 제한 때문에 1500자씩 잘려 배열로 저장된다.
-// (transcript / evaluationText 단일 문자열은 구버전 기록 호환용)
-function joinChunks(chunkArray, legacy) {
-  if (Array.isArray(chunkArray) && chunkArray.length) return chunkArray.join("");
-  return legacy || "";
-}
+// 모달이 지금 띄우고 있는 기록. 내려받기 버튼이 이것을 쓴다.
+let currentDetail = null;
 
 function openDetail(r) {
-  $("detailTitle").textContent = `${r.topic || "무작위"} · ${fmtDate(r.createdAt)}`;
+  currentDetail = r;
+  $("detailTitle").textContent = `${r.topic || "무작위"} · ${fmtDateTime(r.createdAt)}`;
 
   const evalText = joinChunks(r.evaluationChunks, r.evaluationText);
   $("paneEval").innerHTML = evalText
@@ -529,6 +527,18 @@ function openDetail(r) {
     ? script + (r.transcriptTruncated ? "\n\n— 앞부분이 길어 잘렸습니다 —" : "")
     : "(문진 전사가 저장되지 않은 기록입니다)";
 
+  const bits = [];
+  if (typeof r.totalScore === "number") bits.push(`총점 ${r.totalScore}`);
+  const sect = [
+    ["병력", r.historyScore],
+    ["진찰", r.peScore],
+    ["PPI", r.ppiScore],
+  ].filter(([, v]) => typeof v === "number");
+  if (sect.length) bits.push(sect.map(([n, v]) => `${n} ${v}`).join(" · "));
+  if (r.grade) bits.push(`등급 ${r.grade}`);
+  detailMeta.textContent = bits.join("  |  ");
+  detailMeta.classList.toggle("hidden", bits.length === 0);
+
   document.querySelectorAll(".dtab")[0].click();
   backdrop.classList.remove("hidden");
 }
@@ -537,6 +547,30 @@ function closeDetail() {
   backdrop.classList.add("hidden");
 }
 
+
+
+// ---------- 면담 내려받기 ----------
+// .md 는 파일로 바로 저장한다. PDF 는 브라우저 인쇄로 넘긴다 —
+// 만드는 쪽 설명은 export.js 와 style.css 의 @media print 에 있다.
+
+$("btnSaveMd").addEventListener("click", () => {
+  if (!currentDetail) return;
+  downloadText(detailFilename(currentDetail, "md"), recordToMarkdown(currentDetail), "text/markdown");
+});
+
+$("btnSavePdf").addEventListener("click", () => {
+  if (!currentDetail) return;
+  // 인쇄물에는 채점 결과와 문진 전사를 함께 담는다 (style.css 의 .printing 규칙).
+  document.documentElement.classList.add("printing");
+  const done = () => {
+    document.documentElement.classList.remove("printing");
+    window.removeEventListener("afterprint", done);
+  };
+  window.addEventListener("afterprint", done);
+  window.print();
+  // afterprint 를 안 쏘는 브라우저 대비.
+  setTimeout(done, 3000);
+});
 
 // ---------- 관리자: 가입 승인제 ----------
 
@@ -628,7 +662,7 @@ function renderUsers(rows) {
     tr.innerHTML = `
       <td>${escapeHtml(u.nickname || "")}</td>
       <td>${escapeHtml(u.email || "")}</td>
-      <td>${fmtDate(u.createdAt)}</td>
+      <td>${fmtDateTime(u.createdAt)}</td>
       <td>${pill}</td>
       <td>${
         isAdmin

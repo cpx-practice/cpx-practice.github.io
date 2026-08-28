@@ -331,7 +331,7 @@ td.score { font-weight: 700; }
   padding: 14px 18px;
   border-bottom: 1px solid var(--border);
 }
-.modal-head h3 { margin: 0; font-size: 0.98rem; }
+.modal-head h3 { margin: 0; font-size: 0.98rem; min-width: 0; overflow-wrap: anywhere; }
 .modal-body { padding: 14px 18px 18px; overflow-y: auto; }
 
 .detail-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
@@ -689,3 +689,72 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .tr-score { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .tr-date { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
 .tr-foot { margin: 9px 0 0; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ---------- 기록 상세 — 내려받기 / 점수 요약 ---------- */
+.modal-actions { display: flex; flex-wrap: wrap; gap: 5px; flex: 0 0 auto; }
+.detail-meta {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* ---------- 인쇄 = PDF로 저장 ----------
+   PDF 라이브러리를 싣는 대신 브라우저 인쇄로 넘긴다. 한글이 그대로 나오고
+   글자가 선택·검색되는 PDF 가 만들어진다.
+   .printing 은 인쇄 직전 app.js 가 <html> 에 붙였다가 끝나면 뗀다. */
+@media print {
+  @page { margin: 16mm 14mm; }
+
+  /* 기록 상세만 남기고 화면의 나머지는 인쇄하지 않는다. */
+  body > *:not(.backdrop) { display: none !important; }
+
+  .backdrop {
+    position: static;
+    display: block;
+    padding: 0;
+    background: none;
+  }
+  .modal {
+    width: auto;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
+  }
+  .modal-head { padding: 0 0 8px; border-bottom: 1px solid #999; }
+  .modal-head h3 { font-size: 1.15rem; }
+  .modal-actions { display: none; }
+  .modal-body { padding: 12px 0 0; overflow: visible; }
+  .detail-tabs { display: none; }
+
+  /* 화면에서는 한 번에 한 탭이지만 인쇄물에는 둘 다 담는다.
+     .hidden 의 display:none !important 를 이기려면 id+class 로 특이도를 올려야 한다. */
+  .printing #paneEval.hidden,
+  .printing #paneScript.hidden { display: block !important; }
+  .printing #paneScript::before {
+    content: "문진 전사";
+    display: block;
+    margin: 22px 0 8px;
+    font-weight: 700;
+    font-family: -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+  }
+  .printing #paneEval::before {
+    content: "채점 결과";
+    display: block;
+    margin: 0 0 8px;
+    font-weight: 700;
+  }
+
+  /* 종이에서는 배경색을 빼고 검정 글씨로. */
+  .detail-pane, .modal-head h3, .detail-meta { color: #000; }
+  .detail-meta { border-bottom: 0; }
+  .md code, .md table { background: none; }
+  .md th, .md td { border-bottom: 1px solid #bbb; }
+
+  /* 표와 항목이 페이지 경계에서 잘리지 않게. */
+  .md table, .md tr, .md li { break-inside: avoid; }
+  .md h2, .md h3 { break-after: avoid; }
+  .md .table-scroll { overflow: visible; }
+}

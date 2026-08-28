@@ -286,9 +286,14 @@
     <div class="modal">
       <div class="modal-head">
         <h3 id="detailTitle">기록 상세</h3>
-        <button class="btn small ghost" id="btnCloseDetail">닫기</button>
+        <div class="modal-actions">
+          <button class="btn small ghost" id="btnSaveMd" title="마크다운 파일로 내려받기">.md</button>
+          <button class="btn small ghost" id="btnSavePdf" title="인쇄 대화상자에서 PDF로 저장">PDF</button>
+          <button class="btn small ghost" id="btnCloseDetail">닫기</button>
+        </div>
       </div>
       <div class="modal-body">
+        <p class="detail-meta" id="detailMeta"></p>
         <div class="detail-tabs">
           <button class="dtab active" data-pane="eval">채점 결과</button>
           <button class="dtab" data-pane="script">문진 전사</button>
