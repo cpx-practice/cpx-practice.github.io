@@ -30,7 +30,6 @@ import {
 import {
   getFirestore,
   collection,
-  addDoc,
   deleteDoc,
   doc,
   getDoc,
@@ -64,7 +63,6 @@ const registerForm = $("registerForm");
 const loginErr = $("loginErr");
 const registerErr = $("registerErr");
 
-const recordForm = $("recordForm");
 const recordBody = $("recordBody");
 const recordTable = $("recordTable");
 const emptyMsg = $("emptyMsg");
@@ -329,32 +327,6 @@ function b64url(str) {
   for (const b of bytes) bin += String.fromCharCode(b);
   return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_");
 }
-
-// ---------- 수동 기록 추가 ----------
-recordForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const user = auth.currentUser;
-  if (!user) return;
-
-  const num = (id) => {
-    const v = $(id).value;
-    return v === "" ? null : parseInt(v, 10);
-  };
-
-  await addDoc(collection(db, "records"), {
-    uid: user.uid,
-    source: "manual",
-    topic: $("fTopic").value.trim() || "무작위",
-    totalScore: num("fTotal"),
-    historyScore: num("fHistory"),
-    peScore: num("fPe"),
-    ppiScore: num("fPpi"),
-    note: $("fNote").value.trim(),
-    createdAt: serverTimestamp(),
-  });
-
-  recordForm.reset();
-});
 
 // ---------- 기록 구독 ----------
 function watchRecords(uid) {

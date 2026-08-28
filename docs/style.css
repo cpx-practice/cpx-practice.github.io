@@ -146,7 +146,7 @@ body {
 }
 .tab.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
-.auth-form, .record-form { display: flex; flex-direction: column; gap: 12px; }
+.auth-form { display: flex; flex-direction: column; gap: 12px; }
 
 label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); }
 
@@ -302,13 +302,6 @@ td.score { font-weight: 700; }
   color: var(--muted);
   vertical-align: middle;
 }
-
-.manual > summary {
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-.manual[open] > summary { margin-bottom: 10px; }
 
 /* ---------- 상세 모달 ---------- */
 .backdrop {

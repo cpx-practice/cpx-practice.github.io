@@ -171,7 +171,7 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 ### `records/{id}`
 | 필드 | 용도 |
 |---|---|
-| `uid`, `source` | 소유자, `manual`(직접 입력) 또는 `plugin`(자동) |
+| `uid`, `source` | 소유자, `plugin`(자동 업로드). 2026-08-29 이전 기록에는 `manual`(웹에서 직접 입력)이 섞여 있습니다 |
 | `topic`, `totalScore`, `historyScore`, `peScore`, `ppiScore`, `grade`, `note` | 점수와 총평 |
 | `evaluationChunks` | 채점 결과 원문. 1500자씩 잘린 문자열 배열 (최대 50조각) |
 | `transcriptChunks` | 문진 전사. 동의한 경우에만 채워짐. 1500자씩 잘린 배열 (최대 500조각) |
@@ -188,6 +188,10 @@ Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → 
 |---|---|
 | `docs/index.html` | 화면 뼈대. 대시보드는 내 기록 / 분석 / Claude Code 연결 / 설정 (+관리자) 탭 |
 | `docs/app.js` | Firebase 인증·구독, 기록 표, 검색·필터·정렬, 기록 상세 모달, 테마 토글, 관리자 화면 |
+
+웹앱은 이제 기록을 만들지 않고 읽고 지우기만 합니다. "직접 입력하기" 폼은 2026-08-29 에 뺐습니다
+— 기록은 전부 플러그인이 올립니다. `firestore.rules` 는 여전히 `source` 로 `manual` 도 받는데,
+지난 기록이 그 값을 갖고 있어서 그대로 뒀습니다.
 | `docs/analytics.js` | 분석 탭 — 영역별 성취율, 케이스별 점수(검색·범위·정렬, 펼치면 회차와 성적 추이) |
 | `docs/topics.js` | 케이스 뱅크 목록(58개)과 이름 맞추기 |
 | `docs/style.css` | 색 토큰(라이트/다크), 컴포넌트, 좁은 화면 대응 |
