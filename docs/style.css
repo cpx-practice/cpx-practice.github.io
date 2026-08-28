@@ -430,13 +430,6 @@ td.score { font-weight: 700; }
 .filters select { flex: 0 0 auto; }
 .filters .btn { align-self: center; }
 
-.legend { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: var(--muted); }
-.swatch { width: 14px; height: 10px; border-radius: 2px; }
-.swatch.b1 { background: var(--viz-1); }
-.swatch.b2 { background: var(--viz-2); }
-.swatch.b3 { background: var(--viz-3); }
-.swatch.b4 { background: var(--viz-4); }
-.swatch-cap { margin-left: 2px; }
 
 .muted { color: var(--muted); }
 
@@ -474,41 +467,6 @@ td.score { font-weight: 700; }
 .sbar-val { font-variant-numeric: tabular-nums; font-size: 0.8rem; white-space: nowrap; }
 .sbar-pct { margin-left: 7px; color: var(--muted); }
 
-/* ---------- 케이스 커버리지 ---------- */
-.cover-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
-  gap: 6px;
-}
-.chip {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 7px 9px 6px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.75rem;
-  line-height: 1.25;
-}
-.chip.undone { border-style: dashed; color: var(--muted); }
-.chip.done { background: var(--inset); }
-.chip-name { word-break: keep-all; }
-.chip-score { font-weight: 700; font-size: 0.8rem; font-variant-numeric: tabular-nums; }
-.chip-n { margin-left: 3px; font-weight: 400; font-size: 0.68rem; color: var(--muted); }
-/* 색은 밴드를 거들 뿐이고, 실제 크기는 막대 길이와 칩에 적힌 숫자가 말한다. */
-.chip-meter {
-  display: block;
-  height: 3px;
-  margin-top: 3px;
-  border-radius: 2px;
-  background: var(--border);
-  overflow: hidden;
-}
-.chip-meter > span { display: block; height: 100%; border-radius: 2px; }
-.chip.b1 .chip-meter > span { background: var(--viz-1); }
-.chip.b2 .chip-meter > span { background: var(--viz-2); }
-.chip.b3 .chip-meter > span { background: var(--viz-3); }
-.chip.b4 .chip-meter > span { background: var(--viz-4); }
 
 .warn-inline { color: var(--warn-text); margin-top: 12px; margin-bottom: 0; }
 
@@ -566,7 +524,6 @@ td.actions .btn + .btn { margin-left: 4px; }
     border-top: 1px solid var(--border);
   }
 
-  .cover-grid { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
   .sbar { grid-template-columns: 78px 1fr auto; gap: 8px; font-size: 0.8rem; }
 
   .modal { max-height: 92vh; }
@@ -642,24 +599,30 @@ td.actions .btn + .btn { margin-left: 4px; }
   .att-sect { flex-basis: 100%; }
 }
 
-/* ---------- 커버리지 칩 → 케이스별 점수로 이동 ---------- */
-/* 해본 케이스 칩은 button 이라 브라우저 기본 서식을 걷어내고 .chip 모양을 되돌린다. */
-.chip.done {
-  width: 100%;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-.chip.done:hover { border-color: var(--accent); }
-.chip.done:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-
-/* 칩에서 넘어온 줄이 어디인지 잠깐 짚어준다. */
-.case-row.flash > td { background: var(--warn-bg); }
-.case-row > td { transition: background 0.25s ease; }
-@media (prefers-reduced-motion: reduce) {
-  .case-row > td { transition: none; }
-}
 
 .attempts li .btn { margin-left: auto; flex: 0 0 auto; }
 .att-none { margin-left: auto; flex: 0 0 auto; color: var(--muted); font-size: 0.72rem; }
+
+/* 안 해본 케이스 — 펼칠 것이 없으니 클릭 대상이 아니고, 배경으로 물러나 있는다. */
+.case-row.undone > td { color: var(--muted); }
+.case-row.undone { cursor: default; }
+.case-row.undone:hover > td { background: transparent; }
+.tag-undone {
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+/* 케이스 표는 58줄까지 늘어난다. 표 안에 또 스크롤을 만들지 않고 페이지째 넘기되,
+   머리글만 붙여두어 한참 내려가도 열 이름이 보이게 한다.
+   그래서 이 표의 감싸개에는 .table-scroll(=스크롤 컨테이너)을 쓰지 않는다 — 쓰면 sticky 가 죽는다. */
+#caseTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}

@@ -1,7 +1,7 @@
-// 분석 탭 — 기록 배열 하나만 받아서 영역별 성취율·케이스별 점수·커버리지를 그린다.
+// 분석 탭 — 기록 배열 하나만 받아서 영역별 성취율과 케이스별 점수를 그린다.
 // Firestore 를 직접 만지지 않는다 (app.js 가 넘겨준 rows 로만 계산).
 
-import { TOPICS, matchTopic } from "./topics.js";
+import { TOPICS, matchTopic, normalizeTopic } from "./topics.js";
 
 const MAX = { history: 60, pe: 20, ppi: 20 };
 
@@ -12,7 +12,7 @@ const esc = (s) => {
   return d.innerHTML;
 };
 
-// 점수(백분율) → 4단계 밴드. 커버리지 칩과 영역 막대가 같은 기준을 쓴다.
+// 점수(백분율) → 4단계 밴드. 케이스 막대와 영역 막대가 같은 기준을 쓴다.
 function band(pct) {
   if (pct >= 90) return 4;
   if (pct >= 80) return 3;
@@ -114,8 +114,18 @@ function wireOnce() {
     .map(([k, v]) => `<option value="${k}">${v.label}</option>`)
     .join("");
   sel.value = "weak";
-  sel.addEventListener("change", () => {
+
+  const redraw = () => {
     if (lastStats) renderCases(lastStats);
+  };
+  sel.addEventListener("change", redraw);
+  el("caseScope").addEventListener("change", redraw);
+  el("caseQuery").addEventListener("input", redraw);
+  el("caseReset").addEventListener("click", () => {
+    el("caseQuery").value = "";
+    el("caseScope").value = "all";
+    sel.value = "weak";
+    redraw();
   });
 }
 
@@ -138,7 +148,6 @@ export function renderAnalytics(rows, opts = {}) {
 
   renderSections(stats);
   renderCases(stats);
-  renderCoverage(stats);
 }
 
 // --- 영역별 성취율 ---
@@ -174,7 +183,8 @@ function renderSections(s) {
 }
 
 // --- 케이스별 점수 ---
-// 해본 케이스만 한 줄씩. 줄을 누르면 그 케이스의 회차별 점수가 펼쳐진다.
+// 케이스 뱅크 58개를 전부 한 줄씩 낸다. 해본 케이스는 누르면 회차별 점수가 펼쳐지고,
+// 회차마다 그때의 채점 결과·문진 전사를 볼 수 있다. 안 해본 케이스는 흐리게 한 줄로만 남는다.
 
 const CASE_SORTS = {
   weak: { label: "평균 낮은순", fn: (a, b) => a.mean - b.mean },
@@ -194,38 +204,79 @@ function hasDetail(r) {
   );
 }
 
-// 커버리지 칩에서 부른다 — 그 케이스 줄을 펼치고 화면으로 끌어와 잠깐 표시해 준다.
-function revealCase(name) {
-  openCases.add(name);
-  if (lastStats) renderCases(lastStats);
-  const row = document.querySelector(`.case-row[data-case="${CSS.escape(name)}"]`);
-  if (!row) return;
-  row.scrollIntoView({ behavior: "smooth", block: "center" });
-  row.classList.add("flash");
-  setTimeout(() => row.classList.remove("flash"), 1200);
+// 검색·범위·정렬을 적용한 목록. 미실시는 점수가 없어 정렬 대상이 아니므로,
+// 케이스 순서로 볼 때가 아니면 해본 것 뒤에 뱅크 순서 그대로 붙인다.
+function filterCases(s) {
+  const q = normalizeTopic(el("caseQuery").value);
+  const scope = el("caseScope").value;
+  const sortKey = el("caseSort").value;
+
+  let list = s.coverage;
+  if (q) list = list.filter((c) => normalizeTopic(c.topic.name).includes(q));
+  if (scope === "done") list = list.filter((c) => c.count > 0);
+  if (scope === "undone") list = list.filter((c) => c.count === 0);
+
+  const sort = CASE_SORTS[sortKey] || CASE_SORTS.weak;
+  if (!sort.fn) return list;
+  const done = list.filter((c) => c.count > 0).sort(sort.fn);
+  const undone = list.filter((c) => c.count === 0);
+  return [...done, ...undone];
 }
 
 function renderCases(s) {
-  const done = s.coverage.filter((c) => c.count > 0);
-  el("caseEmpty").classList.toggle("hidden", done.length > 0);
-  el("caseTableWrap").classList.toggle("hidden", done.length === 0);
-  el("caseSort").classList.toggle("hidden", done.length === 0);
-  if (!done.length) return;
+  el("coverDone").textContent = s.doneCount;
+  el("coverTotal").textContent = s.coverage.length;
 
-  const sort = CASE_SORTS[el("caseSort").value] || CASE_SORTS.weak;
-  const rows = sort.fn ? [...done].sort(sort.fn) : done;
+  const rows = filterCases(s);
+  const filtering =
+    Boolean(el("caseQuery").value.trim()) ||
+    el("caseScope").value !== "all" ||
+    el("caseSort").value !== "weak";
+  el("caseReset").classList.toggle("hidden", !filtering);
+
+  const empty = el("caseEmpty");
+  empty.classList.toggle("hidden", rows.length > 0);
+  el("caseTableWrap").classList.toggle("hidden", rows.length === 0);
+  if (!rows.length) {
+    // 조건이 좁혀졌으면 이전 줄이 남아 있으면 안 된다 — 감싸개만 숨기고 두면 DOM 에 유령이 남는다.
+    el("caseBody").innerHTML = "";
+    empty.textContent = el("caseQuery").value.trim()
+      ? "그 이름의 케이스가 없습니다."
+      : "보여줄 케이스가 없습니다.";
+    return;
+  }
 
   const n = (v) => (typeof v === "number" ? round1(v) : "-");
   const body = el("caseBody");
   body.innerHTML = "";
 
   for (const c of rows) {
+    // 안 해본 케이스는 펼칠 것이 없다. 클릭도 키보드 초점도 주지 않는다.
+    if (c.count === 0) {
+      const tr = document.createElement("tr");
+      tr.className = "case-row undone";
+      tr.dataset.case = c.topic.name;
+      tr.innerHTML =
+        `<td data-label="케이스" class="case-name"><span class="caret"></span>${esc(c.topic.name)}` +
+        `<span class="tag-undone">미실시</span></td>` +
+        `<td data-label="횟수" class="num">-</td>` +
+        `<td data-label="평균" class="num">-</td>` +
+        `<td data-label="최고" class="num">-</td>` +
+        `<td data-label="최근" class="num">-</td>` +
+        `<td data-label="병력" class="num sect">-</td>` +
+        `<td data-label="진찰" class="num sect">-</td>` +
+        `<td data-label="PPI" class="num sect">-</td>`;
+      body.appendChild(tr);
+      continue;
+    }
+
     const open = openCases.has(c.topic.name);
     const tr = document.createElement("tr");
     tr.className = "case-row" + (open ? " open" : "");
     tr.tabIndex = 0;
     tr.setAttribute("role", "button");
     tr.setAttribute("aria-expanded", String(open));
+    tr.dataset.case = c.topic.name;
     tr.innerHTML =
       `<td data-label="케이스" class="case-name"><span class="caret">${open ? "▾" : "▸"}</span>${esc(c.topic.name)}</td>` +
       `<td data-label="횟수" class="num">${c.count}</td>` +
@@ -238,8 +289,6 @@ function renderCases(s) {
       `<td data-label="병력" class="num sect">${n(c.sect.history)}</td>` +
       `<td data-label="진찰" class="num sect">${n(c.sect.pe)}</td>` +
       `<td data-label="PPI" class="num sect">${n(c.sect.ppi)}</td>`;
-
-    tr.dataset.case = c.topic.name;
 
     const detail = document.createElement("tr");
     detail.className = "case-detail" + (open ? "" : " hidden");
@@ -291,36 +340,6 @@ function renderCases(s) {
     body.appendChild(tr);
     body.appendChild(detail);
   }
-}
-
-// --- 케이스 커버리지 ---
-
-function renderCoverage(s) {
-  el("coverDone").textContent = s.doneCount;
-  el("coverTotal").textContent = s.coverage.length;
-
-  const grid = el("coverGrid");
-  grid.innerHTML = s.coverage
-    .map((c) => {
-      const name = esc(c.topic.name);
-      if (c.count === 0) {
-        return `<span class="chip undone" title="아직 해보지 않음">${name}</span>`;
-      }
-      // 해본 케이스는 눌러서 회차별 면담 내용까지 볼 수 있으므로 버튼으로 낸다.
-      const title = `${c.topic.name} · ${c.count}회 · 평균 ${round1(c.mean)}점 · 최고 ${c.best}점 — 눌러서 면담 내용 보기`;
-      return (
-        `<button type="button" class="chip done b${band(c.mean)}" title="${esc(title)}" data-case="${esc(c.topic.name)}">` +
-        `<span class="chip-name">${name}</span>` +
-        `<span class="chip-score">${round1(c.mean)}${c.count > 1 ? `<span class="chip-n">×${c.count}</span>` : ""}</span>` +
-        `<span class="chip-meter"><span style="width:${Math.max(2, Math.min(100, c.mean))}%"></span></span>` +
-        `</button>`
-      );
-    })
-    .join("");
-
-  grid.querySelectorAll(".chip.done").forEach((b) => {
-    b.addEventListener("click", () => revealCase(b.dataset.case));
-  });
 
   const un = el("coverUnmatched");
   un.classList.toggle("hidden", s.unmatched.length === 0);
