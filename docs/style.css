@@ -649,20 +649,50 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* 안쪽 패널이 제 배경을 갖게 됐으니 회차 목록은 배경을 벗는다. */
 .case-pane .attempts { background: none; border-radius: 0; padding: 0; }
 
-.mi-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
-.mi-list li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 0.78rem;
-}
-.mi-name { word-break: keep-all; }
-.mi-count { flex: 0 0 auto; color: var(--muted); font-variant-numeric: tabular-nums; }
-.mi-empty { margin: 0; font-size: 0.78rem; color: var(--muted); }
-.mi-note { margin: 7px 0 0; font-size: 0.72rem; color: var(--muted); }
-
 @media (max-width: 760px) {
   /* 좁으면 나란히 두지 않고 회차 아래로 내린다. */
   .case-panes { grid-template-columns: 1fr; }
 }
+
+/* 케이스 성적 추이 — 회차가 한 자릿수라 그래프 대신 회차별 막대로 낸다. */
+.tr-delta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 9px;
+  font-size: 0.78rem;
+}
+/* 오르내림을 색만으로 말하지 않는다 — 화살표 글리프가 같이 붙는다. */
+.tr-delta.up .tr-arrow, .tr-delta.up .tr-amount { color: var(--ok); }
+.tr-delta.down .tr-arrow, .tr-delta.down .tr-amount { color: var(--accent); }
+.tr-delta.flat .tr-arrow, .tr-delta.flat .tr-amount { color: var(--muted); }
+.tr-arrow { font-size: 0.7rem; }
+.tr-amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+.tr-span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.tr-once { margin: 0 0 9px; font-size: 0.78rem; color: var(--muted); }
+
+.tr-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+.tr-list li {
+  display: grid;
+  grid-template-columns: 2.4em minmax(0, 1fr) 2.2em 2.6em;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.76rem;
+}
+.tr-n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.tr-track {
+  height: 10px;
+  border-radius: 3px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+/* 막대는 0 에 붙어 있으니 왼쪽 모서리는 각지게, 값 쪽 끝만 둥글게. */
+.tr-fill { display: block; height: 100%; border-radius: 0 3px 3px 0; }
+.tr-fill.b1 { background: var(--viz-1); }
+.tr-fill.b2 { background: var(--viz-2); }
+.tr-fill.b3 { background: var(--viz-3); }
+.tr-fill.b4 { background: var(--viz-4); }
+.tr-score { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tr-date { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tr-foot { margin: 9px 0 0; font-size: 0.72rem; color: var(--muted); font-variant-numeric: tabular-nums; }

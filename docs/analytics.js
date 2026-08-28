@@ -2,7 +2,6 @@
 // Firestore 를 직접 만지지 않는다 (app.js 가 넘겨준 rows 로만 계산).
 
 import { TOPICS, matchTopic, normalizeTopic } from "./topics.js";
-import { aggregateMissed } from "./evaluation.js";
 
 const MAX = { history: 60, pe: 20, ppi: 20 };
 
@@ -70,7 +69,7 @@ export function computeStats(rows) {
     if (!e) {
       return {
         topic: t, count: 0, mean: null, best: null, latest: null, last: 0,
-        attempts: [], sect: {}, missed: [], evalWithText: 0, evalParsed: 0,
+        attempts: [], sect: {},
       };
     }
     const scores = e.attempts.map((a) => a.total);
@@ -87,8 +86,6 @@ export function computeStats(rows) {
       last: Math.max(...e.attempts.map((a) => a.at)),
       attempts: e.attempts,
       sect,
-      // 이 케이스에서만 무엇을 반복해 놓쳤는지. 저장된 채점 원문을 되읽어 센다.
-      ...aggregateMissed(e.attempts.map((a) => a.rec)),
     };
   });
 
@@ -233,40 +230,44 @@ function filterCases(s) {
   return [...done, ...undone];
 }
 
-// 이 케이스에서 반복해 놓친 항목. 회차가 하나뿐이면 그 회차에서 놓친 것이 그대로 나온다.
-const CASE_MISSED_TOP = 6;
+// 이 케이스의 성적 추이. 회차가 보통 한 자릿수라 그래프 대신 회차별 막대로 낸다.
+// 막대 길이가 점수이고 순서는 오래된 것부터라, 두 회차만 있어도 방향이 읽힌다.
+function trendPane(c) {
+  // attempts 는 최신순이므로 시간순으로 뒤집는다.
+  const chrono = [...c.attempts].reverse();
+  const first = chrono[0];
+  const last = chrono[chrono.length - 1];
+  const delta = last.total - first.total;
 
-function missedPane(c) {
-  const unread = c.evalWithText - c.evalParsed;
-  const note =
-    unread > 0
-      ? `<p class="mi-note">채점 결과 ${c.evalWithText}건 중 ${unread}건은 항목표를 읽지 못했습니다.</p>`
-      : "";
+  const head =
+    chrono.length < 2
+      ? `<p class="tr-once">아직 1회뿐입니다. 다시 풀면 여기에 변화가 보입니다.</p>`
+      : `<p class="tr-delta ${delta > 0 ? "up" : delta < 0 ? "down" : "flat"}">` +
+        `<span class="tr-arrow">${delta > 0 ? "▲" : delta < 0 ? "▼" : "―"}</span>` +
+        `<span class="tr-amount">${delta > 0 ? "+" : ""}${delta}점</span>` +
+        `<span class="tr-span">첫 회 ${first.total} → 최근 ${last.total}</span></p>`;
 
-  if (!c.missed.length) {
-    const why =
-      c.evalWithText === 0
-        ? "채점 결과 원문이 저장되지 않은 회차뿐입니다."
-        : "놓친 항목이 없습니다.";
-    return `<div class="case-pane"><h4>자주 놓친 항목</h4><p class="mi-empty">${why}</p>${note}</div>`;
-  }
-
-  // 0.5 회가 나올 수 있으니 정수일 때만 소수점을 뗀다.
-  const cnt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
-  const items = c.missed
-    .slice(0, CASE_MISSED_TOP)
-    .map(
-      (m) =>
-        `<li><span class="mi-name">${esc(m.item)}</span>` +
-        `<span class="mi-count">${cnt(m.missCount)} / ${m.seen}</span></li>`
-    )
+  const bars = chrono
+    .map((a, i) => {
+      const d = a.date ? `${a.date.getMonth() + 1}/${a.date.getDate()}` : "";
+      return (
+        `<li>` +
+        `<span class="tr-n">${i + 1}회</span>` +
+        `<span class="tr-track"><span class="tr-fill b${band(a.total)}" style="width:${Math.max(2, Math.min(100, a.total))}%"></span></span>` +
+        `<span class="tr-score">${a.total}</span>` +
+        `<span class="tr-date">${d}</span>` +
+        `</li>`
+      );
+    })
     .join("");
-  const more =
-    c.missed.length > CASE_MISSED_TOP
-      ? `<p class="mi-note">그 밖에 ${c.missed.length - CASE_MISSED_TOP}개 더 있습니다.</p>`
-      : "";
 
-  return `<div class="case-pane"><h4>자주 놓친 항목</h4><ul class="mi-list">${items}</ul>${more}${note}</div>`;
+  return (
+    `<div class="case-pane"><h4>성적 추이</h4>` +
+    head +
+    `<ol class="tr-list">${bars}</ol>` +
+    `<p class="tr-foot">최고 ${c.best} · 평균 ${round1(c.mean)}</p>` +
+    `</div>`
+  );
 }
 
 function renderCases(s) {
@@ -358,7 +359,7 @@ function renderCases(s) {
         })
         .join("") +
       `</ol></div>` +
-      missedPane(c) +
+      trendPane(c) +
       `</div></td>`;
 
     // 회차의 채점 결과 / 문진 전사는 기록 탭과 같은 모달로 띄운다.
