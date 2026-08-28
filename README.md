@@ -21,9 +21,9 @@ Claude Code (유저 PC)          Cloudflare Worker            Firebase
 |---|---|
 | Firestore 규칙·색인 | `firebase deploy --only firestore` — CLI 설치 완료 (아래 참고) |
 | 웹앱 호스팅 | **GitHub Pages** — `docs/` 를 푸시하면 자동. Firebase Hosting 은 안 씁니다 |
-| Cloudflare 워커 | Cloudflare 대시보드의 온라인 편집기에 붙여넣기 (Wrangler 미설치) |
+| Cloudflare 워커 | cpx-worker 저장소에서 `./deploy.sh` — REST API 로 직접 (wrangler 미사용) |
 
-워커만 여전히 손으로 올립니다. 나머지 둘은 명령으로 끝납니다.
+셋 다 명령으로 끝납니다. 워커 쪽 사정은 cpx-worker 저장소의 README 를 보세요.
 
 ### 규칙·색인은 CLI로 배포합니다 (2026-08-28 설정)
 
