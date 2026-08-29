@@ -135,23 +135,24 @@ Blaze로 올리라는 안내가 보여도 **올리지 마세요.** Spark에서�
 
 Firebase Hosting은 CLI가 있어야 하므로 쓰지 않습니다. GitHub Pages가 무료이고 Node도 필요 없습니다.
 
-1. GitHub에서 레포를 만듭니다 (예: `cpx-tracker`, **Public**).
-2. `docs/` 폴더째 올립니다 — `index.html`, `style.css`, `app.js`, `analytics.js`, `export.js`, `topics.js` 여섯 파일입니다.
-   웹 UI에서 **Add file → Upload files** 로 드래그해도 되고, git을 써도 됩니다:
+현재 주소는 **https://cpx-practice.github.io** 입니다.
 
-```bash
-git init && git add . && git commit -m "CPX 기록판" && git branch -M main
-```
+주소에서 계정명이 드러나지 않도록 무료 GitHub 조직 `cpx-practice` 를 만들고,
+그 안에 `cpx-practice.github.io` 저장소를 두었습니다. 저장소 이름이 `<조직명>.github.io` 면
+경로 없이 루트에서 서비스됩니다.
 
-3. 레포 **Settings → Pages** → Source를 **Deploy from a branch**, 브랜치 `main` / 폴더 `/docs` 로 저장.
-4. 몇 분 뒤 `https://<아이디>.github.io/cpx-tracker/` 가 열립니다.
+- 배포: `main` 에 push → GitHub Pages 자동 (Settings → Pages, 브랜치 `main` / 폴더 `/docs`)
+- 옛 주소 `raphael4040-ash.github.io/cpx-tracker` 는 새 주소로 넘기는 안내 페이지만 남겨
+  이미 공유된 링크가 죽지 않게 해두었습니다. 그 저장소의 Pages 는 끄지 마세요
 
 ### 3-1. 승인된 도메인 추가 — 빠뜨리면 로그인이 안 됩니다
 
 Firebase 콘솔 → **Authentication → Settings → 승인된 도메인** → **도메인 추가** →
-`<아이디>.github.io` 입력.
+`cpx-practice.github.io` 입력. (옛 주소용 `raphael4040-ash.github.io` 도 남겨두면
+혹시 옛 주소로 접속한 사람도 막히지 않습니다.)
 
-이걸 안 하면 로그인 시 `auth/unauthorized-domain` 오류가 납니다.
+이걸 안 하면 사이트는 뜨는데 로그인만 `auth/unauthorized-domain` 으로 막힙니다.
+원인을 짐작하기 어려운 실패라, 주소를 또 옮길 일이 있으면 이 단계를 먼저 하세요.
 
 > 드래그앤드롭이 더 편하면 **Cloudflare Pages**(Workers & Pages → Create → Pages →
 > Upload assets)로 `docs` 폴더를 통째로 올려도 됩니다. 이 경우 승인된 도메인에는
