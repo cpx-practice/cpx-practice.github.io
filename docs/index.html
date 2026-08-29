@@ -256,15 +256,53 @@
       <!-- ===== 이용 방법 ===== -->
       <div id="viewPair" class="hidden">
         <div class="panel">
-          <h2>이용 방법</h2>
-          <p class="hint">한 번만 해두면 이후 연습 결과가 자동으로 이 계정에 쌓입니다.</p>
+          <div class="panel-header">
+            <h2>이용 방법</h2>
+            <div class="seg" role="group" aria-label="운영체제 선택">
+              <button type="button" class="seg-btn" id="osWin" aria-pressed="true">Windows</button>
+              <button type="button" class="seg-btn" id="osMac" aria-pressed="false">Mac</button>
+            </div>
+          </div>
+          <p class="hint">
+            아무것도 깔려 있지 않은 컴퓨터 기준입니다. 순서대로 하면 15분쯤 걸리고, 연결은 한 번만 하면 됩니다.
+          </p>
+
+          <p class="warn">
+            <b>Claude 유료 플랜(Pro 이상)이 필요합니다.</b> 무료 플랜 계정으로는 앱이 깔려도 면담 명령이
+            나타나지 않습니다. 설치 전에 플랜부터 확인하세요.
+            <span class="win-only">Windows 10(1809) 이상이어야 합니다.</span>
+            <span class="mac-only">macOS 13 이상이어야 합니다.</span>
+          </p>
 
           <ol class="steps">
             <li>
-              <b>플러그인 설치</b> — 터미널에서
-              <pre class="code" id="installCmd">claude plugin marketplace add raphael4040-ash/cpx-marketplace</pre>
-              그다음 Claude Code 안에서 <code>/plugin install cpx@cpx-marketplace</code>
+              <b>Claude 앱 설치</b> — 터미널을 쓰지 않는 방법입니다.
+              <span class="win-only">
+                <a href="https://claude.com/download" target="_blank" rel="noopener">claude.com/download</a>
+                에서 Windows용을 받아 설치하고, 앱을 열어 Claude 계정으로 로그인합니다.
+              </span>
+              <span class="mac-only">
+                <a href="https://claude.ai/api/desktop/darwin/universal/dmg/latest/redirect" target="_blank" rel="noopener">Mac용 .dmg</a>
+                를 받아 Claude를 응용 프로그램 폴더로 끌어다 놓고, 앱을 열어 Claude 계정으로 로그인합니다.
+              </span>
+              <details class="alt">
+                <summary>터미널이 편하다면</summary>
+                <pre class="code win-only">irm https://claude.ai/install.ps1 | iex</pre>
+                <pre class="code mac-only">curl -fsSL https://claude.ai/install.sh | bash</pre>
+                <p class="hint">설치 후 <code>claude</code> 를 입력하면 시작됩니다. 나머지 단계는 똑같습니다.</p>
+              </details>
             </li>
+
+            <li>
+              <b>CPX 플러그인 설치</b> — Claude 안에서 아래 두 줄을 차례로 입력합니다.
+              <pre class="code" id="installCmd">/plugin marketplace add raphael4040-ash/cpx-marketplace</pre>
+              <pre class="code">/plugin install cpx@cpx-marketplace</pre>
+              <p class="hint">
+                설치 후 <code>/reload-plugins 를 실행하세요</code> 라는 안내가 나오면 그것도 입력합니다.
+                안 나오면 넘어가도 됩니다.
+              </p>
+            </li>
+
             <li>
               <b>연결 코드 발급</b>
               <div class="pair-box">
@@ -280,15 +318,60 @@
                 채팅·깃허브에 올리지 마세요. 유출된 것 같으면 <b>설정 → 연결 해제</b>로 즉시 무효화하세요.
               </p>
             </li>
+
             <li>
-              <b>Claude Code에 붙여넣기</b>
+              <b>Claude에 붙여넣기</b>
               <pre class="code">/cpx:pair &lt;위에서 복사한 코드&gt;</pre>
             </li>
+
             <li>
-              <b>연습 시작</b> — 아무 폴더에서나 <code>/cpx:start</code> → 문진 → <code>진찰</code> → <code>평가</code>.
-              평가가 끝나면 자동으로 여기에 기록됩니다.
+              <b>연습 시작</b> — <code>/cpx:start</code> → 문진 → <code>진찰</code> → <code>평가</code>.
+              평가가 끝나면 자동으로 여기에 기록됩니다. 주제를 고르려면
+              <code>/cpx:start 가슴통증</code> 처럼 뒤에 붙이면 됩니다.
             </li>
           </ol>
+        </div>
+
+        <div class="panel">
+          <h2>막혔을 때</h2>
+
+          <details class="faq">
+            <summary><code>/cpx:start</code> 를 쳤는데 아무 일도 안 일어납니다</summary>
+            <div class="faq-a">
+              <p>플러그인이 아직 안 붙은 상태입니다. <code>/reload-plugins</code> 를 입력해 보고, 그래도 안 되면 앱을 완전히 껐다 켜세요.</p>
+              <p>그래도 안 되면 2단계의 두 줄을 다시 실행하세요. 이미 설치돼 있어도 다시 해서 문제되지 않습니다.</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary>로그인은 되는데 명령어가 하나도 안 보입니다</summary>
+            <div class="faq-a">
+              <p>무료 플랜 계정일 가능성이 큽니다. Claude Code는 Pro 이상에서만 열립니다.</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary>면담은 끝났는데 기록이 안 올라옵니다</summary>
+            <div class="faq-a">
+              <p>연결이 안 됐거나 코드가 무효화된 경우가 대부분입니다. 위에서 연결 코드를 새로 만들어 <code>/cpx:pair</code> 를 다시 실행하세요.</p>
+              <p>승인제가 켜져 있는데 아직 승인 전이어도 올라가지 않습니다.</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary><span class="win-only">PowerShell</span><span class="mac-only">터미널</span>에서 설치 명령이 오류가 납니다</summary>
+            <div class="faq-a">
+              <p class="win-only"><code>'irm' is not recognized</code> 가 나오면 PowerShell이 아니라 CMD 창입니다. 프롬프트가 <code>PS C:\</code> 로 시작해야 PowerShell입니다.</p>
+              <p>터미널은 필수가 아닙니다. 1단계의 앱 설치로 하면 이 문제를 안 만납니다.</p>
+            </div>
+          </details>
+
+          <details class="faq">
+            <summary>뭔가 이상한데 원인을 모르겠습니다</summary>
+            <div class="faq-a">
+              <p><b>오류 제보</b> 탭에 적어 보내주세요. 화면을 캡처해 입력칸에 붙여넣기(Ctrl+V)로 바로 첨부할 수 있습니다.</p>
+            </div>
+          </details>
         </div>
       </div>
 

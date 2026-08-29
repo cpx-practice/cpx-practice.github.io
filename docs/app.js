@@ -903,6 +903,38 @@ function renderAdminReports() {
 
 $("reportFilter").addEventListener("change", renderAdminReports);
 
+// ---------- 이용 방법: 운영체제 전환 ----------
+// 설치 명령이 Windows 와 Mac 이 달라 한쪽만 남긴다.
+// 처음엔 브라우저가 알려주는 값으로 맞추고, 이후엔 누른 대로 기억한다.
+const osWin = $("osWin");
+const osMac = $("osMac");
+
+function applyOs(os) {
+  document.documentElement.dataset.os = os;
+  osWin.setAttribute("aria-pressed", String(os === "win"));
+  osMac.setAttribute("aria-pressed", String(os === "mac"));
+  try {
+    localStorage.setItem("cpx-os", os);
+  } catch {}
+}
+
+function guessOs() {
+  const s =
+    navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
+  return /mac|iphone|ipad|ipod/i.test(s) ? "mac" : "win";
+}
+
+osWin.addEventListener("click", () => applyOs("win"));
+osMac.addEventListener("click", () => applyOs("mac"));
+
+(() => {
+  let saved = null;
+  try {
+    saved = localStorage.getItem("cpx-os");
+  } catch {}
+  applyOs(saved === "mac" || saved === "win" ? saved : guessOs());
+})();
+
 // ---------- Claude 앱 열기 ----------
 // claude:// 는 데스크톱 앱이 등록하는 스킴이다. 앱이 없으면 아무 일도 일어나지 않으므로,
 // 명령을 클립보드에 먼저 넣어 최소한 붙여넣기는 되게 한다.

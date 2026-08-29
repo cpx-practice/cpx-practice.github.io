@@ -900,3 +900,66 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .attach-preview img { width: 84px; max-height: 84px; }
   .launch .btn { width: 100%; }
 }
+
+/* ---------- 이용 방법: 운영체제 전환 ---------- */
+.seg {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.seg-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.seg-btn + .seg-btn { border-left: 1px solid var(--border); }
+.seg-btn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.seg-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* 해당 운영체제 것만 남긴다. 안 고른 쪽은 문서에서 지우지 않고 감추기만 한다. */
+:root[data-os="mac"] .win-only,
+:root[data-os="win"] .mac-only { display: none !important; }
+
+/* ---------- 이용 방법: 접이식 ---------- */
+.alt, .faq {
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 8px;
+}
+.faq { border-top: 0; border-bottom: 1px solid var(--border); margin-top: 0; padding: 9px 0; }
+.alt > summary, .faq > summary {
+  cursor: pointer;
+  font-size: 0.86rem;
+  color: var(--muted);
+  list-style: none;
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+.faq > summary { color: var(--text); font-size: 0.9rem; }
+.alt > summary::-webkit-details-marker,
+.faq > summary::-webkit-details-marker { display: none; }
+.alt > summary::before, .faq > summary::before {
+  content: "+";
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-family: ui-monospace, Consolas, monospace;
+}
+.alt[open] > summary::before, .faq[open] > summary::before { content: "\2212"; }
+.alt > summary:focus-visible, .faq > summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.faq-a { padding: 8px 0 2px 18px; font-size: 0.86rem; color: var(--muted); line-height: 1.6; }
+.faq-a p { margin: 0; }
+.faq-a p + p { margin-top: 7px; }
+.alt .hint { margin: 6px 0 0; }
