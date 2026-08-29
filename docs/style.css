@@ -775,3 +775,69 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 
   .md .table-scroll { overflow: visible; }
 }
+
+/* ---------- 오류 제보 ---------- */
+#viewReport { display: flex; flex-direction: column; gap: 18px; }
+
+.report-form { display: flex; flex-direction: column; gap: 8px; }
+.report-form textarea { width: 100%; font-size: 0.9rem; line-height: 1.5; }
+.report-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.report-foot .hint { margin: 0; font-variant-numeric: tabular-nums; }
+.report-note { margin: 12px 0 0; }
+
+.report-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.rp {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--inset);
+}
+/* 처리된 제보는 물러나 있되 읽을 수는 있어야 한다. */
+.rp.done { background: transparent; }
+.rp.done .rp-text { color: var(--muted); }
+
+.rp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.76rem;
+}
+.rp-who { font-weight: 600; }
+.rp-when { color: var(--muted); font-variant-numeric: tabular-nums; }
+.rp-head .status-pill { margin-left: auto; }
+
+.rp-text {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.rp-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+.rp-page { flex: 0 0 auto; }
+/* 브라우저 문자열은 길어서 펼쳐두면 제보가 안 보인다. 툴팁으로만 둔다. */
+.rp-agent { flex: 0 0 auto; text-decoration: underline dotted; cursor: help; }
+.rp-foot .btn { margin-left: auto; }
+.rp-foot .btn + .btn { margin-left: 0; }
+
+@media (max-width: 640px) {
+  .report-foot { flex-direction: column; align-items: stretch; }
+  .report-foot .btn { width: 100%; }
+  .rp-foot .btn { margin-left: 0; }
+}

@@ -30,6 +30,7 @@ import {
 import {
   getFirestore,
   collection,
+  addDoc,
   deleteDoc,
   doc,
   getDoc,
@@ -96,6 +97,9 @@ let currentRows = [];
 let profile = null; // users/{uid} 캐시
 let appConfig = { requireApproval: false }; // config/app 캐시
 let unsubscribeUsers = null;
+let unsubscribeMyReports = null;
+let unsubscribeAllReports = null;
+let allReports = []; // 관리자 화면의 제보 목록 캐시
 
 // ---------- 로그인/회원가입 탭 ----------
 tabLogin.addEventListener("click", () => {
@@ -116,6 +120,7 @@ const views = {
   records: $("viewRecords"),
   analysis: $("viewAnalysis"),
   pair: $("viewPair"),
+  report: $("viewReport"),
   settings: $("viewSettings"),
 };
 document.querySelectorAll(".subtab").forEach((btn) => {
@@ -213,6 +218,14 @@ onAuthStateChanged(auth, async (user) => {
     unsubscribeUsers();
     unsubscribeUsers = null;
   }
+  if (unsubscribeMyReports) {
+    unsubscribeMyReports();
+    unsubscribeMyReports = null;
+  }
+  if (unsubscribeAllReports) {
+    unsubscribeAllReports();
+    unsubscribeAllReports = null;
+  }
   if (!user) {
     profile = null;
     authSection.classList.remove("hidden");
@@ -250,7 +263,10 @@ onAuthStateChanged(auth, async (user) => {
   if (isAdmin) {
     setRequireApproval.checked = appConfig.requireApproval === true;
     watchUsers();
+    watchAllReports();
   }
+
+  watchMyReports(user.uid);
 
   watchRecords(user.uid);
 });
@@ -632,6 +648,146 @@ $("btnSavePdf").addEventListener("click", () => {
   // afterprint 를 안 쏘는 브라우저 대비.
   setTimeout(done, 3000);
 });
+
+
+// ---------- 오류 제보 ----------
+// 유저는 자기 제보만, 관리자는 전부 본다. 승인 대기 중이어도 제보는 되게 규칙에서 열어뒀다 —
+// 못 쓰는 사람이 제일 할 말이 많다.
+
+const reportForm = $("reportForm");
+const reportText = $("reportText");
+const reportErr = $("reportErr");
+const reportSent = $("reportSent");
+const reportSubmit = $("reportSubmit");
+
+
+reportText.addEventListener("input", () => {
+  $("reportCount").textContent = `${reportText.value.length} / 2000`;
+});
+
+reportForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const user = auth.currentUser;
+  if (!user) return;
+  const text = reportText.value.trim();
+  reportErr.textContent = "";
+  if (!text) {
+    reportErr.textContent = "내용을 적어주세요.";
+    return;
+  }
+
+  reportSubmit.disabled = true;
+  try {
+    await addDoc(collection(db, "reports"), {
+      uid: user.uid,
+      // 관리자가 목록만 보고 누구인지 알 수 있게 함께 남긴다.
+      nickname: profile?.nickname || user.displayName || "",
+      email: user.email || "",
+      text,
+      // 재현에 도움이 되는 것만. 폼 아래에 무엇을 보내는지 적어뒀다.
+      page: document.querySelector(".subtab.active")?.textContent?.trim() || "",
+      agent: navigator.userAgent.slice(0, 300),
+      status: "open",
+      createdAt: serverTimestamp(),
+    });
+    reportForm.reset();
+    $("reportCount").textContent = "0 / 2000";
+    reportSent.classList.remove("hidden");
+    setTimeout(() => reportSent.classList.add("hidden"), 4000);
+  } catch (err) {
+    reportErr.textContent = `보내지 못했습니다: ${err.code || err.message}`;
+  } finally {
+    reportSubmit.disabled = false;
+  }
+});
+
+function reportItem(r, isAdmin) {
+  const when = fmtDateTime(r.createdAt);
+  const who = isAdmin
+    ? `<span class="rp-who">${escapeHtml(r.nickname || "(닉네임 없음)")} · ${escapeHtml(r.email || "")}</span>`
+    : "";
+  const done = r.status === "done";
+  const pill = done
+    ? '<span class="status-pill on">처리됨</span>'
+    : '<span class="status-pill wait">접수됨</span>';
+  const where = r.page ? `<span class="rp-page">${escapeHtml(r.page)} 화면</span>` : "";
+  return (
+    `<li class="rp${done ? " done" : ""}" data-id="${escapeHtml(r.id)}">` +
+    `<div class="rp-head">${who}<span class="rp-when">${when}</span>${pill}</div>` +
+    `<p class="rp-text">${escapeHtml(r.text || "")}</p>` +
+    `<div class="rp-foot">${where}${
+      isAdmin
+        ? `<span class="rp-agent" title="${escapeHtml(r.agent || "")}">브라우저 정보</span>` +
+          `<button type="button" class="btn ghost small js-rp-toggle">${done ? "다시 열기" : "처리됨으로"}</button>` +
+          `<button type="button" class="btn ghost small js-rp-del">삭제</button>`
+        : ""
+    }</div></li>`
+  );
+}
+
+// 내가 보낸 제보
+function watchMyReports(uid) {
+  if (unsubscribeMyReports) unsubscribeMyReports();
+  const q = query(collection(db, "reports"), where("uid", "==", uid), orderBy("createdAt", "desc"));
+  unsubscribeMyReports = onSnapshot(
+    q,
+    (snap) => {
+      const rows = [];
+      snap.forEach((d) => rows.push({ id: d.id, ...d.data() }));
+      $("myReportCount").textContent = rows.length;
+      $("myReportEmpty").classList.toggle("hidden", rows.length > 0);
+      $("myReportList").innerHTML = rows.map((r) => reportItem(r, false)).join("");
+    },
+    () => {
+      // 색인이 아직 안 만들어졌거나 권한이 없으면 조용히 비운다.
+      $("myReportList").innerHTML = "";
+    }
+  );
+}
+
+// 관리자: 전체 제보
+function watchAllReports() {
+  if (unsubscribeAllReports) unsubscribeAllReports();
+  const q = query(collection(db, "reports"), orderBy("createdAt", "desc"));
+  unsubscribeAllReports = onSnapshot(q, (snap) => {
+    allReports = [];
+    snap.forEach((d) => allReports.push({ id: d.id, ...d.data() }));
+    renderAdminReports();
+  });
+}
+
+
+function renderAdminReports() {
+  const filter = $("reportFilter").value;
+  const rows = allReports.filter((r) =>
+    filter === "all" ? true : filter === "done" ? r.status === "done" : r.status !== "done"
+  );
+  $("reportCountAdmin").textContent = rows.length;
+  $("reportEmpty").classList.toggle("hidden", rows.length > 0);
+  const list = $("reportList");
+  list.innerHTML = rows.map((r) => reportItem(r, true)).join("");
+
+  list.querySelectorAll(".js-rp-toggle").forEach((b) => {
+    b.addEventListener("click", async () => {
+      const id = b.closest(".rp").dataset.id;
+      const cur = allReports.find((r) => r.id === id);
+      await setDoc(
+        doc(db, "reports", id),
+        { status: cur?.status === "done" ? "open" : "done", handledAt: serverTimestamp() },
+        { merge: true }
+      );
+    });
+  });
+  list.querySelectorAll(".js-rp-del").forEach((b) => {
+    b.addEventListener("click", async () => {
+      const id = b.closest(".rp").dataset.id;
+      if (!confirm("이 제보를 삭제할까요?")) return;
+      await deleteDoc(doc(db, "reports", id));
+    });
+  });
+}
+
+$("reportFilter").addEventListener("change", renderAdminReports);
 
 // ---------- 관리자: 가입 승인제 ----------
 

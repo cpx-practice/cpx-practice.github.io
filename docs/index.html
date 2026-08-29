@@ -84,6 +84,7 @@
         <button class="subtab active" data-view="records">내 기록</button>
         <button class="subtab" data-view="analysis">분석</button>
         <button class="subtab" data-view="pair">Claude Code 연결</button>
+        <button class="subtab" data-view="report">오류 제보</button>
         <button class="subtab" data-view="settings">설정</button>
         <button class="subtab hidden" data-view="admin" id="tabAdmin">관리자</button>
       </nav>
@@ -217,6 +218,38 @@
         </div>
       </div>
 
+      <!-- ===== 오류 제보 ===== -->
+      <div id="viewReport" class="hidden">
+        <div class="panel">
+          <h2>오류 제보</h2>
+          <p class="hint">
+            잘못 동작하거나 이상한 점을 적어주세요. 무엇을 하다가 그랬는지 함께 적어주시면 찾기 쉽습니다.
+          </p>
+          <form id="reportForm" class="report-form">
+            <label>
+              <textarea id="reportText" rows="5" maxlength="2000" required
+                placeholder="예: 기록을 열었는데 문진 전사가 계속 불러오는 중에서 안 넘어갑니다"></textarea>
+            </label>
+            <div class="report-foot">
+              <span class="hint" id="reportCount">0 / 2000</span>
+              <button type="submit" class="btn primary" id="reportSubmit">보내기</button>
+            </div>
+            <p class="err" id="reportErr"></p>
+            <p class="ok hidden" id="reportSent">보냈습니다. 확인하고 반영하겠습니다.</p>
+          </form>
+          <p class="hint report-note">
+            내용과 함께 닉네임·이메일, 보고 있던 화면, 브라우저 종류가 같이 전송됩니다.
+            연락과 재현에만 씁니다.
+          </p>
+        </div>
+
+        <div class="panel">
+          <h2>내가 보낸 제보 (<span id="myReportCount">0</span>건)</h2>
+          <p class="empty hidden" id="myReportEmpty">아직 보낸 제보가 없습니다.</p>
+          <ul class="report-list" id="myReportList"></ul>
+        </div>
+      </div>
+
       <!-- ===== 설정 ===== -->
       <div id="viewSettings" class="hidden">
         <div class="panel">
@@ -274,6 +307,19 @@
               <tbody id="adminBody"></tbody>
             </table>
           </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h2>오류 제보 (<span id="reportCountAdmin">0</span>건)</h2>
+            <select id="reportFilter" aria-label="제보 상태로 거르기">
+              <option value="open">처리 안 함</option>
+              <option value="all">전체</option>
+              <option value="done">처리됨</option>
+            </select>
+          </div>
+          <p class="empty hidden" id="reportEmpty">해당하는 제보가 없습니다.</p>
+          <ul class="report-list admin" id="reportList"></ul>
         </div>
       </div>
 

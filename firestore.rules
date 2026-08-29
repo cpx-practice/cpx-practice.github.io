@@ -96,5 +96,23 @@ service cloud.firestore {
 
       allow update: if false;
     }
+
+    // ---- 오류 제보 ----
+    // 유저는 자기가 낸 것만 보고, 관리자는 전부 본다.
+    // 승인 대기 중이어도 제보는 할 수 있어야 한다 — 못 쓰는 사람이 제일 할 말이 많다.
+    match /reports/{reportId} {
+      allow read: if isOwner()
+                  || (isSignedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if isSignedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.text is string
+                    && request.resource.data.text.size() > 0
+                    && request.resource.data.text.size() <= 2000
+                    && request.resource.data.status == 'open';
+
+      // 상태를 바꾸거나 지우는 건 관리자만. 유저가 자기 제보를 고쳐 쓰지는 못한다.
+      allow update, delete: if isOwner();
+    }
   }
 }
