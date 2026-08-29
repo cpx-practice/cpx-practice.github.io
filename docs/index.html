@@ -213,6 +213,10 @@
             <li>
               <b>연습 시작</b> — 아무 폴더에서나 <code>/cpx:start</code> → 문진 → <code>진찰</code> → <code>평가</code>.
               평가가 끝나면 자동으로 여기에 기록됩니다.
+              <div class="launch">
+                <button type="button" class="btn primary" id="btnLaunchClaude">Claude 열고 명령 복사</button>
+                <span class="hint" id="launchHint">Claude 앱이 열립니다. 안에서 붙여넣기(Ctrl+V) 하면 됩니다.</span>
+              </div>
             </li>
           </ol>
         </div>
@@ -230,6 +234,19 @@
               <textarea id="reportText" rows="5" maxlength="2000" required
                 placeholder="예: 기록을 열었는데 문진 전사가 계속 불러오는 중에서 안 넘어갑니다"></textarea>
             </label>
+            <div class="report-attach">
+              <label class="btn small attach-btn" for="reportImage">이미지 첨부</label>
+              <input type="file" id="reportImage" accept="image/*" hidden />
+              <span class="hint" id="reportImageHint">화면을 복사해 위 칸에 붙여넣어도 됩니다 (Ctrl+V)</span>
+            </div>
+            <div class="attach-preview hidden" id="reportImagePreview">
+              <img id="reportImageThumb" alt="첨부한 이미지 미리보기" />
+              <div class="attach-meta">
+                <span id="reportImageInfo"></span>
+                <button type="button" class="btn ghost small" id="reportImageClear">빼기</button>
+              </div>
+            </div>
+
             <div class="report-foot">
               <span class="hint" id="reportCount">0 / 2000</span>
               <button type="submit" class="btn primary" id="reportSubmit">보내기</button>
@@ -239,7 +256,7 @@
           </form>
           <p class="hint report-note">
             내용과 함께 닉네임·이메일, 보고 있던 화면, 브라우저 종류가 같이 전송됩니다.
-            연락과 재현에만 씁니다.
+            연락과 재현에만 씁니다. 이미지는 보내기 전에 브라우저에서 줄여 저장합니다.
           </p>
         </div>
 

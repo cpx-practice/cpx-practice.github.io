@@ -30,7 +30,6 @@ import {
 import {
   getFirestore,
   collection,
-  addDoc,
   deleteDoc,
   doc,
   getDoc,
@@ -44,6 +43,7 @@ import {
 
 import { renderAnalytics } from "./analytics.js";
 import { TOPICS, matchTopic } from "./topics.js";
+import { downscaleImage, chunkText, joinChunks as joinImageChunks } from "./image.js";
 import {
   joinChunks,
   fmtDateTime,
@@ -654,12 +654,57 @@ $("btnSavePdf").addEventListener("click", () => {
 // 유저는 자기 제보만, 관리자는 전부 본다. 승인 대기 중이어도 제보는 되게 규칙에서 열어뒀다 —
 // 못 쓰는 사람이 제일 할 말이 많다.
 
+// 첨부한 이미지. 줄여서 data URL 로 들고 있다가 보낼 때 조각내어 저장한다.
+let pendingImage = null;
+
+async function takeImage(file) {
+  const hint = $("reportImageHint");
+  hint.textContent = "이미지를 줄이는 중…";
+  try {
+    pendingImage = await downscaleImage(file);
+    $("reportImageThumb").src = pendingImage.dataUrl;
+    $("reportImageInfo").textContent =
+      `${pendingImage.w}×${pendingImage.h} · ${Math.round(pendingImage.chars / 1400)}KB`;
+    $("reportImagePreview").classList.remove("hidden");
+    hint.textContent = "이미지 한 장을 붙일 수 있습니다.";
+  } catch (err) {
+    pendingImage = null;
+    $("reportImagePreview").classList.add("hidden");
+    hint.textContent = err.message || "이미지를 붙이지 못했습니다.";
+  }
+}
+
+function clearImage() {
+  pendingImage = null;
+  $("reportImage").value = "";
+  $("reportImageThumb").removeAttribute("src");
+  $("reportImagePreview").classList.add("hidden");
+  $("reportImageHint").textContent = "화면을 복사해 위 칸에 붙여넣어도 됩니다 (Ctrl+V)";
+}
+
+$("reportImage").addEventListener("change", (e) => {
+  const file = e.target.files?.[0];
+  if (file) takeImage(file);
+});
+$("reportImageClear").addEventListener("click", clearImage);
+
 const reportForm = $("reportForm");
 const reportText = $("reportText");
 const reportErr = $("reportErr");
 const reportSent = $("reportSent");
 const reportSubmit = $("reportSubmit");
 
+
+// 버그 제보는 스크린샷을 바로 붙여넣는 게 제일 자연스럽다.
+reportText.addEventListener("paste", (e) => {
+  const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith("image/"));
+  if (!item) return;
+  const file = item.getAsFile();
+  if (file) {
+    e.preventDefault();
+    takeImage(file);
+  }
+});
 
 reportText.addEventListener("input", () => {
   $("reportCount").textContent = `${reportText.value.length} / 2000`;
@@ -678,7 +723,18 @@ reportForm.addEventListener("submit", async (e) => {
 
   reportSubmit.disabled = true;
   try {
-    await addDoc(collection(db, "reports"), {
+    // 이미지가 있으면 먼저 쓴다. 반대 순서면 "이미지 있다고 표시됐는데 없는" 제보가 생긴다.
+    const ref = doc(collection(db, "reports"));
+    if (pendingImage) {
+      await setDoc(doc(db, "reportImages", ref.id), {
+        uid: user.uid,
+        chunks: chunkText(pendingImage.dataUrl),
+        w: pendingImage.w,
+        h: pendingImage.h,
+        createdAt: serverTimestamp(),
+      });
+    }
+    await setDoc(ref, {
       uid: user.uid,
       // 관리자가 목록만 보고 누구인지 알 수 있게 함께 남긴다.
       nickname: profile?.nickname || user.displayName || "",
@@ -688,8 +744,10 @@ reportForm.addEventListener("submit", async (e) => {
       page: document.querySelector(".subtab.active")?.textContent?.trim() || "",
       agent: navigator.userAgent.slice(0, 300),
       status: "open",
+      hasImage: Boolean(pendingImage),
       createdAt: serverTimestamp(),
     });
+    clearImage();
     reportForm.reset();
     $("reportCount").textContent = "0 / 2000";
     reportSent.classList.remove("hidden");
@@ -711,11 +769,15 @@ function reportItem(r, isAdmin) {
     ? '<span class="status-pill on">처리됨</span>'
     : '<span class="status-pill wait">접수됨</span>';
   const where = r.page ? `<span class="rp-page">${escapeHtml(r.page)} 화면</span>` : "";
+  const img = r.hasImage
+    ? `<button type="button" class="btn ghost small js-rp-img">이미지 보기</button>`
+    : "";
   return (
     `<li class="rp${done ? " done" : ""}" data-id="${escapeHtml(r.id)}">` +
     `<div class="rp-head">${who}<span class="rp-when">${when}</span>${pill}</div>` +
     `<p class="rp-text">${escapeHtml(r.text || "")}</p>` +
-    `<div class="rp-foot">${where}${
+    `<div class="rp-img-slot"></div>` +
+    `<div class="rp-foot">${where}${img}${
       isAdmin
         ? `<span class="rp-agent" title="${escapeHtml(r.agent || "")}">브라우저 정보</span>` +
           `<button type="button" class="btn ghost small js-rp-toggle">${done ? "다시 열기" : "처리됨으로"}</button>` +
@@ -723,6 +785,48 @@ function reportItem(r, isAdmin) {
         : ""
     }</div></li>`
   );
+}
+
+// 이미지는 목록에 딸려오지 않는다. "이미지 보기" 를 누를 때만 가져온다.
+const reportImageCache = new Map();
+
+function wireReportImages(root) {
+  root.querySelectorAll(".js-rp-img").forEach((b) => {
+    b.addEventListener("click", async () => {
+      const li = b.closest(".rp");
+      const slot = li.querySelector(".rp-img-slot");
+      if (slot.firstChild) {
+        // 이미 펼쳐져 있으면 접는다.
+        slot.innerHTML = "";
+        b.textContent = "이미지 보기";
+        return;
+      }
+      b.disabled = true;
+      b.textContent = "불러오는 중…";
+      try {
+        let url = reportImageCache.get(li.dataset.id);
+        if (!url) {
+          const snap = await getDoc(doc(db, "reportImages", li.dataset.id));
+          url = snap.exists() ? joinImageChunks(snap.data().chunks) : "";
+          reportImageCache.set(li.dataset.id, url);
+        }
+        if (url) {
+          const im = document.createElement("img");
+          im.src = url;
+          im.className = "rp-img";
+          im.alt = "제보에 첨부된 이미지";
+          slot.appendChild(im);
+          b.textContent = "이미지 접기";
+        } else {
+          b.textContent = "이미지 없음";
+        }
+      } catch {
+        b.textContent = "불러오지 못함";
+      } finally {
+        b.disabled = false;
+      }
+    });
+  });
 }
 
 // 내가 보낸 제보
@@ -737,6 +841,7 @@ function watchMyReports(uid) {
       $("myReportCount").textContent = rows.length;
       $("myReportEmpty").classList.toggle("hidden", rows.length > 0);
       $("myReportList").innerHTML = rows.map((r) => reportItem(r, false)).join("");
+      wireReportImages($("myReportList"));
     },
     () => {
       // 색인이 아직 안 만들어졌거나 권한이 없으면 조용히 비운다.
@@ -766,6 +871,7 @@ function renderAdminReports() {
   $("reportEmpty").classList.toggle("hidden", rows.length > 0);
   const list = $("reportList");
   list.innerHTML = rows.map((r) => reportItem(r, true)).join("");
+  wireReportImages(list);
 
   list.querySelectorAll(".js-rp-toggle").forEach((b) => {
     b.addEventListener("click", async () => {
@@ -781,13 +887,45 @@ function renderAdminReports() {
   list.querySelectorAll(".js-rp-del").forEach((b) => {
     b.addEventListener("click", async () => {
       const id = b.closest(".rp").dataset.id;
-      if (!confirm("이 제보를 삭제할까요?")) return;
+      if (!confirm("이 제보를 삭제할까요? 첨부한 이미지도 함께 지워집니다.")) return;
+      // 이미지를 먼저 지운다. 남겨두면 아무도 볼 수 없는 문서가 된다.
+      try {
+        await deleteDoc(doc(db, "reportImages", id));
+      } catch {
+        // 이미지가 없는 제보면 여기서 실패하는 것이 정상이다.
+      }
+      reportImageCache.delete(id);
       await deleteDoc(doc(db, "reports", id));
     });
   });
 }
 
 $("reportFilter").addEventListener("change", renderAdminReports);
+
+// ---------- Claude 앱 열기 ----------
+// claude:// 는 데스크톱 앱이 등록하는 스킴이다. 앱이 없으면 아무 일도 일어나지 않으므로,
+// 명령을 클립보드에 먼저 넣어 최소한 붙여넣기는 되게 한다.
+$("btnLaunchClaude").addEventListener("click", async () => {
+  const hint = $("launchHint");
+  const cmd = "/cpx:start";
+  let copied = false;
+  try {
+    await navigator.clipboard.writeText(cmd);
+    copied = true;
+  } catch {
+    copied = false;
+  }
+  hint.textContent = copied
+    ? `Claude 앱을 여는 중… 안에서 붙여넣기(Ctrl+V) 하면 ${cmd} 가 들어갑니다.`
+    : `Claude 앱을 여는 중… 안에서 ${cmd} 를 입력하세요.`;
+  // 앱이 설치돼 있지 않으면 브라우저가 조용히 무시한다.
+  window.location.href = "claude://";
+  setTimeout(() => {
+    hint.textContent = copied
+      ? "앱이 안 열리면 직접 실행해주세요. 명령은 복사해뒀습니다."
+      : "앱이 안 열리면 직접 실행하고 /cpx:start 를 입력하세요.";
+  }, 2500);
+});
 
 // ---------- 관리자: 가입 승인제 ----------
 

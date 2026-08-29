@@ -114,5 +114,25 @@ service cloud.firestore {
       // 상태를 바꾸거나 지우는 건 관리자만. 유저가 자기 제보를 고쳐 쓰지는 못한다.
       allow update, delete: if isOwner();
     }
+
+    // ---- 제보에 붙인 이미지 ----
+    // Cloud Storage 를 쓰지 않는다. 이 프로젝트에는 버킷이 만들어져 있지 않고,
+    // 새로 켜면 요금제 문제가 걸린다. 대신 브라우저에서 줄인 뒤 조각내어 여기 담는다.
+    // 문서 id 는 reports/{id} 와 같은 값을 쓴다. 목록에는 안 오고 열 때만 가져온다.
+    match /reportImages/{reportId} {
+      allow read: if isOwner()
+                  || (isSignedIn() && resource.data.uid == request.auth.uid);
+
+      allow create: if isSignedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.chunks is list
+                    && request.resource.data.chunks.size() > 0
+                    && request.resource.data.chunks.size() <= 600;
+
+      allow update: if false;
+      // 제보를 지우면 이미지도 같이 지운다. 본인도 관리자도 지울 수 있다.
+      allow delete: if isOwner()
+                    || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
   }
 }

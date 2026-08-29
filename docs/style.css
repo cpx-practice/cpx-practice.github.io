@@ -841,3 +841,62 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   .report-foot .btn { width: 100%; }
   .rp-foot .btn { margin-left: 0; }
 }
+
+/* ---------- 제보 이미지 첨부 ---------- */
+.report-attach { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+/* label 을 버튼처럼 쓴다 — 숨긴 file input 을 여는 용도다. */
+.attach-btn { display: inline-block; cursor: pointer; }
+.report-attach .hint { margin: 0; }
+
+.attach-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--inset);
+}
+.attach-preview img {
+  width: 120px;
+  height: auto;
+  max-height: 120px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #fff;
+}
+.attach-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 제보에 펼친 이미지 */
+.rp-img-slot:empty { display: none; }
+.rp-img {
+  display: block;
+  max-width: 100%;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+
+/* ---------- Claude 앱 열기 ---------- */
+.launch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 0;
+}
+.launch .hint { margin: 0; flex: 1 1 240px; }
+
+@media (max-width: 640px) {
+  .attach-preview img { width: 84px; max-height: 84px; }
+  .launch .btn { width: 100%; }
+}
