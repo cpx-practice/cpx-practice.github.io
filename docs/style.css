@@ -966,3 +966,65 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 .faq-a p { margin: 0; }
 .faq-a p + p { margin-top: 7px; }
 .alt .hint { margin: 6px 0 0; }
+
+/* ---------- 모바일 조작성 ----------
+   폭은 이미 안 넘쳤다. 문제는 손가락 크기다.
+   .btn.small 29px, 세그먼트 25px, 체크박스 13px 로는 정확히 누르기 어렵다.
+   화면이 좁을수록 오히려 대상을 키운다. */
+@media (max-width: 640px) {
+  .btn.small { padding: 9px 13px; font-size: 0.84rem; }
+  .dtab { padding: 9px 14px; font-size: 0.86rem; }
+  .seg-btn { padding: 9px 15px; font-size: 0.86rem; }
+  .subtab { padding: 9px 13px; }
+
+  /* iOS 는 글자가 16px 보다 작은 입력칸을 누르면 화면을 확대해버린다.
+     확대되면 사용자가 손으로 되돌려야 하므로 입력 요소만 16px 로 올린다. */
+  input, textarea, select,
+  .filters input, .filters select, #caseSort, #caseScope, #reportFilter {
+    font-size: 16px;
+    padding: 9px 11px;
+  }
+
+  /* 체크박스는 기본 13px 라 빗나가기 쉽다. */
+  .check input { width: 20px; height: 20px; margin-top: 1px; }
+  .check.big { font-size: 1rem; }
+
+  /* 접이식 제목은 글자만큼만 눌리면 좁다. 위아래로 여유를 준다. */
+  .alt > summary, .faq > summary { padding: 9px 0; }
+
+  /* .report-form textarea 와 .token 은 뒤에서 더 구체적인 선택자로 크기를 덮으므로
+     여기서 다시 못박는다. 안 그러면 iOS 가 눌렀을 때 화면을 확대한다. */
+  .report-form textarea, .token { font-size: 16px; }
+
+  /* 10px 대 글자는 휴대폰에서 읽히지 않는다. */
+  .pill { font-size: 0.74rem; }
+  .sbar .tag, .tag-undone { font-size: 0.72rem; }
+  .caret { font-size: 0.78rem; }
+  .tr-arrow { font-size: 0.76rem; }
+  .att-none, .rp-agent, .rp-page { font-size: 0.76rem; }
+
+  /* 표 안 버튼이 커지면서 줄이 붙지 않게 한다. */
+  .attempts li { gap: 6px 8px; }
+  #recordTable td.actions { gap: 8px; }
+}
+
+/* ---------- 하위 탭이 더 있다는 표시 ----------
+   375px 에서 7개 중 4개만 보이고 나머지는 오른쪽에 숨는다.
+   표시가 없으면 설정·관리자 탭이 있는 줄도 모른다.
+   오른쪽에 아직 남았을 때만 가장자리를 흐리게 해서 밀 수 있다는 걸 알린다. */
+.subnav {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.subnav.more-right {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+}
+
+/* 아주 좁은 화면(320px 대)에서는 케이스 표 5열이 2px 정도 모자라 가로 스크롤이 생긴다.
+   "최고" 를 접는다 — 펼치면 성적 추이에 최고점이 그대로 나오므로 잃는 정보가 없다.
+   (앞선 규칙이 병력/진찰/PPI 를 이미 감췄으므로 여기서 4번째 칸이 "최고" 다.) */
+@media (max-width: 340px) {
+  #caseTable th:nth-child(4),
+  #caseTable td:nth-child(4) { display: none; }
+}

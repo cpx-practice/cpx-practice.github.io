@@ -135,6 +135,20 @@ document.querySelectorAll(".subtab").forEach((btn) => {
   });
 });
 
+// ---------- 하위 탭 스크롤 표시 ----------
+// 좁은 화면에서는 탭 일부가 오른쪽에 숨는다. 표시가 없으면 그런 탭이 있는 줄도 모른다.
+// 아직 오른쪽에 남았을 때만 가장자리를 흐리게 한다 (style.css 의 .more-right).
+const subnav = document.querySelector(".subnav");
+
+function syncSubnavHint() {
+  const more = subnav.scrollWidth - subnav.clientWidth - subnav.scrollLeft > 4;
+  subnav.classList.toggle("more-right", more);
+}
+
+subnav.addEventListener("scroll", syncSubnavHint, { passive: true });
+window.addEventListener("resize", syncSubnavHint);
+syncSubnavHint();
+
 // ---------- 테마 ----------
 // 셋 중 하나다: light / dark / (저장값 없음 = OS 설정 따라감).
 const btnTheme = $("btnTheme");
