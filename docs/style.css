@@ -212,7 +212,7 @@ td.note { max-width: 220px; white-space: pre-wrap; color: var(--muted); }
 }
 .subtab.active { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 
-#viewRecords, #viewAnalysis, #viewPair, #viewSettings, #analysisBody {
+#viewRecords, #viewAnalysis, #viewClaude, #viewPair, #viewSettings, #analysisBody {
   display: flex;
   flex-direction: column;
   gap: 18px;

@@ -119,8 +119,9 @@ tabRegister.addEventListener("click", () => {
 const views = {
   records: $("viewRecords"),
   analysis: $("viewAnalysis"),
-  pair: $("viewPair"),
+  claude: $("viewClaude"),
   report: $("viewReport"),
+  pair: $("viewPair"), // 화면 이름은 "이용 방법"
   settings: $("viewSettings"),
 };
 document.querySelectorAll(".subtab").forEach((btn) => {
@@ -310,7 +311,7 @@ $("btnRevoke").addEventListener("click", async () => {
   profile.tokenVersion = next;
   $("pairToken").value = "";
   $("pairActions").classList.add("hidden");
-  alert("무효화했습니다. Claude Code 연결 탭에서 코드를 새로 발급하세요.");
+  alert("무효화했습니다. 이용 방법 탭에서 코드를 새로 발급하세요.");
 });
 
 // ---------- 페어링 코드 ----------

@@ -83,8 +83,9 @@
       <nav class="subnav">
         <button class="subtab active" data-view="records">내 기록</button>
         <button class="subtab" data-view="analysis">분석</button>
-        <button class="subtab" data-view="pair">Claude Code 연결</button>
+        <button class="subtab" data-view="claude">Claude</button>
         <button class="subtab" data-view="report">오류 제보</button>
+        <button class="subtab" data-view="pair">이용 방법</button>
         <button class="subtab" data-view="settings">설정</button>
         <button class="subtab hidden" data-view="admin" id="tabAdmin">관리자</button>
       </nav>
@@ -115,7 +116,7 @@
             <button type="button" class="btn ghost small hidden" id="fltReset">초기화</button>
           </div>
 
-          <p class="empty hidden" id="emptyMsg">아직 기록이 없습니다. <b>Claude Code 연결</b> 탭에서 연결해두면 연습이 끝날 때마다 자동으로 쌓입니다.</p>
+          <p class="empty hidden" id="emptyMsg">아직 기록이 없습니다. <b>이용 방법</b> 탭에서 연결해두면 연습이 끝날 때마다 자동으로 쌓입니다.</p>
           <p class="empty hidden" id="noMatchMsg">조건에 맞는 기록이 없습니다.</p>
           <div class="table-wrap">
             <table id="recordTable" class="hidden">
@@ -179,46 +180,31 @@
         </div>
       </div>
 
-      <!-- ===== Claude Code 연결 ===== -->
-      <div id="viewPair" class="hidden">
+      <!-- ===== Claude ===== -->
+      <div id="viewClaude" class="hidden">
         <div class="panel">
-          <h2>Claude Code와 연결</h2>
-          <p class="hint">한 번만 해두면 이후 연습 결과가 자동으로 이 계정에 쌓입니다.</p>
+          <h2>연습 시작</h2>
+          <p class="hint">
+            아래 버튼을 누르면 Claude 앱이 열리고 <code>/cpx:start</code> 가 복사됩니다.
+            앱 안에서 붙여넣기(Ctrl+V)만 하면 바로 면담이 시작됩니다.
+          </p>
+          <div class="launch">
+            <button type="button" class="btn primary" id="btnLaunchClaude">Claude 열고 명령 복사</button>
+            <span class="hint" id="launchHint">앱이 설치돼 있어야 열립니다.</span>
+          </div>
+        </div>
 
+        <div class="panel">
+          <h2>면담은 이렇게 흘러갑니다</h2>
           <ol class="steps">
-            <li>
-              <b>플러그인 설치</b> — 터미널에서
-              <pre class="code" id="installCmd">claude plugin marketplace add raphael4040-ash/cpx-marketplace</pre>
-              그다음 Claude Code 안에서 <code>/plugin install cpx@cpx-marketplace</code>
-            </li>
-            <li>
-              <b>연결 코드 발급</b>
-              <div class="pair-box">
-                <button class="btn primary" id="btnMakeToken">연결 코드 만들기</button>
-                <textarea id="pairToken" class="token" rows="4" readonly placeholder="버튼을 누르면 여기에 코드가 표시됩니다"></textarea>
-                <div class="pair-actions hidden" id="pairActions">
-                  <button class="btn small" id="btnCopyToken">복사</button>
-                  <span class="copied hidden" id="copiedMsg">복사됨</span>
-                </div>
-              </div>
-              <p class="warn">
-                이 코드는 <b>비밀번호와 같은 힘을 가집니다.</b> 본인 컴퓨터에만 붙여넣고, 남에게 보내거나
-                채팅·깃허브에 올리지 마세요. 유출된 것 같으면 <b>설정 → 연결 해제</b>로 즉시 무효화하세요.
-              </p>
-            </li>
-            <li>
-              <b>Claude Code에 붙여넣기</b>
-              <pre class="code">/cpx:pair &lt;위에서 복사한 코드&gt;</pre>
-            </li>
-            <li>
-              <b>연습 시작</b> — 아무 폴더에서나 <code>/cpx:start</code> → 문진 → <code>진찰</code> → <code>평가</code>.
-              평가가 끝나면 자동으로 여기에 기록됩니다.
-              <div class="launch">
-                <button type="button" class="btn primary" id="btnLaunchClaude">Claude 열고 명령 복사</button>
-                <span class="hint" id="launchHint">Claude 앱이 열립니다. 안에서 붙여넣기(Ctrl+V) 하면 됩니다.</span>
-              </div>
-            </li>
+            <li><b>문진</b> — 환자에게 묻습니다. 사전 안내문은 없으니 직접 알아내야 합니다.</li>
+            <li><code>진찰</code> — 신체진찰로 넘어갑니다. 활력징후부터 나옵니다.</li>
+            <li><code>평가</code> — 채점표대로 점수와 개선점이 나옵니다.</li>
           </ol>
+          <p class="hint" style="margin-bottom:0">
+            평가가 끝나면 기록이 자동으로 여기 쌓입니다. 처음이라 연결이 안 돼 있으면
+            <b>이용 방법</b> 탭을 먼저 보세요.
+          </p>
         </div>
       </div>
 
@@ -264,6 +250,45 @@
           <h2>내가 보낸 제보 (<span id="myReportCount">0</span>건)</h2>
           <p class="empty hidden" id="myReportEmpty">아직 보낸 제보가 없습니다.</p>
           <ul class="report-list" id="myReportList"></ul>
+        </div>
+      </div>
+
+      <!-- ===== 이용 방법 ===== -->
+      <div id="viewPair" class="hidden">
+        <div class="panel">
+          <h2>이용 방법</h2>
+          <p class="hint">한 번만 해두면 이후 연습 결과가 자동으로 이 계정에 쌓입니다.</p>
+
+          <ol class="steps">
+            <li>
+              <b>플러그인 설치</b> — 터미널에서
+              <pre class="code" id="installCmd">claude plugin marketplace add raphael4040-ash/cpx-marketplace</pre>
+              그다음 Claude Code 안에서 <code>/plugin install cpx@cpx-marketplace</code>
+            </li>
+            <li>
+              <b>연결 코드 발급</b>
+              <div class="pair-box">
+                <button class="btn primary" id="btnMakeToken">연결 코드 만들기</button>
+                <textarea id="pairToken" class="token" rows="4" readonly placeholder="버튼을 누르면 여기에 코드가 표시됩니다"></textarea>
+                <div class="pair-actions hidden" id="pairActions">
+                  <button class="btn small" id="btnCopyToken">복사</button>
+                  <span class="copied hidden" id="copiedMsg">복사됨</span>
+                </div>
+              </div>
+              <p class="warn">
+                이 코드는 <b>비밀번호와 같은 힘을 가집니다.</b> 본인 컴퓨터에만 붙여넣고, 남에게 보내거나
+                채팅·깃허브에 올리지 마세요. 유출된 것 같으면 <b>설정 → 연결 해제</b>로 즉시 무효화하세요.
+              </p>
+            </li>
+            <li>
+              <b>Claude Code에 붙여넣기</b>
+              <pre class="code">/cpx:pair &lt;위에서 복사한 코드&gt;</pre>
+            </li>
+            <li>
+              <b>연습 시작</b> — 아무 폴더에서나 <code>/cpx:start</code> → 문진 → <code>진찰</code> → <code>평가</code>.
+              평가가 끝나면 자동으로 여기에 기록됩니다.
+            </li>
+          </ol>
         </div>
       </div>
 
