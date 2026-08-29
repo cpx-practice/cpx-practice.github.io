@@ -376,7 +376,7 @@ function refreshViews() {
 // 분석 탭은 필터를 타지 않는다 — 전체 기록으로 그린다.
 // 회차별 "면담 보기" 는 기록 탭과 같은 상세 모달을 쓰므로 여는 함수를 넘겨준다.
 function drawAnalytics() {
-  renderAnalytics(currentRows, { onOpenRecord: openDetail });
+  renderAnalytics(currentRows, { onOpenRecord: openDetail, onDeleteRecord: deleteRecord });
 }
 
 // ---------- 검색 · 필터 · 정렬 ----------
@@ -502,8 +502,11 @@ function renderRecords(rows) {
   }
 }
 
-async function deleteRecord(id) {
-  if (!confirm("이 기록을 삭제할까요? 저장된 전사도 함께 지워집니다.")) return;
+// label 은 분석 탭에서 넘어온 "가슴통증 · 2026-08-29 · 78점" 같은 설명이다.
+// 회차가 여러 개인 목록에서 지울 때 무엇을 지우는지 분명히 보여준다.
+async function deleteRecord(id, label) {
+  const what = label ? `${label}\n\n이 기록을 삭제할까요?` : "이 기록을 삭제할까요?";
+  if (!confirm(`${what} 저장된 전사도 함께 지워집니다.`)) return;
   // 본문을 먼저 지운다. 반대 순서로 하다 중간에 실패하면 주인 없는 전사가 남는다 —
   // 지웠다고 생각한 대화가 남아 있는 쪽이, 목록에 흔적이 남는 쪽보다 나쁘다.
   try {

@@ -105,8 +105,9 @@ export function computeStats(rows) {
 
 let lastStats = null;
 let wired = false;
-// 기록 상세 모달은 app.js 가 갖고 있다. 분석 탭에서도 같은 모달을 쓰려고 넘겨받는다.
+// 기록 상세 모달과 삭제는 app.js 가 갖고 있다. 분석 탭에서도 같은 것을 쓰려고 넘겨받는다.
 let openRecord = null;
+let removeRecord = null;
 
 // 정렬 드롭다운은 한 번만 채우고 한 번만 묶는다.
 function wireOnce() {
@@ -138,6 +139,7 @@ function wireOnce() {
 export function renderAnalytics(rows, opts = {}) {
   wireOnce();
   if (opts.onOpenRecord) openRecord = opts.onOpenRecord;
+  if (opts.onDeleteRecord) removeRecord = opts.onDeleteRecord;
   const stats = computeStats(rows);
   lastStats = stats;
 
@@ -357,6 +359,7 @@ function renderCases(s) {
             (hasDetail(a.rec)
               ? `<button type="button" class="btn ghost small js-open" data-i="${i}">면담 보기</button>`
               : `<span class="att-none">저장된 내용 없음</span>`) +
+            `<button type="button" class="btn ghost small js-del" data-i="${i}">삭제</button>` +
             `</li>`
           );
         })
@@ -370,6 +373,20 @@ function renderCases(s) {
       b.addEventListener("click", (e) => {
         e.stopPropagation();
         if (openRecord) openRecord(c.attempts[Number(b.dataset.i)].rec);
+      });
+    });
+
+    // 기록이 쌓이면 목록에서 하나씩 찾아 지우기가 번거롭다. 여기서 바로 지울 수 있게 한다.
+    // 지우면 구독이 다시 그리므로 화면 갱신은 따로 하지 않는다.
+    detail.querySelectorAll(".js-del").forEach((b) => {
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!removeRecord) return;
+        const a = c.attempts[Number(b.dataset.i)];
+        const when = a.date
+          ? `${a.date.getFullYear()}-${pad2(a.date.getMonth() + 1)}-${pad2(a.date.getDate())}`
+          : "날짜 없음";
+        removeRecord(a.rec.id, `${c.topic.name} · ${when} · ${a.total}점`);
       });
     });
 

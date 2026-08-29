@@ -593,8 +593,11 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 
 
-.attempts li .btn { margin-left: auto; flex: 0 0 auto; }
-.att-none { margin-left: auto; flex: 0 0 auto; color: var(--muted); font-size: 0.72rem; }
+/* 영역 점수가 남는 자리를 먹어 뒤따르는 버튼들을 오른쪽으로 민다.
+   버튼마다 margin-left:auto 를 주면 버튼끼리 서로 밀어내므로 그렇게 하지 않는다. */
+.att-sect { flex: 1; }
+.attempts li .btn { flex: 0 0 auto; }
+.att-none { flex: 0 0 auto; color: var(--muted); font-size: 0.72rem; }
 
 /* 안 해본 케이스 — 펼칠 것이 없으니 클릭 대상이 아니고, 배경으로 물러나 있는다. */
 .case-row.undone > td { color: var(--muted); }
