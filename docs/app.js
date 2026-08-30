@@ -26,9 +26,6 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
-  EmailAuthProvider,
-  reauthenticateWithCredential,
-  updatePassword,
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {
   getFirestore,
@@ -324,81 +321,13 @@ setConsent.addEventListener("change", async () => {
 $("btnRevoke").addEventListener("click", async () => {
   const user = auth.currentUser;
   if (!user) return;
-  if (
-    !confirm(
-      "발급한 연결 코드로 올라오는 자동 업로드를 모두 멈출까요?\n\n" +
-        "코드에 담긴 로그인 자격 자체는 살아 있습니다. 코드가 남의 손에 들어갔다면 " +
-        "아래 '완전 무효화'로 비밀번호까지 바꿔야 합니다."
-    )
-  ) {
-    return;
-  }
+  if (!confirm("발급한 연결 코드로 올라오는 자동 업로드를 모두 멈출까요?")) return;
   const next = (profile?.tokenVersion || 1) + 1;
   await setDoc(doc(db, "users", user.uid), { tokenVersion: next }, { merge: true });
   if (profile) profile.tokenVersion = next;
   $("pairToken").value = "";
   $("pairActions").classList.add("hidden");
   alert("업로드를 멈췄습니다. 이용 방법 탭에서 코드를 새로 발급하면 다시 연결됩니다.");
-});
-
-// ---------- 완전 무효화 ----------
-// 페어링 코드에는 Firebase refresh token 이 그대로 들어 있다. tokenVersion 은 워커에서만
-// 검사하므로, 코드가 유출되면 워커를 건너뛰고 구글에 직접 토큰을 갱신해 계속 쓸 수 있다.
-// 클라이언트 SDK 로 그 자격을 실제로 죽이는 방법은 비밀번호 변경뿐이다 — 비밀번호가
-// 바뀌면 Firebase 가 계정의 refresh token 을 서버에서 전부 폐기한다.
-$("fullRevokeForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const user = auth.currentUser;
-  if (!user || !user.email) return;
-
-  const err = $("fullRevokeErr");
-  const ok = $("fullRevokeOk");
-  const btn = $("btnFullRevoke");
-  err.textContent = "";
-  ok.classList.add("hidden");
-
-  const current = $("revokeCurrentPw").value;
-  const next = $("revokeNewPw").value;
-  if (current === next) {
-    err.textContent = "새 비밀번호가 지금 것과 같습니다. 값이 실제로 바뀌어야 자격이 폐기됩니다.";
-    return;
-  }
-
-  btn.disabled = true;
-  try {
-    // 비밀번호 변경은 최근 로그인을 요구한다. 현재 비밀번호로 먼저 재인증한다.
-    await reauthenticateWithCredential(
-      user,
-      EmailAuthProvider.credential(user.email, current)
-    );
-    await updatePassword(user, next);
-  } catch (e2) {
-    const code = e2?.code || "";
-    err.textContent =
-      code === "auth/wrong-password" || code === "auth/invalid-credential"
-        ? "현재 비밀번호가 맞지 않습니다."
-        : code === "auth/weak-password"
-        ? "새 비밀번호가 너무 짧습니다 (6자 이상)."
-        : code === "auth/too-many-requests"
-        ? "시도가 너무 잦습니다. 잠시 후 다시 해주세요."
-        : `변경하지 못했습니다: ${code || e2?.message || "알 수 없는 오류"}`;
-    btn.disabled = false;
-    return;
-  }
-
-  // 자격은 이 시점에 이미 폐기됐다. tokenVersion 도 올려두면 옛 코드가 워커에서도 걸린다.
-  // 여기서 실패해도 폐기 자체는 끝난 뒤라 흐름을 막지 않는다.
-  try {
-    const tv = (profile?.tokenVersion || 1) + 1;
-    await setDoc(doc(db, "users", user.uid), { tokenVersion: tv }, { merge: true });
-    if (profile) profile.tokenVersion = tv;
-  } catch {}
-
-  $("pairToken").value = "";
-  $("pairActions").classList.add("hidden");
-  $("fullRevokeForm").reset();
-  ok.classList.remove("hidden");
-  btn.disabled = false;
 });
 
 // ---------- 페어링 코드 ----------
