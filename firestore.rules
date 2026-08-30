@@ -104,12 +104,33 @@ service cloud.firestore {
       allow read: if isOwner()
                   || (isSignedIn() && resource.data.uid == request.auth.uid);
 
+      // 관리자 화면에 그대로 그려지는 값들이라 필드를 못박는다.
+      // 화이트리스트 밖의 필드를 허용하면 유저가 관리자 화면에 아무거나 심을 수 있고,
+      // 문서 id 도 마찬가지라 (data-id 속성에 들어간다) 영숫자로만 제한한다.
       allow create: if isSignedIn()
+                    && reportId.matches('^[A-Za-z0-9_-]{1,64}$')
                     && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.keys().hasOnly(
+                         ['uid', 'nickname', 'email', 'text', 'page',
+                          'agent', 'status', 'hasImage', 'createdAt'])
                     && request.resource.data.text is string
                     && request.resource.data.text.size() > 0
                     && request.resource.data.text.size() <= 2000
-                    && request.resource.data.status == 'open';
+                    && request.resource.data.status == 'open'
+                    && (!('nickname' in request.resource.data)
+                        || (request.resource.data.nickname is string
+                            && request.resource.data.nickname.size() <= 200))
+                    && (!('email' in request.resource.data)
+                        || (request.resource.data.email is string
+                            && request.resource.data.email.size() <= 400))
+                    && (!('page' in request.resource.data)
+                        || (request.resource.data.page is string
+                            && request.resource.data.page.size() <= 200))
+                    && (!('agent' in request.resource.data)
+                        || (request.resource.data.agent is string
+                            && request.resource.data.agent.size() <= 1000))
+                    && (!('hasImage' in request.resource.data)
+                        || request.resource.data.hasImage is bool);
 
       // 상태를 바꾸거나 지우는 건 관리자만. 유저가 자기 제보를 고쳐 쓰지는 못한다.
       allow update, delete: if isOwner();
@@ -124,7 +145,10 @@ service cloud.firestore {
                   || (isSignedIn() && resource.data.uid == request.auth.uid);
 
       allow create: if isSignedIn()
+                    && reportId.matches('^[A-Za-z0-9_-]{1,64}$')
                     && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.keys().hasOnly(
+                         ['uid', 'chunks', 'w', 'h', 'createdAt'])
                     && request.resource.data.chunks is list
                     && request.resource.data.chunks.size() > 0
                     && request.resource.data.chunks.size() <= 600;

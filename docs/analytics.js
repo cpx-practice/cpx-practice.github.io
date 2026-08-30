@@ -11,6 +11,8 @@ const esc = (s) => {
   d.textContent = s;
   return d.innerHTML;
 };
+// esc 는 따옴표를 남기므로 속성값 자리에는 이쪽을 쓴다. app.js 의 escAttr 과 같은 이유다.
+const escAttr = (s) => esc(s).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 // 점수(백분율) → 4단계 밴드. 케이스 막대와 영역 막대가 같은 기준을 쓴다.
 function band(pct) {
@@ -120,7 +122,7 @@ function wireOnce() {
   sel.value = "weak";
 
   // 검색창 아래에 뜨는 선택지. 케이스 목록은 고정이라 한 번만 채우면 된다.
-  el("caseNames").innerHTML = TOPICS.map((t) => `<option value="${esc(t.name)}"></option>`).join("");
+  el("caseNames").innerHTML = TOPICS.map((t) => `<option value="${escAttr(t.name)}"></option>`).join("");
 
   const redraw = () => {
     if (lastStats) renderCases(lastStats);
