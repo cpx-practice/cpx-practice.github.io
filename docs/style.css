@@ -176,6 +176,12 @@ textarea { resize: vertical; }
 .btn.primary:hover { background: var(--accent-hover); }
 .btn.ghost { background: transparent; }
 .btn.small { padding: 4px 10px; font-size: 0.8rem; }
+/* 링크를 버튼 모양으로 쓸 때. a 는 기본이 inline 이라 위아래 여백이 안 먹는다. */
+a.btn { display: inline-block; text-decoration: none; }
+
+/* 설명서 내려받기 줄 — 버튼과 설명이 한 줄, 좁은 화면에서는 접힌다. */
+.doc-dl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
+.doc-dl .hint { margin: 0; }
 
 .panel {
   background: var(--panel);

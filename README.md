@@ -202,6 +202,28 @@ Cloud Storage 는 쓰지 않습니다. 이 프로젝트에는 버킷이 만들�
 
 ---
 
+### 사용 설명서 PDF
+
+유저용 설명서는 `docs/cpx-manual.pdf` 로 사이트와 함께 올라가고, **이용 방법** 탭 맨 위와
+**막혔을 때** 아래에서 내려받게 걸어뒀습니다. 원본은 `manual/cpx-manual.html` 입니다
+(`manual/` 은 Pages 가 `docs/` 만 서비스하므로 공개되지 않습니다).
+
+고칠 때는 HTML 을 고치고 아래로 다시 뽑습니다. 헤드리스 크롬이면 되고 별도 도구가 필요 없습니다.
+
+```bash
+chrome --headless=new --no-pdf-header-footer \
+  --print-to-pdf=docs/cpx-manual.pdf manual/cpx-manual.html
+```
+
+jsPDF 류를 안 쓴 이유는 기록 내려받기와 같습니다 — 한글 폰트를 통째로 실어야 하고, 인쇄
+경로는 글자가 선택·검색되는 PDF 를 그냥 만들어 줍니다. 링크의 `download` 속성이 파일명을
+한글로 바꿔주므로 저장소 안 파일명은 ASCII 로 둡니다.
+
+설명서에 적힌 주소·명령·배점은 스킬(`cpx-plugin/cpx/skills/`)과 이 저장소의 화면을 보고 쓴
+것이라, 케이스 목록이나 채점 배점을 바꾸면 설명서도 같이 고쳐야 합니다.
+
+---
+
 ### 웹앱 파일 구성
 
 | 파일 | 하는 일 |
