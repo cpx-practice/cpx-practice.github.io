@@ -89,10 +89,12 @@ export function initInterviewTab({ db, auth, endpoint }) {
     chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  function addTopicBar(topic) {
+  // 케이스 주제(특히 무작위로 뽑힌 것)는 실제 시험처럼 학생이 미리 알면 안 되므로
+  // 여기서는 절대 이름을 보여주지 않는다. 평가가 끝난 뒤 addEvalCard 에서만 공개한다.
+  function addTopicBar() {
     const bar = document.createElement("div");
     bar.className = "iv-topicbar";
-    bar.innerHTML = `<span class="dot"></span> <b>${esc(topic)}</b> 케이스 · 문진 진행 중`;
+    bar.innerHTML = `<span class="dot"></span> 면담이 시작되었습니다 — 먼저 말을 걸어보세요`;
     chatLog.appendChild(bar);
   }
 
@@ -113,7 +115,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     return row;
   }
 
-  function addEvalCard(record, mdText) {
+  function addEvalCard(record, mdText, topic) {
     const row = document.createElement("div");
     row.className = "iv-msg iv-eval";
     const total = typeof record.total === "number" ? `${record.total} / 100` : "";
@@ -123,6 +125,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
           <span class="grade">${esc(record.grade || "채점 완료")}</span>
           <span class="score">${esc(total)}</span>
         </div>
+        ${topic ? `<div class="iv-eval-topic">케이스: ${esc(topic)}</div>` : ""}
         <div class="iv-eval-body md">${renderMarkdown(mdText)}</div>
       </div>`;
     chatLog.appendChild(row);
@@ -160,18 +163,35 @@ export function initInterviewTab({ db, auth, endpoint }) {
     return data;
   }
 
+  // Gemini 가 돌려준 원문 에러(JSON 문자열)에서 사람이 읽을 message 만 뽑는다.
+  // 파싱이 안 되면 원문을 그대로 잘라 보여준다 — 숨기는 것보다 낫다.
+  function geminiDetailText(detail) {
+    if (!detail) return "";
+    try {
+      const parsed = JSON.parse(detail);
+      const msg = parsed?.error?.message;
+      if (msg) return msg;
+    } catch {
+      /* JSON 이 아니면 원문 그대로 */
+    }
+    return String(detail).slice(0, 200);
+  }
+
   function friendlyError(err) {
     const code = err?.data?.error;
     if (code === "missing_api_key" || err.status === 401) return "키가 잘못됐거나 만료됐습니다. 키를 다시 확인해주세요.";
     if (code === "unknown_topic") return "그 주제를 찾지 못했습니다.";
     if (code === "session_expired") return "면담이 만료됐습니다. 새로 시작해주세요.";
     if (code === "too_many_turns") return "이 면담은 길이 제한에 도달했습니다. 새로 시작해주세요.";
-    if (code === "gemini_error" && err?.data?.status === 429) return "지금 요청이 몰려 있습니다(무료 한도). 잠시 후 다시 시도해주세요.";
-    if (code === "gemini_error" && (err?.data?.status === 400 || err?.data?.status === 403)) {
-      return "Gemini 키가 올바르지 않거나 이 모델을 쓸 수 없는 키입니다. \"키 변경\"에서 다시 확인해주세요.";
-    }
-    if (code === "gemini_error" && err?.data?.status === 404) {
-      return "설정된 Gemini 모델을 찾을 수 없습니다 (운영자에게 알려주세요: gemini_error 404).";
+    if (code === "gemini_error") {
+      const detail = geminiDetailText(err?.data?.detail);
+      const suffix = detail ? `\n(Gemini: ${detail})` : "";
+      if (err?.data?.status === 429) return "지금 요청이 몰려 있습니다(무료 한도). 잠시 후 다시 시도해주세요." + suffix;
+      if (err?.data?.status === 400 || err?.data?.status === 403) {
+        return "Gemini 키 또는 모델 문제로 요청이 거부됐습니다." + suffix;
+      }
+      if (err?.data?.status === 404) return "설정된 Gemini 모델을 찾을 수 없습니다." + suffix;
+      return "Gemini 요청이 실패했습니다." + suffix;
     }
     if (code === "empty_response") {
       return "환자 역할 응답이 비어 왔습니다" + (err?.data?.blockReason ? ` (사유: ${err.data.blockReason})` : "") + ". 다시 시도해주세요.";
@@ -189,13 +209,13 @@ export function initInterviewTab({ db, auth, endpoint }) {
     try {
       const data = await callWorker("/interview/start", { topic: topicSelect.value || undefined });
       sessionId = data.sessionId;
+      // 학생이 직접 주제를 골랐어도 화면엔 안 보여준다 — 평가 후 카드에서만 공개해서
+      // 무작위로 뽑았을 때와 경험이 갈리지 않게 한다.
       topicLabel = data.topic || "무작위";
       transcript = [];
       chatLog.innerHTML = "";
-      chatTitle.textContent = topicLabel;
-      addTopicBar(topicLabel);
-      addBubble("환자", data.opening);
-      transcript.push({ role: "환자", text: data.opening });
+      chatTitle.textContent = "면담";
+      addTopicBar();
       ivStatus.textContent = "";
       showChatPanel();
       ivInput.focus();
@@ -222,7 +242,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       const record = extractRecord(data.reply);
       const shown = record ? stripRecordBlock(data.reply) : data.reply;
       if (data.done && record) {
-        addEvalCard(record, shown);
+        addEvalCard(record, shown, record.topic || topicLabel);
         await saveRecord(record, shown);
         addBubble("__note", "채점 결과가 \"내 기록\" 탭에 저장되었습니다.");
         sessionId = null;
