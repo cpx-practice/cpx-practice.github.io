@@ -1,5 +1,13 @@
 // 면담(Gemini) 탭 — 학생이 자기 무료 Gemini API 키로 브라우저에서 바로 SP 면담을 한다.
-// 케이스 정답(dx·PE 소견)은 cpx-worker 가 들고 있고, 여기서는 절대 받지 않는다.
+//
+// Gemini 호출은 cpx-worker 를 거치지 않고 브라우저가 직접 한다. Cloudflare Worker에서
+// generativelanguage.googleapis.com 으로 나가는 요청이 구글 쪽 지역 차단
+// ("User location is not supported for the API use")에 걸리는 게 확인돼서, 학생
+// 브라우저(실제 위치)가 직접 부르는 쪽으로 옮겼다. Worker(/interview/start)는 케이스를
+// 뽑아 시스템 프롬프트만 만들어준다 — 즉 케이스 정답(dx·PE 소견)이 이제 브라우저
+// 메모리에 있다. 다만 cpx-worker 저장소 자체가 공개 GitHub 레포라 케이스 JSON은
+// 원래도 공개돼 있었다 — 화면 UI에 안 보이게 하는 것 이상의 은닉은 애초에 없었다.
+//
 // 채점이 끝나면 plugin 업로드와 같은 모양의 문서를 records/recordDetails 에 직접 쓴다
 // (여기는 브라우저 세션이라 Firebase Auth 로 이미 로그인돼 있으므로 워커를 거칠 필요가 없다).
 
@@ -9,6 +17,7 @@ import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
 
 const KEY_STORAGE = "cpx-gemini-key";
+const MAX_TURNS = 80; // 학생 메시지 기준. 버그로 인한 무한루프 등으로부터의 안전장치일 뿐 — 비용은 학생 본인 몫이라 낮게 잡을 이유는 없다.
 const $ = (id) => document.getElementById(id);
 
 export function initInterviewTab({ db, auth, endpoint }) {
@@ -32,9 +41,13 @@ export function initInterviewTab({ db, auth, endpoint }) {
     topicSelect.appendChild(opt);
   }
 
-  let sessionId = null;
+  // 현재 면담 상태 — 전부 브라우저 메모리에만 있고 새로고침하면 사라진다.
+  let systemPrompt = null;
+  let model = null;
+  let safetySettings = null;
+  let history = []; // Gemini 형식 [{role:"user"|"model", parts:[{text}]}]
   let topicLabel = "";
-  let transcript = []; // { role: "의사"|"환자", text }
+  let sessionId = null;
   let sending = false;
 
   function getKey() {
@@ -84,6 +97,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
     keyInput.value = getKey();
     showKeyPanel();
   });
+
+  // ---------------- 채팅 로그 렌더링 ----------------
 
   function scrollToBottom() {
     chatLog.scrollTop = chatLog.scrollHeight;
@@ -147,10 +162,12 @@ export function initInterviewTab({ db, auth, endpoint }) {
     typingRow = null;
   }
 
+  // ---------------- Worker: 케이스 뽑기 ----------------
+
   async function callWorker(path, payload) {
     const res = await fetch(endpoint + path, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + getKey() },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload || {}),
     });
     const data = await res.json().catch(() => ({}));
@@ -163,43 +180,65 @@ export function initInterviewTab({ db, auth, endpoint }) {
     return data;
   }
 
-  // Gemini 가 돌려준 원문 에러(JSON 문자열)에서 사람이 읽을 message 만 뽑는다.
-  // 파싱이 안 되면 원문을 그대로 잘라 보여준다 — 숨기는 것보다 낫다.
-  function geminiDetailText(detail) {
-    if (!detail) return "";
-    try {
-      const parsed = JSON.parse(detail);
-      const msg = parsed?.error?.message;
-      if (msg) return msg;
-    } catch {
-      /* JSON 이 아니면 원문 그대로 */
-    }
-    return String(detail).slice(0, 200);
-  }
-
-  function friendlyError(err) {
+  function friendlyStartError(err) {
     const code = err?.data?.error;
-    if (code === "missing_api_key" || err.status === 401) return "키가 잘못됐거나 만료됐습니다. 키를 다시 확인해주세요.";
     if (code === "unknown_topic") return "그 주제를 찾지 못했습니다.";
-    if (code === "session_expired") return "면담이 만료됐습니다. 새로 시작해주세요.";
-    if (code === "too_many_turns") return "이 면담은 길이 제한에 도달했습니다. 새로 시작해주세요.";
-    if (code === "gemini_error") {
-      const detail = geminiDetailText(err?.data?.detail);
-      const suffix = detail ? `\n(Gemini: ${detail})` : "";
-      if (err?.data?.status === 429) return "지금 요청이 몰려 있습니다(무료 한도). 잠시 후 다시 시도해주세요." + suffix;
-      if (err?.data?.status === 400 || err?.data?.status === 403) {
-        return "Gemini 키 또는 모델 문제로 요청이 거부됐습니다." + suffix;
-      }
-      if (err?.data?.status === 404) return "설정된 Gemini 모델을 찾을 수 없습니다." + suffix;
-      return "Gemini 요청이 실패했습니다." + suffix;
-    }
-    if (code === "empty_response") {
-      return "환자 역할 응답이 비어 왔습니다" + (err?.data?.blockReason ? ` (사유: ${err.data.blockReason})` : "") + ". 다시 시도해주세요.";
-    }
     if (code === "topic_not_supported") return "이 케이스는 아직 웹 면담에서 지원하지 않습니다.";
     if (code === "case_not_bundled") return "케이스 데이터를 찾지 못했습니다 (운영자에게 알려주세요).";
-    // 예상 못 한 코드는 그냥 숨기지 않고 코드 자체를 보여준다 — 다음에 원인을 바로 알 수 있게.
-    return "오류가 발생했습니다" + (code ? ` (${code})` : "") + ". 다시 시도해주세요.";
+    return "케이스를 준비하지 못했습니다. 다시 시도해주세요.";
+  }
+
+  // ---------------- Gemini: 실제 면담 (브라우저가 직접 호출) ----------------
+
+  // Gemini 가 돌려준 원문 에러(JSON)에서 사람이 읽을 message 만 뽑는다.
+  function geminiDetailText(bodyText) {
+    if (!bodyText) return "";
+    try {
+      const parsed = JSON.parse(bodyText);
+      return parsed?.error?.message || "";
+    } catch {
+      return String(bodyText).slice(0, 200);
+    }
+  }
+
+  function friendlyGeminiError(status, bodyText) {
+    const detail = geminiDetailText(bodyText);
+    const suffix = detail ? `\n(Gemini: ${detail})` : "";
+    if (status === 401 || status === 403) return "Gemini 키가 올바르지 않거나 권한이 없습니다." + suffix;
+    if (status === 429) return "지금 요청이 몰려 있습니다(무료 한도). 잠시 후 다시 시도해주세요." + suffix;
+    if (status === 404) return "설정된 Gemini 모델을 찾을 수 없습니다." + suffix;
+    if (status === 503) return "Gemini 서버가 지금 붐빕니다. 잠시 후 다시 시도해주세요." + suffix;
+    return "Gemini 요청이 실패했습니다." + suffix;
+  }
+
+  async function callGemini() {
+    const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(getKey())}`;
+    const res = await fetch(geminiEndpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: history,
+        safetySettings,
+        generationConfig: { temperature: 0.8 },
+      }),
+    });
+    if (!res.ok) {
+      const bodyText = await res.text();
+      const err = new Error("gemini_error");
+      err.status = res.status;
+      err.bodyText = bodyText;
+      throw err;
+    }
+    const data = await res.json();
+    const reply = data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
+    if (!reply) {
+      const blockReason = data?.promptFeedback?.blockReason || data?.candidates?.[0]?.finishReason || null;
+      const err = new Error("empty_response");
+      err.blockReason = blockReason;
+      throw err;
+    }
+    return reply;
   }
 
   $("btnStartInterview").addEventListener("click", async () => {
@@ -208,11 +247,14 @@ export function initInterviewTab({ db, auth, endpoint }) {
     btn.disabled = true;
     try {
       const data = await callWorker("/interview/start", { topic: topicSelect.value || undefined });
-      sessionId = data.sessionId;
+      systemPrompt = data.systemPrompt;
+      model = data.model;
+      safetySettings = data.safetySettings;
       // 학생이 직접 주제를 골랐어도 화면엔 안 보여준다 — 평가 후 카드에서만 공개해서
       // 무작위로 뽑았을 때와 경험이 갈리지 않게 한다.
       topicLabel = data.topic || "무작위";
-      transcript = [];
+      history = [];
+      sessionId = crypto.randomUUID();
       chatLog.innerHTML = "";
       chatTitle.textContent = "면담";
       addTopicBar();
@@ -220,7 +262,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       showChatPanel();
       ivInput.focus();
     } catch (err) {
-      startErr.textContent = friendlyError(err);
+      startErr.textContent = friendlyStartError(err);
       startErr.classList.remove("hidden");
     } finally {
       btn.disabled = false;
@@ -228,31 +270,41 @@ export function initInterviewTab({ db, auth, endpoint }) {
   });
 
   async function sendMessage(text) {
-    if (!text.trim() || sending || !sessionId) return;
+    if (!text.trim() || sending || !systemPrompt) return;
+    if (history.filter((h) => h.role === "user").length >= MAX_TURNS) {
+      addBubble("__note", "이 면담은 길이 제한에 도달했습니다. 새로 시작해주세요.");
+      return;
+    }
     sending = true;
     $("btnIvSend").disabled = true;
     addBubble("의사", text);
-    transcript.push({ role: "의사", text });
+    history.push({ role: "user", parts: [{ text: text.slice(0, 4000) }] });
     ivInput.value = "";
     ivStatus.textContent = "";
     showTyping();
     try {
-      const data = await callWorker("/interview/message", { sessionId, message: text });
+      const reply = await callGemini();
       hideTyping();
-      const record = extractRecord(data.reply);
-      const shown = record ? stripRecordBlock(data.reply) : data.reply;
-      if (data.done && record) {
+      history.push({ role: "model", parts: [{ text: reply }] });
+
+      const record = extractRecord(reply);
+      const shown = record ? stripRecordBlock(reply) : reply;
+      if (record) {
         addEvalCard(record, shown, record.topic || topicLabel);
         await saveRecord(record, shown);
         addBubble("__note", "채점 결과가 \"내 기록\" 탭에 저장되었습니다.");
-        sessionId = null;
+        systemPrompt = null; // 이 면담은 끝 — 새로 시작해야 다음 메시지가 된다
       } else {
         addBubble("환자", shown);
-        transcript.push({ role: "환자", text: shown });
       }
     } catch (err) {
       hideTyping();
-      addBubble("__note", friendlyError(err));
+      history.pop(); // 실패한 학생 턴은 대화 맥락에서 뺀다 (다시 보내면 중복되지 않게)
+      if (err.message === "empty_response") {
+        addBubble("__note", "환자 역할 응답이 비어 왔습니다" + (err.blockReason ? ` (사유: ${err.blockReason})` : "") + ". 다시 시도해주세요.");
+      } else {
+        addBubble("__note", friendlyGeminiError(err.status, err.bodyText));
+      }
     } finally {
       sending = false;
       $("btnIvSend").disabled = false;
@@ -266,7 +318,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   $("btnCuePE").addEventListener("click", () => sendMessage("진찰"));
   $("btnCueEval").addEventListener("click", () => sendMessage("평가"));
   $("btnEndInterview").addEventListener("click", () => {
-    sessionId = null;
+    systemPrompt = null;
     showStartPanel();
   });
 
@@ -283,6 +335,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
     return (text || "").replace(/```cpx-record[\s\S]*?```/, "").trim();
   }
 
+  // ---------------- 기록 저장 ----------------
+
   async function saveRecord(record, evalText) {
     const user = auth.currentUser;
     if (!user) return;
@@ -295,7 +349,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
       /* 못 읽으면 보수적으로 저장 안 함 */
     }
 
-    const script = transcript.map((t) => `${t.role}: ${t.text}`).join("\n\n");
+    const script = history
+      .map((h) => `${h.role === "user" ? "의사" : "환자"}: ${(h.parts || []).map((p) => p.text || "").join("")}`)
+      .join("\n\n");
     const docId = doc(collection(db, "records")).id;
 
     const detail = { uid: user.uid, createdAt: serverTimestamp() };
