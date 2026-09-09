@@ -87,8 +87,10 @@
              기능 자체는 그대로 살아있다 — 이 hidden 만 지우면 다시 노출된다. -->
         <button class="subtab hidden" data-view="interview">면담(Gemini)</button>
         <button class="subtab" data-view="claude">Claude</button>
-        <button class="subtab" data-view="report">오류 제보</button>
-        <button class="subtab" data-view="pair">이용 방법</button>
+        <!-- 오류 제보 · 이용 방법은 상단 탭에서 뺐다 — 설정 화면의 "도움말" 바로가기 버튼으로만 연다.
+             view 전환 로직은 그대로 재사용하므로 hidden 만 지우면 상단 탭으로도 복원된다. -->
+        <button class="subtab hidden" data-view="report">오류 제보</button>
+        <button class="subtab hidden" data-view="pair">이용 방법</button>
         <button class="subtab" data-view="settings">설정</button>
         <button class="subtab hidden" data-view="admin" id="tabAdmin">관리자</button>
       </nav>
@@ -444,6 +446,14 @@
 
       <!-- ===== 설정 ===== -->
       <div id="viewSettings" class="hidden">
+        <div class="panel">
+          <h2>도움말</h2>
+          <div class="settings-links">
+            <button class="btn ghost" id="btnGoPair" data-goto="pair">이용 방법 보기</button>
+            <button class="btn ghost" id="btnGoReport" data-goto="report">오류 제보하기</button>
+          </div>
+        </div>
+
         <div class="panel">
           <h2>저장 설정</h2>
           <label class="check big">

@@ -132,15 +132,25 @@ const views = {
 };
 
 initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
+
+function activateView(viewName) {
+  const btn = document.querySelector(`.subtab[data-view="${viewName}"]`);
+  if (!btn) return;
+  document.querySelectorAll(".subtab").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  for (const [name, el] of Object.entries(views)) {
+    el.classList.toggle("hidden", name !== viewName);
+  }
+  if (viewName === "analysis") drawAnalytics();
+}
+
 document.querySelectorAll(".subtab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".subtab").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    for (const [name, el] of Object.entries(views)) {
-      el.classList.toggle("hidden", name !== btn.dataset.view);
-    }
-    if (btn.dataset.view === "analysis") drawAnalytics();
-  });
+  btn.addEventListener("click", () => activateView(btn.dataset.view));
+});
+
+// ---------- 설정 화면의 바로가기 ----------
+document.querySelectorAll("#viewSettings [data-goto]").forEach((btn) => {
+  btn.addEventListener("click", () => activateView(btn.dataset.goto));
 });
 
 // ---------- 하위 탭 스크롤 표시 ----------

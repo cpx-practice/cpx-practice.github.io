@@ -183,6 +183,9 @@ a.btn { display: inline-block; text-decoration: none; }
 .doc-dl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px; }
 .doc-dl .hint { margin: 0; }
 
+/* 설정 화면의 다른 탭 바로가기 버튼 줄 */
+.settings-links { display: flex; gap: 10px; flex-wrap: wrap; }
+
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
