@@ -155,6 +155,11 @@ document.querySelectorAll(".subtab").forEach((btn) => {
   btn.addEventListener("click", () => activateView(btn.dataset.view));
 });
 
+// ---------- 좌상단 로고 — 기본 화면(내 기록)으로 이동 ----------
+$("btnHome").addEventListener("click", () => {
+  if (!dashboardSection.classList.contains("hidden")) activateView("records");
+});
+
 // ---------- 설정 화면의 바로가기 ----------
 document.querySelectorAll("#viewSettings [data-goto]").forEach((btn) => {
   btn.addEventListener("click", () => activateView(btn.dataset.goto));

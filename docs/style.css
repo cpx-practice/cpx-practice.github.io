@@ -109,7 +109,16 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
-.brand { font-weight: 700; font-size: 1.1rem; }
+.brand {
+  font-weight: 700;
+  font-size: 1.1rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+}
 
 .topbar nav { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; }
 .topbar nav a { color: var(--accent); text-decoration: none; }
