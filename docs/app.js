@@ -133,7 +133,9 @@ const views = {
 
 initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
 
-function activateView(viewName) {
+// 탭 전환마다 히스토리를 쌓아둔다. 안 쌓으면 "오류 제보"처럼 설정에서 들어간 화면에서
+// 뒤로가기를 눌렀을 때 돌아갈 앱 내 기록이 없어서 브라우저가 사이트 진입 전 페이지로 나가버린다.
+function activateView(viewName, { push = true } = {}) {
   const btn = document.querySelector(`.subtab[data-view="${viewName}"]`);
   if (!btn) return;
   document.querySelectorAll(".subtab").forEach((b) => b.classList.remove("active"));
@@ -142,7 +144,12 @@ function activateView(viewName) {
     el.classList.toggle("hidden", name !== viewName);
   }
   if (viewName === "analysis") drawAnalytics();
+  if (push) history.pushState({ view: viewName }, "", `#${viewName}`);
 }
+
+window.addEventListener("popstate", (e) => {
+  activateView(e.state?.view || "records", { push: false });
+});
 
 document.querySelectorAll(".subtab").forEach((btn) => {
   btn.addEventListener("click", () => activateView(btn.dataset.view));
