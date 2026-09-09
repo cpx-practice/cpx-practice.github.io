@@ -122,9 +122,18 @@ export function initInterviewTab({ db, auth, endpoint }) {
     if (code === "too_many_turns") return "이 면담은 길이 제한에 도달했습니다. 새로 시작해주세요.";
     if (code === "gemini_error" && err?.data?.status === 429) return "지금 요청이 몰려 있습니다(무료 한도). 잠시 후 다시 시도해주세요.";
     if (code === "gemini_error" && (err?.data?.status === 400 || err?.data?.status === 403)) {
-      return "Gemini 키가 올바르지 않습니다. \"키 변경\"에서 다시 확인해주세요.";
+      return "Gemini 키가 올바르지 않거나 이 모델을 쓸 수 없는 키입니다. \"키 변경\"에서 다시 확인해주세요.";
     }
-    return "일시적인 오류가 발생했습니다. 다시 시도해주세요.";
+    if (code === "gemini_error" && err?.data?.status === 404) {
+      return "설정된 Gemini 모델을 찾을 수 없습니다 (운영자에게 알려주세요: gemini_error 404).";
+    }
+    if (code === "empty_response") {
+      return "환자 역할 응답이 비어 왔습니다" + (err?.data?.blockReason ? ` (사유: ${err.data.blockReason})` : "") + ". 다시 시도해주세요.";
+    }
+    if (code === "topic_not_supported") return "이 케이스는 아직 웹 면담에서 지원하지 않습니다.";
+    if (code === "case_not_bundled") return "케이스 데이터를 찾지 못했습니다 (운영자에게 알려주세요).";
+    // 예상 못 한 코드는 그냥 숨기지 않고 코드 자체를 보여준다 — 다음에 원인을 바로 알 수 있게.
+    return "오류가 발생했습니다" + (code ? ` (${code})` : "") + ". 다시 시도해주세요.";
   }
 
   $("btnStartInterview").addEventListener("click", async () => {
