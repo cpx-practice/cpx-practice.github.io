@@ -121,6 +121,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
     if (code === "session_expired") return "면담이 만료됐습니다. 새로 시작해주세요.";
     if (code === "too_many_turns") return "이 면담은 길이 제한에 도달했습니다. 새로 시작해주세요.";
     if (code === "gemini_error" && err?.data?.status === 429) return "지금 요청이 몰려 있습니다(무료 한도). 잠시 후 다시 시도해주세요.";
+    if (code === "gemini_error" && (err?.data?.status === 400 || err?.data?.status === 403)) {
+      return "Gemini 키가 올바르지 않습니다. \"키 변경\"에서 다시 확인해주세요.";
+    }
     return "일시적인 오류가 발생했습니다. 다시 시도해주세요.";
   }
 
