@@ -83,7 +83,9 @@
       <nav class="subnav">
         <button class="subtab active" data-view="records">내 기록</button>
         <button class="subtab" data-view="analysis">분석</button>
-        <button class="subtab" data-view="interview">면담(Gemini)</button>
+        <!-- 면담(Gemini) 탭은 잠시 내려둔다 (Gemini 무료 티어 안정성 문제).
+             기능 자체는 그대로 살아있다 — 이 hidden 만 지우면 다시 노출된다. -->
+        <button class="subtab hidden" data-view="interview">면담(Gemini)</button>
         <button class="subtab" data-view="claude">Claude</button>
         <button class="subtab" data-view="report">오류 제보</button>
         <button class="subtab" data-view="pair">이용 방법</button>
