@@ -1,0 +1,25 @@
+name: Deploy Firestore Rules
+
+# 사이트 본체(docs/)는 GitHub Pages 가 push 만으로 바로 서빙하므로 여기서 다루지 않는다.
+# firestore.rules 는 Firebase 쪽에 별도로 배포해야 반영되므로, 로컬에 Node 가 없어도
+# 되게 여기서 대신 한다.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "firestore.rules"
+      - "firestore.indexes.json"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Deploy Firestore rules
+        run: npx firebase-tools@latest deploy --only firestore:rules,firestore:indexes --project cpx-tracker

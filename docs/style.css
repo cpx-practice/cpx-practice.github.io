@@ -1034,6 +1034,59 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* 아주 좁은 화면(320px 대)에서는 케이스 표 5열이 2px 정도 모자라 가로 스크롤이 생긴다.
    "최고" 를 접는다 — 펼치면 성적 추이에 최고점이 그대로 나오므로 잃는 정보가 없다.
    (앞선 규칙이 병력/진찰/PPI 를 이미 감췄으므로 여기서 4번째 칸이 "최고" 다.) */
+/* ---------- 면담(Gemini) 채팅 ---------- */
+.ivfield { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); margin-bottom: 12px; max-width: 320px; }
+.ivfield select {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.iv-chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 12px;
+  background: var(--inset);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.iv-msg { display: flex; }
+.iv-msg.iv-me { justify-content: flex-end; }
+.iv-msg.iv-them { justify-content: flex-start; }
+.iv-msg.iv-note, .iv-msg.iv-eval { justify-content: stretch; }
+.iv-bubble {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 80%;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.iv-me .iv-bubble { background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 2px; }
+.iv-them .iv-bubble { background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
+.iv-note .iv-bubble { max-width: 100%; background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); font-size: 0.85rem; }
+.iv-eval .iv-bubble { max-width: 100%; background: var(--panel); border: 1px solid var(--accent); font-family: ui-monospace, monospace; font-size: 0.82rem; }
+
+.iv-quick { display: flex; gap: 8px; margin-bottom: 10px; }
+.iv-input { display: flex; gap: 8px; }
+.iv-input input {
+  flex: 1;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
 @media (max-width: 340px) {
   #caseTable th:nth-child(4),
   #caseTable td:nth-child(4) { display: none; }

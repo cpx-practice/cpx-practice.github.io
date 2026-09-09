@@ -15,6 +15,9 @@ const firebaseConfig = {
 
 const MARKETPLACE = "raphael4040-ash/cpx-marketplace";
 
+// 면담(Gemini) 탭이 호출하는 cpx-worker 주소. cpx-worker/wrangler.toml 의 배포 주소와 같아야 한다.
+const INTERVIEW_ENDPOINT = "https://cpx-upload.raphael40402652.workers.dev";
+
 // 이 기록판의 관리자 uid. firestore.rules 의 ownerUid() 와 반드시 같아야 한다.
 const OWNER_UID = "S4b2Zqzff2XHNznL1Wcq6RiZVGv1";
 
@@ -42,6 +45,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 import { renderAnalytics } from "./analytics.js";
+import { initInterviewTab } from "./interview.js";
 import { TOPICS, matchTopic } from "./topics.js";
 import { downscaleImage, chunkText, joinChunks as joinImageChunks } from "./image.js";
 import {
@@ -119,11 +123,14 @@ tabRegister.addEventListener("click", () => {
 const views = {
   records: $("viewRecords"),
   analysis: $("viewAnalysis"),
+  interview: $("viewInterview"),
   claude: $("viewClaude"),
   report: $("viewReport"),
   pair: $("viewPair"), // 화면 이름은 "이용 방법"
   settings: $("viewSettings"),
 };
+
+initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
 document.querySelectorAll(".subtab").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".subtab").forEach((b) => b.classList.remove("active"));

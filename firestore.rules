@@ -68,7 +68,7 @@ service cloud.firestore {
       allow create: if isSignedIn()
                     && isApproved()
                     && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.source in ['manual', 'plugin']
+                    && request.resource.data.source in ['manual', 'plugin', 'web']
                     && (!('transcriptChunks' in request.resource.data)
                         || request.resource.data.transcriptChunks.size() <= 500)
                     && (!('evaluationChunks' in request.resource.data)

@@ -83,6 +83,7 @@
       <nav class="subnav">
         <button class="subtab active" data-view="records">내 기록</button>
         <button class="subtab" data-view="analysis">분석</button>
+        <button class="subtab" data-view="interview">면담(Gemini)</button>
         <button class="subtab" data-view="claude">Claude</button>
         <button class="subtab" data-view="report">오류 제보</button>
         <button class="subtab" data-view="pair">이용 방법</button>
@@ -177,6 +178,59 @@
             <p class="hint warn-inline hidden" id="coverUnmatched"></p>
           </div>
 
+        </div>
+      </div>
+
+      <!-- ===== 면담(Gemini) ===== -->
+      <div id="viewInterview" class="hidden">
+        <div class="panel" id="ivKeyPanel">
+          <h2>Gemini 키 등록</h2>
+          <p class="hint">
+            이 기기에서만 브라우저에 저장되고, 서버에는 저장되지 않습니다. 면담 요청마다
+            이 키를 함께 보내 그 자리에서만 쓰고 버립니다. 무료이며 카드 등록이 필요 없습니다.
+          </p>
+          <ol class="steps">
+            <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> 접속 후 구글 계정으로 로그인</li>
+            <li>"Create API key" 클릭 → 새 프로젝트 선택 → 키 복사</li>
+            <li>아래 칸에 붙여넣기</li>
+          </ol>
+          <div class="pair-box">
+            <textarea id="ivKeyInput" class="token" rows="2" placeholder="여기에 API 키를 붙여넣으세요"></textarea>
+            <div class="pair-actions">
+              <button class="btn primary" id="btnSaveKey">저장</button>
+              <span class="hint" id="ivKeySavedMsg"></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel hidden" id="ivStartPanel">
+          <div class="panel-header">
+            <h2>면담 시작</h2>
+            <button class="btn ghost small" id="btnChangeKey">키 변경</button>
+          </div>
+          <label class="ivfield">
+            주제
+            <select id="ivTopic"><option value="">무작위</option></select>
+          </label>
+          <button class="btn primary" id="btnStartInterview">시작</button>
+          <p class="err hidden" id="ivStartErr"></p>
+        </div>
+
+        <div class="panel hidden" id="ivChatPanel">
+          <div class="panel-header">
+            <h2 id="ivChatTitle">면담 중</h2>
+            <button class="btn ghost small" id="btnEndInterview">새로 시작</button>
+          </div>
+          <div class="iv-chat" id="ivChatLog"></div>
+          <div class="iv-quick">
+            <button type="button" class="btn small ghost" id="btnCuePE">진찰</button>
+            <button type="button" class="btn small ghost" id="btnCueEval">평가</button>
+          </div>
+          <form class="iv-input" id="ivForm">
+            <input type="text" id="ivInput" placeholder="메시지를 입력하세요" autocomplete="off" />
+            <button type="submit" class="btn primary" id="btnIvSend">보내기</button>
+          </form>
+          <p class="hint" id="ivStatus"></p>
         </div>
       </div>
 
