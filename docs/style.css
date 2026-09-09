@@ -1037,55 +1037,193 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* ---------- 면담(Gemini) 채팅 ---------- */
 .ivfield { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); margin-bottom: 12px; max-width: 320px; }
 .ivfield select {
-  padding: 8px 10px;
+  padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--panel);
   color: var(--text);
   font-size: 0.9rem;
 }
+
+.iv-topicbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px 14px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.iv-topicbar .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent);
+  flex: none;
+}
+.iv-topicbar b { color: var(--text); font-weight: 600; }
 
 .iv-chat {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: 50vh;
+  gap: 14px;
+  max-height: 55vh;
   overflow-y: auto;
-  padding: 12px;
+  padding: 16px 14px;
   background: var(--inset);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  margin-bottom: 10px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  scroll-behavior: smooth;
 }
-.iv-msg { display: flex; }
+
+.iv-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  animation: iv-in 0.18s ease-out;
+}
+@keyframes iv-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 .iv-msg.iv-me { justify-content: flex-end; }
 .iv-msg.iv-them { justify-content: flex-start; }
-.iv-msg.iv-note, .iv-msg.iv-eval { justify-content: stretch; }
+.iv-msg.iv-eval { justify-content: stretch; }
+
+.iv-avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel));
+  border: 1px solid var(--border);
+}
+
 .iv-bubble {
   display: inline-block;
-  padding: 8px 12px;
-  border-radius: 12px;
-  max-width: 80%;
-  font-size: 0.9rem;
-  line-height: 1.5;
+  padding: 10px 14px;
+  border-radius: 18px;
+  max-width: 74%;
+  font-size: 0.92rem;
+  line-height: 1.55;
   white-space: pre-wrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
-.iv-me .iv-bubble { background: var(--accent); color: var(--on-accent); border-bottom-right-radius: 2px; }
-.iv-them .iv-bubble { background: var(--panel); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
-.iv-note .iv-bubble { max-width: 100%; background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); font-size: 0.85rem; }
-.iv-eval .iv-bubble { max-width: 100%; background: var(--panel); border: 1px solid var(--accent); font-family: ui-monospace, monospace; font-size: 0.82rem; }
+.iv-me .iv-bubble {
+  background: linear-gradient(165deg, var(--accent), var(--accent-hover));
+  color: var(--on-accent);
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.iv-them .iv-bubble {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+}
+.iv-note {
+  justify-content: center;
+}
+.iv-note .iv-bubble {
+  max-width: 92%;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-text);
+  font-size: 0.82rem;
+  border-radius: 10px;
+  box-shadow: none;
+  text-align: center;
+}
+
+/* 채점 결과 — 말풍선이 아니라 카드로 낸다. 정보량이 많아서 폭을 다 쓴다. */
+.iv-eval-card {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.iv-eval-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  color: var(--on-accent);
+}
+.iv-eval-head .grade {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.iv-eval-head .score {
+  font-size: 0.82rem;
+  opacity: 0.92;
+}
+.iv-eval-body {
+  padding: 4px 16px 14px;
+  font-size: 0.88rem;
+}
+
+/* 타이핑 표시 — 답이 오기 전까지 잠깐 나오는 점 세 개 */
+.iv-typing .iv-bubble {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 13px 16px;
+}
+.iv-typing .iv-bubble span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted);
+  animation: iv-bounce 1.1s infinite ease-in-out;
+}
+.iv-typing .iv-bubble span:nth-child(2) { animation-delay: 0.15s; }
+.iv-typing .iv-bubble span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes iv-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
 
 .iv-quick { display: flex; gap: 8px; margin-bottom: 10px; }
-.iv-input { display: flex; gap: 8px; }
+.iv-quick .btn {
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+
+.iv-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 5px 5px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.iv-input:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
 .iv-input input {
   flex: 1;
-  padding: 9px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
+  border: 0;
+  background: transparent;
   color: var(--text);
-  font-size: 0.9rem;
+  font-size: 0.92rem;
+  padding: 8px 0;
+  outline: none;
 }
+.iv-input .btn.primary {
+  border-radius: 999px;
+  padding: 8px 18px;
+}
+.iv-input .btn.primary:disabled { opacity: 0.6; }
 
 @media (max-width: 340px) {
   #caseTable th:nth-child(4),

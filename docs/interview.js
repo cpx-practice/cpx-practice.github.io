@@ -6,14 +6,10 @@
 import { doc, collection, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
+import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
 
 const KEY_STORAGE = "cpx-gemini-key";
 const $ = (id) => document.getElementById(id);
-const esc = (s) => {
-  const d = document.createElement("div");
-  d.textContent = s;
-  return d.innerHTML;
-};
 
 export function initInterviewTab({ db, auth, endpoint }) {
   const keyPanel = $("ivKeyPanel");
@@ -89,13 +85,63 @@ export function initInterviewTab({ db, auth, endpoint }) {
     showKeyPanel();
   });
 
-  function addBubble(role, text) {
-    const cls = { 의사: "iv-me", __note: "iv-note", __eval: "iv-eval" }[role] || "iv-them";
-    const row = document.createElement("div");
-    row.className = "iv-msg " + cls;
-    row.innerHTML = `<span class="iv-bubble">${esc(text).replace(/\n/g, "<br>")}</span>`;
-    chatLog.appendChild(row);
+  function scrollToBottom() {
     chatLog.scrollTop = chatLog.scrollHeight;
+  }
+
+  function addTopicBar(topic) {
+    const bar = document.createElement("div");
+    bar.className = "iv-topicbar";
+    bar.innerHTML = `<span class="dot"></span> <b>${esc(topic)}</b> 케이스 · 문진 진행 중`;
+    chatLog.appendChild(bar);
+  }
+
+  function addBubble(role, text) {
+    const row = document.createElement("div");
+    if (role === "__note") {
+      row.className = "iv-msg iv-note";
+      row.innerHTML = `<span class="iv-bubble">${esc(text)}</span>`;
+    } else {
+      const isMe = role === "의사";
+      row.className = "iv-msg " + (isMe ? "iv-me" : "iv-them");
+      const avatar = isMe ? "" : `<span class="iv-avatar" aria-hidden="true">🧑‍🦱</span>`;
+      const bubble = `<span class="iv-bubble">${esc(text).replace(/\n/g, "<br>")}</span>`;
+      row.innerHTML = isMe ? bubble : avatar + bubble;
+    }
+    chatLog.appendChild(row);
+    scrollToBottom();
+    return row;
+  }
+
+  function addEvalCard(record, mdText) {
+    const row = document.createElement("div");
+    row.className = "iv-msg iv-eval";
+    const total = typeof record.total === "number" ? `${record.total} / 100` : "";
+    row.innerHTML = `
+      <div class="iv-eval-card">
+        <div class="iv-eval-head">
+          <span class="grade">${esc(record.grade || "채점 완료")}</span>
+          <span class="score">${esc(total)}</span>
+        </div>
+        <div class="iv-eval-body md">${renderMarkdown(mdText)}</div>
+      </div>`;
+    chatLog.appendChild(row);
+    scrollToBottom();
+  }
+
+  let typingRow = null;
+  function showTyping() {
+    typingRow = document.createElement("div");
+    typingRow.className = "iv-msg iv-them iv-typing";
+    typingRow.innerHTML =
+      `<span class="iv-avatar" aria-hidden="true">🧑‍🦱</span>` +
+      `<span class="iv-bubble"><span></span><span></span><span></span></span>`;
+    chatLog.appendChild(typingRow);
+    scrollToBottom();
+  }
+  function hideTyping() {
+    typingRow?.remove();
+    typingRow = null;
   }
 
   async function callWorker(path, payload) {
@@ -146,7 +192,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
       topicLabel = data.topic || "무작위";
       transcript = [];
       chatLog.innerHTML = "";
-      chatTitle.textContent = `면담 중 · ${topicLabel}`;
+      chatTitle.textContent = topicLabel;
+      addTopicBar(topicLabel);
       addBubble("환자", data.opening);
       transcript.push({ role: "환자", text: data.opening });
       ivStatus.textContent = "";
@@ -163,27 +210,32 @@ export function initInterviewTab({ db, auth, endpoint }) {
   async function sendMessage(text) {
     if (!text.trim() || sending || !sessionId) return;
     sending = true;
+    $("btnIvSend").disabled = true;
     addBubble("의사", text);
     transcript.push({ role: "의사", text });
     ivInput.value = "";
-    ivStatus.textContent = "환자가 답하는 중...";
+    ivStatus.textContent = "";
+    showTyping();
     try {
       const data = await callWorker("/interview/message", { sessionId, message: text });
+      hideTyping();
       const record = extractRecord(data.reply);
       const shown = record ? stripRecordBlock(data.reply) : data.reply;
-      addBubble(data.done ? "__eval" : "환자", shown);
-      ivStatus.textContent = "";
       if (data.done && record) {
+        addEvalCard(record, shown);
         await saveRecord(record, shown);
-        addBubble("__note", "채점 결과가 내 기록에 저장되었습니다. \"내 기록\" 탭에서 확인할 수 있습니다.");
+        addBubble("__note", "채점 결과가 \"내 기록\" 탭에 저장되었습니다.");
         sessionId = null;
       } else {
+        addBubble("환자", shown);
         transcript.push({ role: "환자", text: shown });
       }
     } catch (err) {
-      ivStatus.textContent = friendlyError(err);
+      hideTyping();
+      addBubble("__note", friendlyError(err));
     } finally {
       sending = false;
+      $("btnIvSend").disabled = false;
     }
   }
 
