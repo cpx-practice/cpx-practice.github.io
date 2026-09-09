@@ -211,7 +211,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     return "Gemini 요청이 실패했습니다." + suffix;
   }
 
-  async function callGemini() {
+  async function callGeminiOnce() {
     const geminiEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(getKey())}`;
     const res = await fetch(geminiEndpoint, {
       method: "POST",
@@ -239,6 +239,23 @@ export function initInterviewTab({ db, auth, endpoint }) {
       throw err;
     }
     return reply;
+  }
+
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // 무료 인기 모델은 "지금 붐빕니다"(503) 가 흔하고 보통 몇 초 안에 풀린다.
+  // 학생에게 바로 에러를 보여주기 전에 짧게 두 번만 조용히 재시도한다.
+  async function callGemini() {
+    const backoffs = [1500, 3000];
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await callGeminiOnce();
+      } catch (err) {
+        if (err.status !== 503 || attempt >= backoffs.length) throw err;
+        ivStatus.textContent = "환자가 답하는 중... (서버 혼잡, 재시도 중)";
+        await sleep(backoffs[attempt]);
+      }
+    }
   }
 
   $("btnStartInterview").addEventListener("click", async () => {
@@ -285,6 +302,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     try {
       const reply = await callGemini();
       hideTyping();
+      ivStatus.textContent = "";
       history.push({ role: "model", parts: [{ text: reply }] });
 
       const record = extractRecord(reply);
@@ -299,6 +317,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       }
     } catch (err) {
       hideTyping();
+      ivStatus.textContent = "";
       history.pop(); // 실패한 학생 턴은 대화 맥락에서 뺀다 (다시 보내면 중복되지 않게)
       if (err.message === "empty_response") {
         addBubble("__note", "환자 역할 응답이 비어 왔습니다" + (err.blockReason ? ` (사유: ${err.blockReason})` : "") + ". 다시 시도해주세요.");
