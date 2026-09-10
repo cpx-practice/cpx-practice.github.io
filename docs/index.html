@@ -357,9 +357,16 @@
             </li>
 
             <li>
-              <b>CPX 플러그인 설치</b> — Claude 안에서 아래 두 줄을 차례로 입력합니다.
-              <pre class="code" id="installCmd">/plugin marketplace add raphael4040-ash/cpx-marketplace</pre>
-              <pre class="code">/plugin install cpx@cpx-marketplace</pre>
+              <b>CPX 플러그인 설치</b> — 채팅 하단의 <b>+</b> 버튼 → <b>플러그인</b> →
+              <b>플러그인 탐색</b>을 누른 뒤, 우상단 <b>추가</b> → <b>마켓플레이스 추가</b> →
+              <b>저장소에서 추가</b>를 누르고 URL 칸에 아래 값을 붙여넣습니다.
+              <pre class="code">raphael4040-ash/cpx-marketplace</pre>
+              <p class="hint">추가되면 목록에서 <code>cpx</code> 플러그인을 찾아 설치를 누릅니다.</p>
+              <details class="alt">
+                <summary>터미널(또는 채팅 명령)이 편하다면</summary>
+                <pre class="code" id="installCmd">/plugin marketplace add raphael4040-ash/cpx-marketplace</pre>
+                <pre class="code">/plugin install cpx@cpx-marketplace</pre>
+              </details>
               <p class="hint">
                 설치 후 <code>/reload-plugins 를 실행하세요</code> 라는 안내가 나오면 그것도 입력합니다.
                 안 나오면 넘어가도 됩니다.

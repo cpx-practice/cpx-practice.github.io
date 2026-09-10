@@ -211,8 +211,13 @@ Mac / Linux            curl -fsSL https://claude.ai/install.sh | bash</pre>
 
   <div class="step">
     <div class="h"><span class="num">2</span>CPX 플러그인 설치</div>
-    <p>Claude 안에서 아래 두 줄을 차례로 입력합니다. 첫 줄은 플러그인이 있는 곳을 등록하고, 둘째 줄이
-    실제 설치입니다.</p>
+    <p>채팅 하단의 <b>+</b> 버튼 → <b>플러그인</b> → <b>플러그인 탐색</b>을 누른 뒤, 우상단
+    <b>추가</b> → <b>마켓플레이스 추가</b> → <b>저장소에서 추가</b>를 누르고 URL 칸에 아래 값을
+    붙여넣습니다.</p>
+<pre>raphael4040-ash/cpx-marketplace</pre>
+    <p>추가되면 목록에서 <code>cpx</code> 플러그인을 찾아 설치를 누릅니다.</p>
+    <p>터미널(또는 채팅 명령)이 편하다면 아래 두 줄을 Claude 안에서 차례로 입력해도 됩니다. 첫 줄은
+    플러그인이 있는 곳을 등록하고, 둘째 줄이 실제 설치입니다.</p>
 <pre>/plugin marketplace add raphael4040-ash/cpx-marketplace
 /plugin install cpx@cpx-marketplace</pre>
     <p>설치가 끝나고 <code>/reload-plugins 를 실행하세요</code> 라는 안내가 나오면 그것도 입력합니다.
