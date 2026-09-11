@@ -120,6 +120,17 @@ body {
   font-family: inherit;
 }
 
+.brand-group {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.version-badge {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
 .topbar nav { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; }
 .topbar nav a { color: var(--accent); text-decoration: none; }
 .who { color: var(--muted); }

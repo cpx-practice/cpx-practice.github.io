@@ -16,7 +16,10 @@
 </head>
 <body>
   <header class="topbar">
-    <button type="button" class="brand" id="btnHome">CPX 기록판</button>
+    <div class="brand-group">
+      <button type="button" class="brand" id="btnHome">CPX 기록판</button>
+      <span class="version-badge" id="latestVersion" title="마켓플레이스 최신 버전">…</span>
+    </div>
     <nav id="navAuthed" class="hidden">
       <span class="who" id="whoName"></span>
       <a href="#" id="btnLogout">로그아웃</a>
@@ -325,12 +328,8 @@
           </div>
           <p class="hint">
             아무것도 깔려 있지 않은 컴퓨터 기준입니다. 순서대로 하면 15분쯤 걸리고, 연결은 한 번만 하면 됩니다.
-          </p>
-
-          <p class="hint">
-            마켓플레이스 최신 버전: <strong id="latestVersion">확인 중…</strong> —
-            이미 설치한 플러그인의 버전이 이보다 낮다면 <code>/plugin update cpx@cpx-marketplace</code>
-            로 업데이트하세요.
+            최신 버전은 왼쪽 위 <b>CPX 기록판</b> 옆에 항상 떠 있습니다 — 설치한 플러그인 버전이
+            그보다 낮으면 <code>/plugin update cpx@cpx-marketplace</code> 로 업데이트하세요.
           </p>
 
           <p class="doc-dl">
