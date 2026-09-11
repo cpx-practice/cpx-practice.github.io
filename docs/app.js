@@ -68,6 +68,7 @@ const authSection = $("authSection");
 const dashboardSection = $("dashboardSection");
 const navAuthed = $("navAuthed");
 const whoName = $("whoName");
+const uploadToast = $("uploadToast");
 
 const tabLogin = $("tabLogin");
 const tabRegister = $("tabRegister");
@@ -253,6 +254,74 @@ $("btnLogout").addEventListener("click", async (e) => {
   await signOut(auth);
 });
 
+// ---------- 저장 링크 (Claude 정식 채팅 등 훅이 없는 환경의 보조 업로드) ----------
+// 스킬이 평가 끝에 내는 링크: ?upload=1&topic=<topicId>&total=&history=&pe=&ppi=
+// 한글이 인코딩 실수로 깨질 수 있어 링크에는 숫자·하이픈뿐인 topicId 와 정수 점수만
+// 신는다. grade 는 total 로 이 페이지가 스스로 계산하고, summary(총평)는 링크에
+// 애초에 담지 않는다 — 어차피 채팅에 이미 떠 있는 내용이다.
+function gradeFromTotal(total) {
+  if (typeof total !== "number") return "";
+  if (total >= 90) return "우수";
+  if (total >= 80) return "양호";
+  if (total >= 70) return "보통 (개선 필요)";
+  return "미흡";
+}
+
+function readPendingUpload() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("upload") !== "1") return null;
+  const topicId = params.get("topic");
+  const topic = TOPICS.find((t) => t.num === topicId);
+  if (!topic) return null;
+  const toInt = (key) => {
+    const n = Number(params.get(key));
+    return Number.isFinite(n) ? Math.round(n) : null;
+  };
+  return {
+    topic: topic.name,
+    total: toInt("total"),
+    history: toInt("history"),
+    pe: toInt("pe"),
+    ppi: toInt("ppi"),
+  };
+}
+
+async function saveLinkRecord(user, rec) {
+  const docId = doc(collection(db, "records")).id;
+  const data = {
+    uid: user.uid,
+    source: "manual",
+    topic: rec.topic,
+    grade: gradeFromTotal(rec.total),
+    note: "",
+    hasEvaluation: true,
+    hasTranscript: false,
+    createdAt: serverTimestamp(),
+  };
+  if (typeof rec.total === "number") data.totalScore = rec.total;
+  if (typeof rec.history === "number") data.historyScore = rec.history;
+  if (typeof rec.pe === "number") data.peScore = rec.pe;
+  if (typeof rec.ppi === "number") data.ppiScore = rec.ppi;
+  await setDoc(doc(db, "records", docId), data);
+}
+
+async function handlePendingUpload(user) {
+  const pending = readPendingUpload();
+  if (!pending) return;
+  // 저장 성공 여부와 무관하게 URL 부터 정리한다 — 안 지우면 새로고침마다 중복 저장된다.
+  history.replaceState(null, "", location.pathname);
+  try {
+    await saveLinkRecord(user, pending);
+    uploadToast.textContent =
+      `기록이 저장됐습니다 — ${pending.topic}` +
+      (typeof pending.total === "number" ? ` · ${pending.total}점 · ${gradeFromTotal(pending.total)}` : "");
+  } catch (err) {
+    uploadToast.textContent = `기록 저장 실패: ${err.code || err.message}`;
+  }
+  uploadToast.classList.remove("hidden");
+  setTimeout(() => uploadToast.classList.add("hidden"), 6000);
+}
+
 // ---------- 로그인 상태 ----------
 onAuthStateChanged(auth, async (user) => {
   if (unsubscribeRecords) {
@@ -314,6 +383,8 @@ onAuthStateChanged(auth, async (user) => {
   watchMyReports(user.uid);
 
   watchRecords(user.uid);
+
+  handlePendingUpload(user);
 });
 
 // users 문서가 없는 계정(구버전 가입자 등)은 기본값으로 만들어 준다.
@@ -533,7 +604,7 @@ function renderRecords(rows) {
     // data-label 은 좁은 화면에서 표가 카드로 접힐 때 각 칸의 이름표로 쓰인다.
     tr.innerHTML = `
       <td data-label="날짜">${fmtDateTime(r.createdAt)}</td>
-      <td data-label="주제">${escapeHtml(r.topic || "")}${r.source === "plugin" ? '<span class="pill">자동</span>' : ""}</td>
+      <td data-label="주제">${escapeHtml(r.topic || "")}${r.source === "plugin" ? '<span class="pill">자동</span>' : ""}${r.source === "manual" ? '<span class="pill">링크</span>' : ""}</td>
       <td data-label="총점" class="score">${dash(r.totalScore)}</td>
       <td data-label="병력">${dash(r.historyScore)}</td>
       <td data-label="진찰">${dash(r.peScore)}</td>

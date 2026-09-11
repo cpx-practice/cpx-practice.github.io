@@ -303,6 +303,16 @@ pre.code {
 }
 .ok { font-size: 0.85rem; color: var(--ok); margin: 0; }
 
+.toast-ok {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ok);
+  border: 1px solid var(--ok);
+  border-radius: 8px;
+  padding: 9px 12px;
+  margin: 0 0 12px;
+}
+
 .panel.danger { border-color: var(--danger-border); }
 .panel.danger h2 { color: var(--danger-text); }
 
