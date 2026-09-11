@@ -98,6 +98,24 @@ const adminViewHost = viewAdmin.parentElement;
 const setRequireApproval = $("setRequireApproval");
 const adminSaved = $("adminSaved");
 
+// ---------- 마켓플레이스 최신 버전 표시 ----------
+// plugin.json 을 로컬에 따로 적어두면 배포할 때마다 잊고 안 맞춰서 어긋난다
+// (1.3.60 배포 때 실제로 그랬다). 대신 저장소에서 매번 직접 읽는다.
+(async () => {
+  const el = $("latestVersion");
+  if (!el) return;
+  try {
+    const res = await fetch(
+      `https://raw.githubusercontent.com/${MARKETPLACE}/main/.claude-plugin/marketplace.json`
+    );
+    if (!res.ok) throw new Error(String(res.status));
+    const data = await res.json();
+    el.textContent = data.plugins?.[0]?.version || "확인 실패";
+  } catch {
+    el.textContent = "확인 실패 (네트워크)";
+  }
+})();
+
 let unsubscribeRecords = null;
 let currentRows = [];
 let profile = null; // users/{uid} 캐시
