@@ -150,9 +150,15 @@ const views = {
   settings: $("viewSettings"),
 };
 
-// 면담(AI) 탭은 개발 중이라 로컬 개발 서버에서만 연다 (배포된 GitHub Pages 에선 계속 숨김).
+// 면담(AI) 탭은 개발 중이라 로컬 개발 서버나 관리자 계정에서만 연다 (setInterviewTab).
 const IS_DEV_HOST = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
-if (IS_DEV_HOST) document.querySelector('.subtab[data-view="interview"]')?.classList.remove("hidden");
+const tabInterview = document.querySelector('.subtab[data-view="interview"]');
+function setInterviewTab(isAdmin) {
+  const on = IS_DEV_HOST || isAdmin;
+  tabInterview?.classList.toggle("hidden", !on);
+  // 관리자로 면담 탭을 보던 중 다른 계정으로 바뀌면 숨은 탭에 머물지 않게 한다.
+  if (!on && tabInterview?.classList.contains("active")) activateView("records", { push: false });
+}
 initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
 
 // 탭 전환마다 히스토리를 쌓아둔다. 안 쌓으면 "오류 제보"처럼 설정에서 들어간 화면에서
@@ -395,6 +401,7 @@ onAuthStateChanged(auth, async (user) => {
   setConsent.checked = profile.consentTranscript === true;
 
   setAdminUi(isAdmin);
+  setInterviewTab(isAdmin);
   if (isAdmin) {
     setRequireApproval.checked = appConfig.requireApproval === true;
     watchUsers();
