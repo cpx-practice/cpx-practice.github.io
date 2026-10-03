@@ -117,6 +117,7 @@ const CHECKS = {
   closing: /(수고하셨|수고\s*많으셨|안녕히|조심히|들어가세요|다음에\s*뵙|다시\s*뵙|감사합니다|고맙습니다)/,
   consent: /(괜찮으|해도\s*될까|해도\s*되|하겠습니다|보겠습니다|볼게요|할게요|진찰을\s*위해|양해)/,
   safety: /(심해지|악화|다시\s*오|내원|응급실|바로\s*오|연락|생기면|나타나면|안\s*나오면)/,
+  weight: /(체중|몸무게|살이\s*빠|살\s*빠|살이\s*줄)/,
 };
 const ORDER = { X: 0, "△": 1, O: 2 };
 
@@ -151,6 +152,8 @@ export function auditMarks(record, history) {
   if (missingIce.length === 3) cap("ice", "X", "생각·걱정·기대를 묻는 질문 없음");
   else if (missingIce.length) cap("ice", "△", `${missingIce.join("·")} 질문 없음`);
 
+  // 전신증상(체중감소·발열·야간발한) 중 체중은 거의 모든 케이스에서 물어야 하는데 모델이 묻지 않아도 O 를 줬다.
+  if (!any(CHECKS.weight)) cap("redflag", "△", "전신증상 중 체중 변화 질문 없음");
   if (!any(CHECKS.summary)) cap("summary", "X", "환자 말을 정리해 확인하는 발화 없음");
   if (!any(CHECKS.safety)) cap("safety", "X", "악화 시 대처·재방문 안내 발화 없음");
   if (!any(CHECKS.closing, said.slice(-3))) cap("closing", "X", "끝인사 없음");
