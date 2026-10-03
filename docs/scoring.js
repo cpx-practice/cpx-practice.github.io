@@ -120,6 +120,11 @@ const CHECKS = {
   weight: /(체중|몸무게|살이\s*빠|살\s*빠|살이\s*줄)/,
 };
 const ORDER = { X: 0, "△": 1, O: 2 };
+// 상담·심리사회 케이스는 Red Flag 가 자살 위험·안전 평가 같은 케이스 고유 항목이라 전신증상 질문을 요구하지 않는다.
+const NO_SYSTEMIC_TOPICS = new Set([
+  "가정폭력", "성폭력", "자살", "물질오남용", "음주 상담", "금연 상담", "예방접종", "산전 진찰",
+  "성장 지연", "발달 지연", "나쁜 소식 전하기",
+]);
 
 /**
  * history: [{role:"user"|"assistant", text}] — 평가 직전까지의 대화.
@@ -153,7 +158,9 @@ export function auditMarks(record, history) {
   else if (missingIce.length) cap("ice", "△", `${missingIce.join("·")} 질문 없음`);
 
   // 전신증상(체중감소·발열·야간발한) 중 체중은 거의 모든 케이스에서 물어야 하는데 모델이 묻지 않아도 O 를 줬다.
-  if (!any(CHECKS.weight)) cap("redflag", "△", "전신증상 중 체중 변화 질문 없음");
+  if (!NO_SYSTEMIC_TOPICS.has(String(record.topic || "").trim()) && !any(CHECKS.weight)) {
+    cap("redflag", "△", "전신증상 중 체중 변화 질문 없음");
+  }
   if (!any(CHECKS.summary)) cap("summary", "X", "환자 말을 정리해 확인하는 발화 없음");
   if (!any(CHECKS.safety)) cap("safety", "X", "악화 시 대처·재방문 안내 발화 없음");
   if (!any(CHECKS.closing, said.slice(-3))) cap("closing", "X", "끝인사 없음");
