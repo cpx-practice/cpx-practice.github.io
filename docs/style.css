@@ -1069,7 +1069,8 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
    (앞선 규칙이 병력/진찰/PPI 를 이미 감췄으므로 여기서 4번째 칸이 "최고" 다.) */
 /* ---------- 면담(Gemini) 채팅 ---------- */
 .ivfield { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; color: var(--muted); margin-bottom: 12px; max-width: 320px; }
-.ivfield select {
+.pair-box .ivfield { width: 100%; max-width: 420px; margin-bottom: 0; }
+.ivfield select, .ivfield input {
   padding: 9px 11px;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1199,6 +1200,10 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   font-size: 0.82rem;
   opacity: 0.92;
 }
+.iv-score { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 8px 0 12px; }
+.iv-score td { padding: 4px 6px; border-bottom: 1px solid var(--border); }
+.iv-score td:nth-child(2), .iv-score td:nth-child(3) { text-align: right; white-space: nowrap; }
+.iv-score tr.sub td { font-weight: 600; color: var(--text); }
 .iv-eval-topic {
   padding: 10px 16px 0;
   font-size: 0.8rem;

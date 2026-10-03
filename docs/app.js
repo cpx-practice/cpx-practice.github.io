@@ -15,7 +15,7 @@ const firebaseConfig = {
 
 const MARKETPLACE = "raphael4040-ash/cpx-marketplace";
 
-// 면담(Gemini) 탭이 호출하는 cpx-worker 주소. cpx-worker/wrangler.toml 의 배포 주소와 같아야 한다.
+// 면담(AI) 탭이 호출하는 cpx-worker 주소. cpx-worker/wrangler.toml 의 배포 주소와 같아야 한다.
 const INTERVIEW_ENDPOINT = "https://cpx-upload.raphael40402652.workers.dev";
 
 // 이 기록판의 관리자 uid. firestore.rules 의 ownerUid() 와 반드시 같아야 한다.
@@ -150,6 +150,9 @@ const views = {
   settings: $("viewSettings"),
 };
 
+// 면담(AI) 탭은 개발 중이라 로컬 개발 서버에서만 연다 (배포된 GitHub Pages 에선 계속 숨김).
+const IS_DEV_HOST = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
+if (IS_DEV_HOST) document.querySelector('.subtab[data-view="interview"]')?.classList.remove("hidden");
 initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
 
 // 탭 전환마다 히스토리를 쌓아둔다. 안 쌓으면 "오류 제보"처럼 설정에서 들어간 화면에서
