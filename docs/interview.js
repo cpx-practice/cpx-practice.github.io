@@ -630,6 +630,13 @@ export function initInterviewTab({ db, auth, endpoint }) {
         // 두 번째도 채점이면 본문 전체가 채점표라 환자 말로 보여줄 수 없다 — 중립 지문으로 대신한다.
         if (looksLikeEvaluation(reply)) reply = "(환자가 고개를 끄덕입니다.)";
       }
+      // 연기 규칙을 설명하는 괄호 메모가 환자 말 앞에 붙는 일이 있었다 (Gemma 4:
+      // "(학생의 질문은 신체 진찰에 해당하므로, 환자는 직접적인 느낌을 답합니다.)"). 채점이 아니면 지운다.
+      // 진찰이 시작된 뒤에는 "(환자는 …)" 같은 소견 괄호가 정상이라 문진 중에만 적용한다.
+      const examStarted = history.some(
+        (h) => h.role === "user" && (/^\s*진찰\s*$/.test(h.text) || /\([^)]*(촉진|청진|타진|시진|혈압|진찰|눌러|두드려|두드리|들어보|재보|측정)[^)]*\)/.test(h.text))
+      );
+      if (!isEvalCue && !examStarted) reply = stripMetaNotes(reply) || reply;
       hideTyping();
       ivStatus.textContent = "";
       history.push({ role: "assistant", text: reply });
@@ -683,6 +690,12 @@ export function initInterviewTab({ db, auth, endpoint }) {
 
   // 평가처럼 생긴 답인지 — 기록 블록 없이 즉흥 평가문을 환자 말풍선에 쓰는 일도 있었다.
   // cpx-worker/src/aiLimits.js 의 looksLikeEvaluation 과 같은 기준이다.
+  // 지문·소견 괄호는 두고, 학생·규칙·역할을 말하는 괄호만 지운다.
+  const META_NOTE = /\([^()]*(학생|질문은|역할|규칙|시뮬레이션|프롬프트)[^()]*\)\s*/g;
+  function stripMetaNotes(text) {
+    return String(text || "").replace(META_NOTE, "").trim();
+  }
+
   const EVAL_MARKERS = ["평가를 시작", "채점", "CPX", "병력청취", "병력 청취", "PPI", "잘한 점", "개선점", "총점", "Safety Netting", "신체 진찰 (", "종합 의견"];
   function looksLikeEvaluation(t) {
     if (extractRecord(t)) return true;
