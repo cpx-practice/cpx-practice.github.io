@@ -1200,14 +1200,18 @@ function renderUsers(rows) {
       <td>${escapeHtml(u.email || "")}</td>
       <td>${fmtDateTime(u.createdAt)}</td>
       <td>${pill}</td>
-      <td>${
+      <td class="actions">${
         isAdmin
           ? ""
-          : `<button class="btn ghost small js-approve">${approved ? "승인 취소" : "승인"}</button>`
+          : `<button class="btn ghost small js-approve">${approved ? "승인 취소" : "승인"}</button>` +
+            // 승인된 계정은 먼저 승인을 취소해야 한다 — 실수로 한 번에 지우지 않게 삭제는 취소된 뒤에만 보인다.
+            (approved ? "" : ' <button class="btn ghost small js-user-del">삭제</button>')
       }</td>
     `;
     const btn = tr.querySelector(".js-approve");
     if (btn) btn.addEventListener("click", () => setApproved(u, !approved));
+    const del = tr.querySelector(".js-user-del");
+    if (del) del.addEventListener("click", () => deleteUserAccount(u));
     body.appendChild(tr);
   }
 }
@@ -1226,6 +1230,28 @@ async function setApproved(u, next) {
       "변경하지 못했습니다.\n" +
         "Firestore 규칙이 아직 배포되지 않았을 가능성이 큽니다."
     );
+  }
+}
+
+// 승인이 취소된(또는 대기 중인) 계정을 목록에서 지운다. 지우는 것은 users/{uid} 문서(프로필·승인 상태·동의 설정)다.
+// 브라우저에서는 다른 사람의 로그인(Firebase Auth) 계정 자체를 지울 수 없고, 그 사람의 기록(records)은
+// 규칙상 본인만 지울 수 있어 남는다. 같은 계정으로 다시 로그인하면 loadProfile 이 빈 프로필을 새로 만들어
+// 승인 대기로 돌아간다 — 완전히 막으려면 Firebase 콘솔에서 Authentication 사용자도 지워야 한다.
+async function deleteUserAccount(u) {
+  if (u.uid === OWNER_UID || u.approved === true) return; // 관리자·승인된 계정은 지우지 않는다
+  const who = u.nickname || u.email || u.uid;
+  if (
+    !confirm(
+      `${who} 계정을 목록에서 삭제할까요?\n\n` +
+        "프로필·승인 상태·동의 설정이 지워집니다. 이 계정이 남긴 기록은 그대로 남고, " +
+        "같은 계정으로 다시 로그인하면 새 가입처럼 승인 대기로 나타납니다."
+    )
+  )
+    return;
+  try {
+    await deleteDoc(doc(db, "users", u.uid));
+  } catch {
+    alert("삭제하지 못했습니다.\n관리자 계정으로 로그인했는지, Firestore 규칙이 배포됐는지 확인해주세요.");
   }
 }
 

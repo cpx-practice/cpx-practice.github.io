@@ -380,6 +380,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     const other = " 더 연습하려면 \"AI 변경\"에서 Gemini(무료 키) 등을 고르세요.";
     if (code === "daily_budget_exhausted") return "오늘 무료 면담 한도가 모두 소진됐습니다. 오전 9시에 다시 열립니다." + other;
     if (code === "user_daily_limit") return `오늘 무료 면담을 모두 사용했습니다 (하루 ${data.limit}회). 오전 9시에 다시 열립니다.` + other;
+    if (code === "rate_limited") return "요청이 너무 잦습니다. 잠시 후(10분 안에) 다시 시도해주세요.";
     if (code === "login_required" || code === "bad_token") return "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요.";
     if (code === "not_approved") return "관리자 승인 후에 쓸 수 있습니다.";
     if (code === "session_expired") return "면담 세션이 만료됐습니다. \"새로 시작\"을 눌러주세요.";
