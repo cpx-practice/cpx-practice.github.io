@@ -60,3 +60,17 @@ test("낮춘 항목은 설명 줄의 표시도 같이 낮춘다", () => {
   assert.match(out, /^진찰 전 설명·동의: △ /m);
   assert.match(out, /^마무리 인사: O$/m);
 });
+
+test("설명 줄 앞에 번호·목록 기호·굵은 글씨가 붙어 있어도 맞춘다 (실제 모델 출력은 번호 목록이었다)", () => {
+  const changes = [{ label: "진찰 전 설명·동의", from: "O", to: "△", reason: "x" }];
+  const history = [u("어떤 병인지 짐작하시는 게 있나요? 걱정되는 건 뭔가요?"), u("어떤 도움을 기대하세요?")];
+  const record = { marks: { ice: "O" } };
+  for (const lead of ["1. ", "2) ", "- ", "* ", "• ", "  - ", "**"]) {
+    const bold = lead === "**";
+    const consentLine = bold ? "**진찰 전 설명·동의**: O (통보)" : `${lead}진찰 전 설명·동의: O ("진찰을 시작하겠습니다")`;
+    const iceLine = bold ? "**ICE**: O (원인에 대한 질문은 없었으나)" : `${lead}ICE: O (원인에 대한 질문은 없었으나)`;
+    const out = reconcileNarrative(`${consentLine}\n${iceLine}\n`, record, history, changes);
+    assert.match(out, /진찰 전 설명·동의\**: △ /, `동의 줄 (${JSON.stringify(lead)})`);
+    assert.match(out, /ICE\**: O \(생각·걱정·기대를 모두 질문함\)/, `ICE 줄 (${JSON.stringify(lead)})`);
+  }
+});

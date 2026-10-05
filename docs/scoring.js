@@ -199,10 +199,13 @@ export function auditMarks(record, history) {
  */
 export function reconcileNarrative(shown, record, history, changes = []) {
   let text = String(shown || "");
+  // 모델이 줄 앞에 목록 기호(-, *, •, 번호)나 굵은 글씨(**)를 붙이는 일이 있다. 화면에선 마크다운이라 안 보인다.
+  const LEAD = "[ \\t>]*(?:[-*•]\\s+|\\d+[.)]\\s+)?(?:\\*\\*)?\\s*";
+  const TAIL = "(?:\\*\\*)?";
   const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   for (const c of changes) {
     const name = String(c.label).split(" (")[0];
-    text = text.replace(new RegExp(`^(\\s*${esc(name)}\\s*[:：]\\s*)(O|△|X|N)`, "m"), `$1${c.to}`);
+    text = text.replace(new RegExp(`^(${LEAD}${esc(name)}${TAIL}\\s*[:：]\\s*(?:\\*\\*)?\\s*)(O|△|X|N)`, "m"), `$1${c.to}`);
   }
   const marks = record && record.marks;
   if (marks && normMark(marks.ice) === "O" && Array.isArray(history)) {
@@ -210,7 +213,7 @@ export function reconcileNarrative(shown, record, history, changes = []) {
       .filter((h) => h.role === "user" && !CUE.test(String(h.text || "")))
       .map((h) => String(h.text || "").replace(/\([^)]*\)/g, " "));
     const all = [CHECKS.iceIdea, CHECKS.iceConcern, CHECKS.iceExpect].every((re) => said.some((t) => re.test(t)));
-    if (all) text = text.replace(/^(\s*ICE[^:：\n]*[:：]\s*O)[^\n]*$/m, "$1 (생각·걱정·기대를 모두 질문함)");
+    if (all) text = text.replace(new RegExp(`^(${LEAD}ICE[^:：\\n]*[:：]\\s*(?:\\*\\*)?\\s*O)[^\\n]*$`, "m"), "$1 (생각·걱정·기대를 모두 질문함)");
   }
   return text;
 }
