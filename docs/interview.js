@@ -18,7 +18,7 @@ import { doc, collection, setDoc, getDoc, serverTimestamp } from "https://www.gs
 import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
-import { scoreRecord, auditMarks } from "./scoring.js";
+import { scoreRecord, auditMarks, reconcileNarrative } from "./scoring.js";
 
 const CONFIG_STORAGE = "cpx-ai-config"; // { provider, keys: {id: key}, models: {id: model} }
 const LEGACY_GEMINI_KEY = "cpx-gemini-key"; // 예전 Gemini 전용 시절 저장 위치 — 처음 한 번 옮겨온다
@@ -662,6 +662,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       if (record) {
         // AI 가 준 O 중 대화에 근거가 없는 것은 낮춘다 (scoring.js auditMarks). 바꾼 내역은 카드와 기록에 남긴다.
         const changes = auditMarks(record, history.slice(0, -1));
+        shown = reconcileNarrative(shown, record, history.slice(0, -1), changes);
         if (changes.length) {
           shown +=
             "\n\n대화 확인으로 조정한 항목\n" +

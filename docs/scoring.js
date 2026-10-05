@@ -116,6 +116,10 @@ const CHECKS = {
   summary: /(정리하면|정리해\s*보면|정리해\s*드리|요약하면|요약해\s*보면|말씀하신\s*(내용|걸|것)|이해한\s*(게|것|대로)|다시\s*(한\s*번\s*)?말씀드리면|맞나요|맞으세요|맞으신가요|맞으시죠|맞습니까)/,
   closing: /(건강하세요|쾌유|빨리\s*나으|살펴\s*가|수고하셨|수고\s*많으셨|고생\s*많으셨|고생하셨|안녕히|조심히|들어가세요|다음에\s*뵙|다시\s*뵙|감사합니다|고맙습니다)/,
   consent: /(괜찮으|해도\s*될까|해도\s*되|봐도\s*되|하겠습니다|보겠습니다|드리겠습니다|볼게요|할게요|진찰을\s*위해|양해|누워\s*주)/,
+  // 진찰 전 설명·동의는 "무엇을 할지 구체적으로 설명"하고 "허락을 구하거나 불편하면 알려 달라고 안내"해야 만점이다.
+  // "진찰을 시작하겠습니다" 같은 통보만으로는 △ 까지만 준다.
+  consentSpecific: /(혈압|체온|맥박|청진|촉진|타진|시진|목구멍|입을\s*벌|인두|복부|배를|배\s*좀|가슴|심장|폐|숨\s*소리|눌러|두드려|들어\s*보|살펴|누워)/,
+  consentPermit: /(괜찮으|해도\s*될까|해도\s*되|봐도\s*되|동의|양해|허락|불편하(시)?면|아프(시)?면|말씀해\s*주)/,
   safety: /(심해지|악화|지켜보시다가|경과를\s*보|다시\s*오|재방문|내원|응급실|연락|면\s*(바로|곧바로|즉시)|(면|때|경우).{0,15}(알려|말씀해)\s*주세요|생기면|나타나면)/,
   weight: /(체중|몸무게|살이\s*빠|살\s*빠|살이\s*줄|마르셨|말랐|야위)/,
 };
@@ -179,6 +183,34 @@ export function auditMarks(record, history) {
     const end = firstAct < 0 ? turns.length : firstAct + 1;
     const around = turns.slice(Math.max(0, peStart - 1), end).filter((t) => !CUE.test(t)).map((t) => t.replace(/\([^)]*\)/g, " "));
     if (!any(CHECKS.consent, around)) cap("consent", "X", "진찰 전 설명·동의 발화 없음");
+    else if (!(any(CHECKS.consentSpecific, around) && any(CHECKS.consentPermit, around))) {
+      cap("consent", "△", any(CHECKS.consentSpecific, around) ? "허락을 구하거나 불편하면 알려 달라는 안내 없음" : "무엇을 진찰할지 구체적인 설명 없음");
+    }
   }
   return changes;
+}
+
+/**
+ * auditMarks 가 표시를 낮췄거나, ICE 를 대화로 다시 확인했을 때, AI 가 쓴 항목별 설명 줄이 점수와 어긋나지 않게 맞춘다.
+ *   - 낮춘 항목의 줄 맨 앞 O/△/X 를 새 표시로 바꾼다 ("도입: O (…)" → "도입: △ (…)").
+ *   - 생각·걱정·기대를 모두 물었고 표시도 O 인데 설명이 "질문은 없었"이라고 하면(모델이 자기 점수와 모순되게 쓴 경우)
+ *     확인된 사실로 바꾼다.
+ * 점수 자체는 바꾸지 않는다. shown(채점 본문)을 고쳐 돌려준다.
+ */
+export function reconcileNarrative(shown, record, history, changes = []) {
+  let text = String(shown || "");
+  const esc = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  for (const c of changes) {
+    const name = String(c.label).split(" (")[0];
+    text = text.replace(new RegExp(`^(\\s*${esc(name)}\\s*[:：]\\s*)(O|△|X|N)`, "m"), `$1${c.to}`);
+  }
+  const marks = record && record.marks;
+  if (marks && normMark(marks.ice) === "O" && Array.isArray(history)) {
+    const said = history
+      .filter((h) => h.role === "user" && !CUE.test(String(h.text || "")))
+      .map((h) => String(h.text || "").replace(/\([^)]*\)/g, " "));
+    const all = [CHECKS.iceIdea, CHECKS.iceConcern, CHECKS.iceExpect].every((re) => said.some((t) => re.test(t)));
+    if (all) text = text.replace(/^(\s*ICE[^:：\n]*[:：]\s*O)[^\n]*$/m, "$1 (생각·걱정·기대를 모두 질문함)");
+  }
+  return text;
 }
