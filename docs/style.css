@@ -1272,3 +1272,14 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   #caseTable th:nth-child(4),
   #caseTable td:nth-child(4) { display: none; }
 }
+
+/* 관리자 계정 표 — 휴대폰에서는 작업 버튼(승인·삭제)이 화면 밖에 있어 매번 옆으로 밀어야 했다.
+   가입일 열을 숨기고 이메일을 줄바꿈하며, 버튼은 세로로 쌓는다. */
+@media (max-width: 640px) {
+  #adminTable th:nth-child(3),
+  #adminTable td:nth-child(3) { display: none; }
+  #adminTable td:nth-child(2) { word-break: break-all; min-width: 90px; font-size: 0.82rem; }
+  #adminTable td.actions { white-space: normal; }
+  #adminTable td.actions .btn { display: block; width: 100%; }
+  #adminTable td.actions .btn + .btn { margin: 4px 0 0; }
+}

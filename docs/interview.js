@@ -259,8 +259,10 @@ export function initInterviewTab({ db, auth, endpoint }) {
 
   // ---------------- 채팅 로그 렌더링 ----------------
 
+  // CSS 의 scroll-behavior: smooth 는 애니메이션 도중에 말풍선·입력 중 표시가 바뀌면 끝까지 못 가고 멈춘다.
+  // 새 메시지는 항상 맨 아래가 보여야 하므로 여기서는 즉시 이동한다.
   function scrollToBottom() {
-    chatLog.scrollTop = chatLog.scrollHeight;
+    chatLog.scrollTo({ top: chatLog.scrollHeight, behavior: "instant" });
   }
 
   // 케이스 주제(특히 무작위로 뽑힌 것)는 실제 시험처럼 학생이 미리 알면 안 되므로
@@ -615,7 +617,12 @@ export function initInterviewTab({ db, auth, endpoint }) {
   });
 
   async function sendMessage(text) {
-    if (!text.trim() || sending || !systemPrompt) return;
+    if (!text.trim() || sending) return;
+    if (!systemPrompt) {
+      // 평가가 끝난 면담에서 보내면 아무 반응이 없어 고장 난 것처럼 보인다.
+      if (history.length) addBubble("__note", "이 면담은 끝났습니다. 위의 \"새로 시작\"을 눌러 새 면담을 시작해주세요.");
+      return;
+    }
     if (history.filter((h) => h.role === "user").length >= MAX_TURNS) {
       addBubble("__note", "이 면담은 길이 제한에 도달했습니다. 새로 시작해주세요.");
       return;
