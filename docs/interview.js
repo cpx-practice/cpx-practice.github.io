@@ -402,6 +402,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   }
 
   function friendlyApiError(err) {
+    if (err.timeout) return "응답이 너무 늦어지고 있습니다. 방금 보낸 말을 입력창에 다시 넣어 두었으니, 잠시 후 다시 보내주세요.";
     if (isFree()) {
       let data = null;
       try {
@@ -409,6 +410,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       } catch {
         /* 무시 */
       }
+      if (data?.error === "ai_timeout") return "AI 응답이 지연됐습니다. 방금 보낸 말을 입력창에 다시 넣어 두었으니, 잠시 후 다시 보내주세요.";
       return freeLimitMessage(data) || "환자 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.";
     }
     const name = PROVIDERS[currentProvider()].label.replace(/\s*\(.*\)$/, "");
@@ -425,14 +427,27 @@ export function initInterviewTab({ db, auth, endpoint }) {
     return `${name} 요청이 실패했습니다.` + suffix;
   }
 
+  // 응답이 오지 않고 멈추는 경우(Workers AI 호출이 걸림)를 위한 상한. 평가는 재시도까지 해서 오래 걸릴 수 있다.
+  const REQUEST_TIMEOUT_MS = 90000;
+
   async function postJson(url, headers, body) {
     let res;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
     try {
-      res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...headers },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
     } catch (e) {
-      const err = new Error("network_error"); // CORS·오프라인 — status 없음
+      const err = new Error(ctrl.signal.aborted ? "timeout" : "network_error"); // CORS·오프라인 — status 없음
+      err.timeout = ctrl.signal.aborted;
       err.cause = e;
       throw err;
+    } finally {
+      clearTimeout(timer);
     }
     if (!res.ok) {
       const err = new Error("api_error");
@@ -583,6 +598,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       topicLabel = data.topic || "무작위";
       history = [];
       sessionId = crypto.randomUUID();
+      ivInput.value = ""; // 이전 면담의 남은 글자가 첫 메시지에 섞이지 않게
       chatLog.innerHTML = "";
       chatTitle.textContent = "면담";
       addTopicBar();
@@ -666,6 +682,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
       hideTyping();
       ivStatus.textContent = "";
       history.pop(); // 실패한 학생 턴은 대화 맥락에서 뺀다 (다시 보내면 중복되지 않게)
+      // 지연으로 실패한 말은 입력창에 돌려줘서 다시 보내기만 하면 되게 한다.
+      const delayed = err.timeout || (isFree() && /"ai_timeout"/.test(err.bodyText || ""));
+      if (delayed && !ivInput.value) ivInput.value = text;
       if (err.message === "empty_response") {
         addBubble("__note", "환자 역할 응답이 비어 왔습니다" + (err.blockReason ? ` (사유: ${err.blockReason})` : "") + ". 다시 시도해주세요.");
       } else {
