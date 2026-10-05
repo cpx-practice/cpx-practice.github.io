@@ -1,7 +1,7 @@
 // 웹 면담 채점 보정 테스트.  cd cpx-tracker && node --test test/
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { auditMarks, reconcileNarrative } from "../docs/scoring.js";
+import { auditMarks, reconcileNarrative, scoreRecord } from "../docs/scoring.js";
 
 const u = (text) => ({ role: "user", text });
 const a = (text) => ({ role: "assistant", text });
@@ -73,4 +73,21 @@ test("설명 줄 앞에 번호·목록 기호·굵은 글씨가 붙어 있어도
     assert.match(out, /진찰 전 설명·동의\**: △ /, `동의 줄 (${JSON.stringify(lead)})`);
     assert.match(out, /ICE\**: O \(생각·걱정·기대를 모두 질문함\)/, `ICE 줄 (${JSON.stringify(lead)})`);
   }
+});
+
+test("해당없음(N)은 신체진찰 항목에서만 만점이고, 병력청취·PPI 에서는 △ 로 본다", () => {
+  const marks = { ...allO(), language: "N", summary: "N", hpi: "N" };
+  const s = scoreRecord({ marks });
+  const row = (label) => s.rows.find((r) => r.label === label);
+  assert.equal(row("언어사용").mark, "△");
+  assert.equal(row("언어사용").got, 1);
+  assert.equal(row("요약·확인").got, 2);
+  assert.equal(row("주호소&현병력").got, 10);
+
+  // 신체진찰이 없는 케이스: 진찰 항목 전부 N 이면 20점 만점
+  const noPe = scoreRecord({ marks: { ...allO(), consent: "N", vitals: "N", pe1: "N", pe2: "N" } });
+  assert.equal(noPe.pe, 20);
+  // 핵심 수기가 1개뿐인 케이스: pe2 N → 수기 1 에 12점
+  const onePe = scoreRecord({ marks: { ...allO(), pe2: "N" } });
+  assert.equal(onePe.pe, 20);
 });

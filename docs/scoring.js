@@ -45,6 +45,9 @@ export const SECTIONS = [
 ];
 
 const RATIO = { O: 1, "△": 0.5, X: 0, N: 1 }; // N(해당없음)은 체크리스트 규칙대로 만점
+// 해당없음이 성립하는 항목은 신체진찰뿐이다 (진찰이 없는 케이스, 핵심 수기가 1개뿐인 케이스).
+// 병력청취·PPI 항목에 모델이 "판단 불가"의 뜻으로 N 을 붙여 공짜 만점이 되는 일이 있어서(언어사용 N → 2/2) △ 로 본다.
+const NA_ALLOWED = new Set(["consent", "vitals", "pe1", "pe2"]);
 
 function normMark(v) {
   const s = String(v ?? "").trim().toUpperCase();
@@ -81,7 +84,8 @@ export function scoreRecord(record) {
     let sub = 0;
     let max = 0;
     for (const [k, label, pts] of items) {
-      const m = normMark(marks[k]) || "X";
+      let m = normMark(marks[k]) || "X";
+      if (m === "N" && !NA_ALLOWED.has(k)) m = "△";
       const got = pts * RATIO[m];
       sub += got;
       max += pts;
