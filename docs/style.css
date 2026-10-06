@@ -1471,3 +1471,8 @@ html { scrollbar-gutter: stable; }
 #ivCloudBox { margin: 14px 0 6px; }
 #ivCloudBox .hint { margin: 6px 0 0 26px; font-size: 0.8rem; }
 #ivKeyPanel .pair-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+/* 케이스 표: td 에 display:flex 를 주면 표 셀이 아니게 되어 같은 행의 다른 칸과 높이가 따로 놀고 구분선이 어긋난다.
+   표 셀을 그대로 두고 캐럿만 인라인으로 맞춘다. */
+#caseTable td.case-name { display: table-cell; }
+#caseTable .case-name .caret { display: inline-block; margin-right: 6px; vertical-align: middle; }

@@ -139,3 +139,29 @@ test("점수 표 항목 이름에 맞는 근거를 찾는다 (짧은 이름·긴
   assert.equal(findReason(items, "핵심 진찰 수기"), "인후 시진 / 폐 청진"); // 수기가 하나로 합쳐진 케이스
   assert.equal(findReason(items, "없는 항목"), "");
 });
+
+test("근거 구분자가 '|' · '—' · '-' 로 바뀌어도 읽고, '#' 없는 구역 제목도 걷는다", () => {
+  const md = [
+    "I. 병력청취 (History taking)",
+    '도입 (5점): O | "성함과 나이를 말씀해 주시겠어요?"',
+    "주호소&현병력 (20점): △ — 양상 질문 부족",
+    "ICE (6점): X - 환자 생각·걱정 질문 없음",
+    "III. PPI (Patient-Physician Interaction) — 20점",
+    "라포 형성 (4점): O | 공감 표현",
+    "마무리 인사 (2점): X",
+    "",
+    "잘한 점",
+    "- 좋았다",
+  ].join("\n");
+  const items = parseEvalItems(md);
+  assert.deepEqual(items.map((i) => [i.label, i.mark, i.comment]), [
+    ["도입", "O", "성함과 나이를 말씀해 주시겠어요?"],
+    ["주호소&현병력", "△", "양상 질문 부족"],
+    ["ICE", "X", "환자 생각·걱정 질문 없음"],
+    ["라포 형성", "O", "공감 표현"],
+    ["마무리 인사", "X", ""],
+  ]);
+  const out = stripEvalItems(md);
+  assert.ok(!/도입|라포 형성|PPI|History taking/.test(out));
+  assert.match(out, /^잘한 점$/m);
+});

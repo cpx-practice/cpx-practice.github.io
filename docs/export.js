@@ -34,7 +34,15 @@ export function trimTranscript(script) {
 // 채점문의 항목 줄("1. 도입 (5점): X (근거)", "ICE: O (근거)")을 읽어 표로 바꾼다. 항목 줄이 이어진 곳만 바꾸고,
 // 이미 표가 있는 채점문(플러그인 기록)이나 항목 줄이 없는 글은 그대로 둔다. 배점이 없으면 채점표(scoring.js)에서 찾는다.
 const MARK_WORD = { O: "O", "△": "△", X: "X", N: "해당없음", 해당없음: "해당없음" };
-const ITEM_LINE = /^\s*(?:\d+[.)]\s+|[-*•]\s+)?(.{1,60}?)\s*[:：]\s*\**\s*(O|△|X|N|해당없음)\**(?![A-Za-z가-힣])\s*(?:[(（](.*)[)）])?\s*$/;
+// 근거는 모델이 "(근거)" 로도, "| 근거" · "— 근거" · "- 근거" · ": 근거" 로도 쓴다 (실제로 형식이 바뀐 적이 있다).
+// 앞의 것은 3번, 뒤의 것은 4번 그룹이다. 읽을 때는 commentOf 로 둘 중 있는 쪽을 쓴다.
+const ITEM_LINE = /^\s*(?:\d+[.)]\s+|[-*•]\s+)?(.{1,60}?)\s*[:：]\s*\**\s*(O|△|X|N|해당없음)\**(?![A-Za-z가-힣])\s*(?:[(（](.*)[)）]|[|｜—–:：-]\s*(.*))?\s*$/;
+// 근거 전체가 따옴표 하나로 감싸진 경우("…")에만 바깥 따옴표를 벗긴다. 안쪽에 따옴표가 섞인 근거(생각: "독감", …)는 그대로 둔다.
+const commentOf = (m) => {
+  const t = String(m[3] ?? m[4] ?? "").trim();
+  const q = /^["“](.*)["”]$/.exec(t);
+  return q && !/["“”]/.test(q[1]) ? q[1] : t;
+};
 const PE_KEYS = new Set(["consent", "vitals", "pe1", "pe2"]);
 
 function lookupItem(label) {
@@ -76,7 +84,7 @@ export function tabulateEvaluation(md) {
         const ratio = mark === "O" ? 1 : mark === "△" ? 0.5 : mark === "X" ? 0 : PE_KEYS.has(info.key) ? 1 : 0.5;
         score = `${info.pts * ratio} / ${info.pts}`;
       }
-      out.push(`| ${cell(info.label)} | ${MARK_WORD[mark]} | ${score} | ${cell(m[3])} |`);
+      out.push(`| ${cell(info.label)} | ${MARK_WORD[mark]} | ${score} | ${cell(commentOf(m))} |`);
     }
     i += run.length;
   }
@@ -88,7 +96,7 @@ export function parseEvalItems(md) {
   const out = [];
   for (const line of String(md || "").split("\n")) {
     const m = ITEM_LINE.exec(line);
-    if (m) out.push({ label: lookupItem(m[1]).label, mark: m[2], comment: (m[3] || "").trim() });
+    if (m) out.push({ label: lookupItem(m[1]).label, mark: m[2], comment: commentOf(m) });
   }
   return out;
 }
@@ -104,7 +112,8 @@ export function stripEvalItems(md) {
       i += n;
       continue;
     }
-    if (/^\s*#{1,6}\s*(?:I{1,3})\.\s/.test(lines[i])) {
+    // 구역 제목: "## I. 병력청취 (History taking)" 도, `#` 없는 "III. PPI (Patient-Physician Interaction) — 20점" 도 있다.
+    if (/^\s*(?:#{1,6}\s*)?(?:I{1,3})\.\s*(?:병력\s*청취|신체\s*진찰|PPI)/.test(lines[i])) {
       i += 1;
       continue;
     }
