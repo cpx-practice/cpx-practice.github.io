@@ -14,7 +14,7 @@
 // 채점이 끝나면 plugin 업로드와 같은 모양의 문서를 records/recordDetails 에 직접 쓴다
 // (여기는 브라우저 세션이라 Firebase Auth 로 이미 로그인돼 있으므로 워커를 거칠 필요가 없다).
 
-import { doc, collection, setDoc, getDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { doc, collection, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
@@ -239,7 +239,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   }
 
   // ---------------- 계정에 키 저장 (선택) ----------------
-  // 기본은 이 브라우저에만 둔다. 사용자가 체크박스를 켠 경우에만 userSecrets/{uid} 에 올린다 (firestore.rules: 본인만).
+  // 기본은 이 브라우저에만 둔다. 사용자가 체크박스를 켠 경우에만 워커(/interview/ai/keys, KV)에 올린다 — 본인 토큰으로만 본인 것을 읽고 쓴다. Firebase 규칙은 필요 없다.
 
   let autoKeyPanel = false; // 키가 없어서 처음부터 설정 화면이 떠 있는 경우 — 계정에서 키를 받아오면 시작 화면으로 넘어간다
 
@@ -249,13 +249,10 @@ export function initInterviewTab({ db, auth, endpoint }) {
     $("btnDeleteCloudKeys").classList.toggle("hidden", !(config.cloud || Object.keys(config.keys).length));
   }
   async function pushCloud() {
-    const user = auth.currentUser;
-    if (!user) throw new Error("login_required");
-    await setDoc(doc(db, "userSecrets", user.uid), { ...cloudPayload(config), updatedAt: serverTimestamp() });
+    await callWorker("/interview/ai/keys", { action: "put", ...cloudPayload(config) }, { withAuth: true });
   }
   async function deleteCloud() {
-    const user = auth.currentUser;
-    if (user) await deleteDoc(doc(db, "userSecrets", user.uid));
+    await callWorker("/interview/ai/keys", { action: "delete" }, { withAuth: true });
   }
 
   // 로그인하면: 이 브라우저의 설정이 내 것인지 확인하고(다른 계정 것이면 비운다), 계정에 저장해 둔 키를 합친다.
@@ -263,11 +260,11 @@ export function initInterviewTab({ db, auth, endpoint }) {
     const before = JSON.stringify(config);
     config = claimConfig(config, user.uid);
     try {
-      const snap = await getDoc(doc(db, "userSecrets", user.uid));
-      if (snap.exists()) config = mergeCloud(config, snap.data());
+      const data = await callWorker("/interview/ai/keys", { action: "get" }, { withAuth: true });
+      if (data && data.aiKeys && Object.keys(data.aiKeys).length) config = mergeCloud(config, data);
       else config.cloud = false;
     } catch {
-      /* 규칙이 아직 게시되지 않았거나 오프라인 — 이 기기의 설정만 쓴다 */
+      /* 서버에 닿지 않거나 오프라인 — 이 기기의 설정만 쓴다 */
     }
     saveConfig();
     if (JSON.stringify(config) === before) return;
@@ -307,11 +304,11 @@ export function initInterviewTab({ db, auth, endpoint }) {
         config.cloud = false;
       }
     } catch {
-      // 이 기기에는 저장하되, 계정 저장은 실패했음을 알린다 (규칙 미게시·오프라인 등).
+      // 이 기기에는 저장하되, 계정 저장은 실패했음을 알린다 (서버 연결 문제 등).
       config.cloud = hadCloud;
       saveConfig();
       renderCloudControls(noKey); // 이 기기에는 키가 저장됐으니 삭제 버튼도 보여 준다
-      msg.textContent = "이 기기에는 저장했지만 계정에는 저장하지 못했습니다 (서버 설정 전이거나 연결 문제). 다시 시도하려면 저장을 누르세요.";
+      msg.textContent = "이 기기에는 저장했지만 계정에는 저장하지 못했습니다 (서버 연결 문제일 수 있습니다). 다시 시도하려면 저장을 누르세요.";
       return;
     }
     saveConfig();
