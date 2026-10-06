@@ -635,7 +635,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     async openrouter(model) {
       return openAiCompatible(
         "https://openrouter.ai/api/v1/chat/completions",
-        { "HTTP-Referer": location.origin, "X-Title": "CPX 기록판" },
+        { "HTTP-Referer": location.origin, "X-Title": "CPXpert" },
         model
       );
     },
