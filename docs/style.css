@@ -928,19 +928,8 @@ th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
   background: #fff;
 }
 
-/* ---------- Claude 앱 열기 ---------- */
-.launch {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0 0;
-}
-.launch .hint { margin: 0; flex: 1 1 240px; }
-
 @media (max-width: 640px) {
   .attach-preview img { width: 84px; max-height: 84px; }
-  .launch .btn { width: 100%; }
 }
 
 /* ---------- 이용 방법: 운영체제 전환 ---------- */

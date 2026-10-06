@@ -91,7 +91,6 @@
         <!-- 면담(AI) 탭은 아직 개발 중 — 로컬 개발 서버(localhost)와 관리자 계정에서만 보인다
              (app.js 의 setInterviewTab). 정식 공개 때 hidden 과 그 분기를 같이 지우면 된다. -->
         <button class="subtab hidden" data-view="interview">면담(AI)</button>
-        <button class="subtab" data-view="claude">Claude</button>
         <!-- 오류 제보 · 이용 방법은 상단 탭에서 뺐다 — 설정 화면의 "도움말" 바로가기 버튼으로만 연다.
              view 전환 로직은 그대로 재사용하므로 hidden 만 지우면 상단 탭으로도 복원된다. -->
         <button class="subtab hidden" data-view="report">오류 제보</button>
@@ -247,34 +246,6 @@
             <button type="submit" class="btn primary" id="btnIvSend">보내기</button>
           </form>
           <p class="hint" id="ivStatus"></p>
-        </div>
-      </div>
-
-      <!-- ===== Claude ===== -->
-      <div id="viewClaude" class="hidden">
-        <div class="panel">
-          <h2>연습 시작</h2>
-          <p class="hint">
-            아래 버튼을 누르면 Claude 앱이 열리고 <code>/cpx:start</code> 가 복사됩니다.
-            앱 안에서 붙여넣기(Ctrl+V)만 하면 바로 면담이 시작됩니다.
-          </p>
-          <div class="launch">
-            <button type="button" class="btn primary" id="btnLaunchClaude">Claude 열고 명령 복사</button>
-            <span class="hint" id="launchHint">앱이 설치돼 있어야 열립니다.</span>
-          </div>
-        </div>
-
-        <div class="panel">
-          <h2>면담은 이렇게 흘러갑니다</h2>
-          <ol class="steps">
-            <li><b>문진</b> — 환자에게 묻습니다. 사전 안내문은 없으니 직접 알아내야 합니다.</li>
-            <li><code>진찰</code> — 신체진찰로 넘어갑니다. 활력징후부터 나옵니다.</li>
-            <li><code>평가</code> — 채점표대로 점수와 개선점이 나옵니다.</li>
-          </ol>
-          <p class="hint" style="margin-bottom:0">
-            평가가 끝나면 기록이 자동으로 여기 쌓입니다. 처음이라 연결이 안 돼 있으면
-            <b>이용 방법</b> 탭을 먼저 보세요.
-          </p>
         </div>
       </div>
 

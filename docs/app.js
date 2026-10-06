@@ -146,7 +146,6 @@ const views = {
   records: $("viewRecords"),
   analysis: $("viewAnalysis"),
   interview: $("viewInterview"),
-  claude: $("viewClaude"),
   report: $("viewReport"),
   pair: $("viewPair"), // 화면 이름은 "이용 방법"
   settings: $("viewSettings"),
@@ -1085,31 +1084,6 @@ osMac.addEventListener("click", () => applyOs("mac"));
   } catch {}
   applyOs(saved === "mac" || saved === "win" ? saved : guessOs());
 })();
-
-// ---------- Claude 앱 열기 ----------
-// claude:// 는 데스크톱 앱이 등록하는 스킴이다. 앱이 없으면 아무 일도 일어나지 않으므로,
-// 명령을 클립보드에 먼저 넣어 최소한 붙여넣기는 되게 한다.
-$("btnLaunchClaude").addEventListener("click", async () => {
-  const hint = $("launchHint");
-  const cmd = "/cpx:start";
-  let copied = false;
-  try {
-    await navigator.clipboard.writeText(cmd);
-    copied = true;
-  } catch {
-    copied = false;
-  }
-  hint.textContent = copied
-    ? `Claude 앱을 여는 중… 안에서 붙여넣기(Ctrl+V) 하면 ${cmd} 가 들어갑니다.`
-    : `Claude 앱을 여는 중… 안에서 ${cmd} 를 입력하세요.`;
-  // 앱이 설치돼 있지 않으면 브라우저가 조용히 무시한다.
-  window.location.href = "claude://";
-  setTimeout(() => {
-    hint.textContent = copied
-      ? "앱이 안 열리면 직접 실행해주세요. 명령은 복사해뒀습니다."
-      : "앱이 안 열리면 직접 실행하고 /cpx:start 를 입력하세요.";
-  }, 2500);
-});
 
 // ---------- 관리자: 가입 승인제 ----------
 
