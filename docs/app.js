@@ -15,7 +15,7 @@ const firebaseConfig = {
 
 const MARKETPLACE = "raphael4040-ash/cpx-marketplace";
 
-// 면담(AI) 탭이 호출하는 cpx-worker 주소. cpx-worker/wrangler.toml 의 배포 주소와 같아야 한다.
+// 면담 탭이 호출하는 cpx-worker 주소. cpx-worker/wrangler.toml 의 배포 주소와 같아야 한다.
 const INTERVIEW_ENDPOINT = "https://cpx-upload.raphael40402652.workers.dev";
 
 // 이 기록판의 관리자 uid. firestore.rules 의 ownerUid() 와 반드시 같아야 한다.
@@ -151,7 +151,7 @@ const views = {
   settings: $("viewSettings"),
 };
 
-// 면담(AI) 탭은 개발 중이라 로컬 개발 서버, 관리자 계정, 관리자가 켜 준 계정에서만 연다 (setInterviewTab).
+// 면담 탭은 개발 중이라 로컬 개발 서버, 관리자 계정, 관리자가 켜 준 계정에서만 연다 (setInterviewTab).
 const IS_DEV_HOST = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 const tabInterview = document.querySelector('.subtab[data-view="interview"]');
 function setInterviewTab(isAdmin, granted = false) {
@@ -1181,12 +1181,12 @@ function renderUsers(rows) {
       <td>${escapeHtml(u.nickname || "")}</td>
       <td>${escapeHtml(u.email || "")}</td>
       <td>${fmtDateTime(u.createdAt)}</td>
-      <td>${pill}${!isAdmin && approved && u.aiInterview === true ? ' <span class="status-pill on">AI 면담</span>' : ""}</td>
+      <td>${pill}${!isAdmin && approved && u.aiInterview === true ? ' <span class="status-pill on">면담</span>' : ""}</td>
       <td class="actions">${
         isAdmin
           ? ""
           : `<button class="btn ghost small js-approve">${approved ? "승인 취소" : "승인"}</button>` +
-            (approved ? ` <button class="btn ghost small js-ai">AI 면담 ${u.aiInterview === true ? "끄기" : "켜기"}</button>` : "") +
+            (approved ? ` <button class="btn ghost small js-ai">면담 ${u.aiInterview === true ? "끄기" : "켜기"}</button>` : "") +
             // 승인된 계정은 먼저 승인을 취소해야 한다 — 실수로 한 번에 지우지 않게 삭제는 취소된 뒤에만 보인다.
             (approved ? "" : ' <button class="btn ghost small js-user-del">삭제</button>')
       }</td>
@@ -1201,13 +1201,13 @@ function renderUsers(rows) {
   }
 }
 
-// 면담(AI) 탭을 이 계정에게 열거나 닫는다. 켠 계정은 다음에 사이트를 열 때(새로고침) 탭이 보인다.
+// 면담 탭을 이 계정에게 열거나 닫는다. 켠 계정은 다음에 사이트를 열 때(새로고침) 탭이 보인다.
 async function setAiInterview(u, next) {
   const who = u.nickname || u.email || u.uid;
   try {
     await setDoc(doc(db, "users", u.uid), { aiInterview: next }, { merge: true });
   } catch {
-    alert(`${who} 계정의 AI 면담 설정을 바꾸지 못했습니다.
+    alert(`${who} 계정의 면담 설정을 바꾸지 못했습니다.
 관리자 계정으로 로그인했는지 확인해주세요.`);
   }
 }

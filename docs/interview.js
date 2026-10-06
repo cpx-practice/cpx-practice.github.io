@@ -1,4 +1,4 @@
-// 면담(AI) 탭 — 학생이 자기 API 키로 브라우저에서 바로 SP 면담을 한다.
+// 면담 탭 — 학생이 자기 API 키로 브라우저에서 바로 SP 면담을 한다.
 // 환자 역할 AI 는 Gemini / OpenAI / Claude / OpenRouter 중에서 고른다 (PROVIDERS 참고).
 // Gemini 무료 티어가 지역 차단·503 혼잡으로 불안정해서 탭을 한동안 내려뒀었는데,
 // 다른 AI 로 갈아탈 수 있게 해서 다시 열었다. 시스템 프롬프트는 제공자와 무관한 평문이다.
@@ -385,7 +385,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     if (code === "rate_limited") return "요청이 너무 잦습니다. 잠시 후(10분 안에) 다시 시도해주세요.";
     if (code === "login_required" || code === "bad_token") return "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요.";
     if (code === "not_approved") return "관리자 승인 후에 쓸 수 있습니다.";
-    if (code === "session_expired") return "면담 세션이 만료됐습니다. \"새로 시작\"을 눌러주세요.";
+    if (code === "session_expired") return "면담 세션이 만료됐습니다. \"나가기\"를 눌러 새로 시작해주세요.";
     if (code === "ai_not_configured") return "지금은 키 없이 면담을 쓸 수 없습니다 (운영자 설정 전).";
     return null;
   }
@@ -422,7 +422,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     const suffix = detail ? `\n(${name}: ${detail})` : "";
     const s = err.status;
     if (s === 400 && /api key|api_key/i.test(detail)) return `${name} 키가 올바르지 않습니다.` + suffix;
-    if (s === 401 || s === 403) return `${name} 키가 올바르지 않거나 권한이 없습니다. "새로 시작" → "AI 변경"에서 키를 확인하세요.` + suffix;
+    if (s === 401 || s === 403) return `${name} 키가 올바르지 않거나 권한이 없습니다. "나가기" → "AI 변경"에서 키를 확인하세요.` + suffix;
     if (s === 402) return `${name} 크레딧/결제가 필요합니다.` + suffix;
     if (s === 429) return "지금 요청이 몰려 있거나 한도에 걸렸습니다. 잠시 후 다시 시도하거나 다른 AI 로 바꿔보세요." + suffix;
     if (s === 404) return `모델 "${lastModelUsed}" 을(를) 찾을 수 없습니다. "AI 변경"에서 모델 이름을 확인하세요.` + suffix;
@@ -620,11 +620,11 @@ export function initInterviewTab({ db, auth, endpoint }) {
     if (!text.trim() || sending) return;
     if (!systemPrompt) {
       // 평가가 끝난 면담에서 보내면 아무 반응이 없어 고장 난 것처럼 보인다.
-      if (history.length) addBubble("__note", "이 면담은 끝났습니다. 위의 \"새로 시작\"을 눌러 새 면담을 시작해주세요.");
+      if (history.length) addBubble("__note", "이 면담은 끝났습니다. 위의 \"나가기\"를 눌러 새 면담을 시작해주세요.");
       return;
     }
     if (history.filter((h) => h.role === "user").length >= MAX_TURNS) {
-      addBubble("__note", "이 면담은 길이 제한에 도달했습니다. 새로 시작해주세요.");
+      addBubble("__note", "이 면담은 길이 제한에 도달했습니다. \"나가기\"를 눌러 새로 시작해주세요.");
       return;
     }
     sending = true;
@@ -712,6 +712,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
   $("btnCuePE").addEventListener("click", () => sendMessage("진찰"));
   $("btnCueEval").addEventListener("click", () => sendMessage("평가"));
   $("btnEndInterview").addEventListener("click", () => {
+    // 면담 중에는 화면이 면담 창으로 가득 차 있어서 이 버튼이 유일한 출구다. 진행 중이던 면담은 저장되지 않는다.
+    const inProgress = systemPrompt && history.some((h) => h.role === "user");
+    if (inProgress && !confirm("면담을 나갈까요?\n평가를 받기 전에 나가면 이 면담은 저장되지 않습니다.")) return;
     systemPrompt = null;
     showStartPanel();
   });

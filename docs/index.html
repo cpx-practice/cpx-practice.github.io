@@ -94,9 +94,9 @@
       <nav class="subnav">
         <button class="subtab active" data-view="records">내 기록</button>
         <button class="subtab" data-view="analysis">분석</button>
-        <!-- 면담(AI) 탭은 아직 개발 중 — 로컬 개발 서버(localhost)와 관리자 계정에서만 보인다
+        <!-- 면담 탭은 아직 개발 중 — 로컬 개발 서버(localhost)와 관리자 계정에서만 보인다
              (app.js 의 setInterviewTab). 정식 공개 때 hidden 과 그 분기를 같이 지우면 된다. -->
-        <button class="subtab hidden" data-view="interview">면담(AI)</button>
+        <button class="subtab hidden" data-view="interview">면담</button>
         <!-- 오류 제보 · 이용 방법은 상단 탭에서 뺐다 — 설정 화면의 "도움말" 바로가기 버튼으로만 연다.
              view 전환 로직은 그대로 재사용하므로 hidden 만 지우면 상단 탭으로도 복원된다. -->
         <button class="subtab hidden" data-view="report">오류 제보</button>
@@ -244,7 +244,7 @@
         <div class="panel hidden" id="ivChatPanel">
           <div class="panel-header">
             <h2 id="ivChatTitle">면담 중</h2>
-            <button class="btn ghost small" id="btnEndInterview">새로 시작</button>
+            <button class="btn ghost small" id="btnEndInterview">나가기</button>
           </div>
           <div class="iv-chat" id="ivChatLog"></div>
           <div class="iv-quick">
