@@ -17,7 +17,13 @@
 <body>
   <header class="topbar">
     <div class="brand-group">
-      <button type="button" class="brand" id="btnHome">CPX 기록판</button>
+      <button type="button" class="brand" id="btnHome">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <rect width="24" height="24" rx="6" fill="currentColor" />
+          <path d="M10 5h4v5h5v4h-5v5h-4v-5H5v-4h5z" fill="var(--panel)" />
+        </svg>
+        CPX 기록판
+      </button>
       <span class="version-badge" id="latestVersion" title="마켓플레이스 최신 버전">…</span>
     </div>
     <nav id="navAuthed" class="hidden">

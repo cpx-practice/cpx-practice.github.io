@@ -628,6 +628,11 @@ function renderRecords(rows) {
   recordBody.innerHTML = "";
   for (const r of rows) {
     const dash = (v) => (typeof v === "number" ? v : "-");
+    // 총점은 점수대별 칩으로 보여 준다 (구간은 분석 탭의 band 와 같다: 90+ / 80 / 70 / 그 아래).
+    const chip = (v) =>
+      typeof v === "number"
+        ? `<span class="score-chip b${v >= 90 ? 4 : v >= 80 ? 3 : v >= 70 ? 2 : 1}">${v}</span>`
+        : "-";
     // 본문이 따로 있으면 기록에 표시만 남는다. 구버전 기록은 본문이 문서 안에 있다.
     const hasDetail = Boolean(r.hasEvaluation || r.hasTranscript) || hasInlineBody(r);
     const tr = document.createElement("tr");
@@ -635,7 +640,7 @@ function renderRecords(rows) {
     tr.innerHTML = `
       <td data-label="날짜">${fmtDateTime(r.createdAt)}</td>
       <td data-label="주제">${escapeHtml(r.topic || "")}${r.source === "plugin" ? '<span class="pill">자동</span>' : ""}${r.source === "manual" ? '<span class="pill">링크</span>' : ""}</td>
-      <td data-label="총점" class="score">${dash(r.totalScore)}</td>
+      <td data-label="총점" class="score">${chip(r.totalScore)}</td>
       <td data-label="병력">${dash(r.historyScore)}</td>
       <td data-label="진찰">${dash(r.peScore)}</td>
       <td data-label="PPI">${dash(r.ppiScore)}</td>
