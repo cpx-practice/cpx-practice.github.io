@@ -120,6 +120,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   let history = []; // 제공자 중립 형식 [{role:"user"|"assistant", text}]
   let topicLabel = "";
   let sessionId = null;
+  let evalDone = false; // 평가가 끝났는지 — 오류 제보에 주제를 넣어도 되는 때(평가 전에는 무작위 케이스를 가려야 한다)
   let sending = false;
   let lastModelUsed = "";
   let freeModel = ""; // 워커가 알려준 Workers AI 모델 id (기록의 aiModel 에 남긴다)
@@ -420,6 +421,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     $("ivResultBackdrop").classList.add("hidden");
     $("ivResultBody").innerHTML = "";
     $("btnIvResultReopen").classList.add("hidden");
+    evalDone = false;
   }
   $("btnIvResultClose").addEventListener("click", closeResult);
   $("btnIvResultExit").addEventListener("click", () => {
@@ -430,8 +432,76 @@ export function initInterviewTab({ db, auth, endpoint }) {
   resultBackdrop.addEventListener("click", (e) => {
     if (e.target === resultBackdrop) closeResult();
   });
+  // 위에 겹쳐 뜬 창부터 Esc 로 닫는다: 오류 제보 창 → 채점 결과 창.
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !resultBackdrop.classList.contains("hidden")) closeResult();
+    if (e.key !== "Escape") return;
+    if (!$("ivReportBackdrop").classList.contains("hidden")) closeReport();
+    else if (!resultBackdrop.classList.contains("hidden")) closeResult();
+  });
+
+  // ---------------- 면담 중·직후 오류 제보 ----------------
+  // 면담은 전체 화면이라 오류 제보 탭이 가려진다. 여기서 바로 보낸다 — 저장 형식은 오류 제보 탭과 같다(관리자 화면에 같이 모인다).
+  const reportBackdrop = $("ivReportBackdrop");
+  function openReport() {
+    $("ivReportErr").textContent = "";
+    $("ivReportDone").classList.add("hidden");
+    reportBackdrop.classList.remove("hidden");
+    $("ivReportText").focus();
+  }
+  function closeReport() {
+    reportBackdrop.classList.add("hidden");
+  }
+  $("btnIvReport").addEventListener("click", openReport);
+  $("btnIvResultReport").addEventListener("click", openReport);
+  $("btnIvReportClose").addEventListener("click", closeReport);
+  reportBackdrop.addEventListener("click", (e) => {
+    if (e.target === reportBackdrop) closeReport();
+  });
+  $("ivReportText").addEventListener("input", () => {
+    $("ivReportCount").textContent = `${$("ivReportText").value.length} / 1800`;
+  });
+  $("btnIvReportSend").addEventListener("click", async () => {
+    const user = auth.currentUser;
+    const raw = $("ivReportText").value.trim();
+    const err = $("ivReportErr");
+    err.textContent = "";
+    if (!user) return;
+    if (!raw) {
+      err.textContent = "내용을 적어주세요.";
+      return;
+    }
+    const btn = $("btnIvReportSend");
+    btn.disabled = true;
+    try {
+      let nickname = "";
+      try {
+        const prof = await getDoc(doc(db, "users", user.uid));
+        nickname = prof.exists() ? prof.data().nickname || "" : "";
+      } catch {
+        /* 프로필을 못 읽어도 제보는 보낸다 */
+      }
+      // 재현에 필요한 면담 정보를 붙인다. 주제는 평가가 끝난 뒤에만 — 평가 전에 보내도 무작위 케이스가 드러나지 않게.
+      const info = [`세션 ${aiSessionId || sessionId || "-"}`, evalDone ? `주제 ${topicLabel}` : "진행 중", `AI ${currentProvider()}`].join(" · ");
+      await setDoc(doc(collection(db, "reports")), {
+        uid: user.uid,
+        nickname: nickname || user.displayName || "",
+        email: user.email || "",
+        text: `${raw}\n\n[면담 정보] ${info}`.slice(0, 2000),
+        page: evalDone ? "면담 · 평가 후" : "면담 · 진행 중",
+        agent: navigator.userAgent.slice(0, 300),
+        status: "open",
+        hasImage: false,
+        createdAt: serverTimestamp(),
+      });
+      $("ivReportText").value = "";
+      $("ivReportCount").textContent = "0 / 1800";
+      $("ivReportDone").classList.remove("hidden");
+      setTimeout(closeReport, 1600);
+    } catch (e) {
+      err.textContent = `보내지 못했습니다: ${e.code || e.message}`;
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   function showEvalResult(record, mdText, topic, scored) {
@@ -451,6 +521,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
         <div class="iv-eval-body md">${renderMarkdown(narrative)}</div>
       </div>`;
     $("ivResultBody").scrollTop = 0;
+    evalDone = true;
     resultReopen.classList.remove("hidden");
     openResult();
   }

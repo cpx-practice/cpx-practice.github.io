@@ -1476,3 +1476,13 @@ html { scrollbar-gutter: stable; }
    표 셀을 그대로 두고 캐럿만 인라인으로 맞춘다. */
 #caseTable td.case-name { display: table-cell; }
 #caseTable .case-name .caret { display: inline-block; margin-right: 6px; vertical-align: middle; }
+
+/* 면담 중·직후 오류 제보 창 — 면담 전체 화면(100)과 채점 결과 창(200)보다 위에 뜬다. */
+#ivReportBackdrop { z-index: 300; }
+.iv-report-modal { width: min(560px, 100%); }
+.iv-report-modal textarea { width: 100%; }
+.iv-report-modal .report-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 10px; }
+#ivReportDone { color: var(--ok); font-weight: 600; margin: 10px 0 0; }
+@media (max-width: 640px) {
+  #ivResultBackdrop .modal-actions { flex-wrap: wrap; justify-content: flex-end; }
+}

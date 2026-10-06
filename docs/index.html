@@ -260,6 +260,7 @@
             <h2 id="ivChatTitle">면담 중</h2>
             <div class="iv-head-actions">
               <button class="btn ghost small hidden" id="btnIvResultReopen">결과 보기</button>
+              <button class="btn ghost small" id="btnIvReport">오류 제보</button>
               <button class="btn ghost small" id="btnEndInterview">나가기</button>
             </div>
           </div>
@@ -550,11 +551,38 @@
       <div class="modal-head">
         <h3 id="ivResultTitle">채점 결과</h3>
         <div class="modal-actions">
+          <button class="btn small ghost" id="btnIvResultReport">오류 제보</button>
           <button class="btn small ghost" id="btnIvResultClose">대화 보기</button>
           <button class="btn small primary" id="btnIvResultExit">면담 나가기</button>
         </div>
       </div>
       <div class="modal-body" id="ivResultBody"></div>
+    </div>
+  </div>
+
+  <!-- 면담 중·직후 오류 제보 — 면담은 전체 화면이라 오류 제보 탭이 가려지므로 여기서 바로 보낸다 -->
+  <div id="ivReportBackdrop" class="backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="ivReportTitle">
+    <div class="modal iv-report-modal">
+      <div class="modal-head">
+        <h3 id="ivReportTitle">오류 제보</h3>
+        <div class="modal-actions">
+          <button class="btn small ghost" id="btnIvReportClose">닫기</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p class="hint">
+          잘못 동작하거나 이상한 점을 적어 주세요. 이 면담의 정보(세션 번호 등)가 함께 전송됩니다.
+          화면 이미지를 붙이려면 면담을 나간 뒤 오류 제보 화면을 이용해 주세요.
+        </p>
+        <textarea id="ivReportText" rows="6" maxlength="1800"
+          placeholder="예: 평가 결과의 근거가 대화 내용과 다릅니다 / 환자가 같은 말을 반복합니다"></textarea>
+        <div class="report-foot">
+          <span class="hint" id="ivReportCount">0 / 1800</span>
+          <button class="btn primary" id="btnIvReportSend">보내기</button>
+        </div>
+        <p class="err" id="ivReportErr"></p>
+        <p class="hint hidden" id="ivReportDone">제보가 접수되었습니다. 고맙습니다.</p>
+      </div>
     </div>
   </div>
 
