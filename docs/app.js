@@ -408,6 +408,7 @@ onAuthStateChanged(auth, async (user) => {
     setRequireApproval.checked = appConfig.requireApproval === true;
     watchUsers();
     watchAllReports();
+    loadAiUsage();
   }
 
   watchMyReports(user.uid);
@@ -1200,6 +1201,62 @@ function renderUsers(rows) {
     body.appendChild(tr);
   }
 }
+
+// ---------- 관리자: AI 면담 사용량 (오늘) ----------
+// 워커가 면담마다 모아 둔 사용량(/interview/ai/usage, 관리자 전용)과 오늘 한도(/interview/ai/status)를 보여 준다.
+// 한도는 Cloudflare 뉴런 단위다. 토큰 수는 집계를 넣은 뒤의 면담부터 있다(없으면 "-").
+const nf = (n) => (typeof n === "number" ? n.toLocaleString("ko-KR") : "-");
+
+function renderAiUsage(status, usage) {
+  const sessions = Array.isArray(usage.sessions) ? usage.sessions : [];
+  const cap = status?.capNeurons || 0;
+  const used = usage.usedNeurons || 0;
+  const pct = cap ? Math.round((used / cap) * 100) : 0;
+  const sum = (f) => sessions.reduce((n, s) => n + (typeof s[f] === "number" ? s[f] : 0), 0);
+  const withTokens = sessions.filter((s) => typeof s.tokensIn === "number");
+  const tin = sum("tokensIn");
+  const tout = sum("tokensOut");
+  const modelTurns = sum("modelTurns");
+  const localTurns = sum("localTurns");
+  $("aiUsageSummary").innerHTML =
+    `뉴런 <b>${nf(used)}</b> / ${nf(cap)} (${pct}%) · 남은 양 ${nf(Math.max(0, cap - used))}<br>` +
+    `면담 ${sessions.length}회 · 모델 호출 ${nf(modelTurns)}턴 · 서버가 직접 답한 ${nf(localTurns)}턴<br>` +
+    (withTokens.length
+      ? `토큰 <b>${nf(tin + tout)}</b> (입력 ${nf(tin)} + 출력 ${nf(tout)}) — 토큰 집계가 있는 면담 ${withTokens.length}/${sessions.length}회 기준`
+      : "토큰: 아직 집계된 면담이 없습니다(이 기능을 넣은 뒤의 면담부터 기록됩니다)");
+  const body = $("aiUsageBody");
+  body.innerHTML = "";
+  $("aiUsageTable").classList.toggle("hidden", sessions.length === 0);
+  for (const s of [...sessions].reverse()) {
+    const when = s.startedAt
+      ? new Date(s.startedAt).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false })
+      : "-";
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>${escapeHtml(when)}</td><td>${escapeHtml(s.topic || "-")}</td>` +
+      `<td class="num">${nf(s.tokensIn)}</td><td class="num">${nf(s.tokensOut)}</td>` +
+      `<td class="num">${nf(s.neurons)}</td><td class="num">${nf(s.modelTurns)} / ${nf(s.localTurns)}</td>`;
+    body.appendChild(tr);
+  }
+}
+
+async function loadAiUsage() {
+  const summary = $("aiUsageSummary");
+  summary.textContent = "불러오는 중…";
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+    const token = await user.getIdToken();
+    const post = (path, headers) => fetch(INTERVIEW_ENDPOINT + path, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: "{}" });
+    const [st, us] = await Promise.all([post("/interview/ai/status"), post("/interview/ai/usage", { Authorization: `Bearer ${token}` })]);
+    if (!us.ok) throw new Error(`HTTP ${us.status}`);
+    renderAiUsage(await st.json().catch(() => ({})), await us.json());
+  } catch (err) {
+    summary.textContent = `사용량을 불러오지 못했습니다 (${err.message || err}).`;
+    $("aiUsageTable").classList.add("hidden");
+  }
+}
+$("btnAiUsageRefresh").addEventListener("click", loadAiUsage);
 
 // 면담 탭을 이 계정에게 열거나 닫는다. 켠 계정은 다음에 사이트를 열 때(새로고침) 탭이 보인다.
 async function setAiInterview(u, next) {

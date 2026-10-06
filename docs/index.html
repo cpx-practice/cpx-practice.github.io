@@ -512,6 +512,26 @@
           <p class="ok hidden" id="adminSaved">저장되었습니다</p>
         </div>
 
+        <div class="panel" id="aiUsagePanel">
+          <div class="panel-header">
+            <h2>AI 면담 사용량 (오늘)</h2>
+            <button class="btn ghost small" id="btnAiUsageRefresh">새로고침</button>
+          </div>
+          <p class="hint" id="aiUsageSummary">불러오는 중…</p>
+          <div class="table-scroll">
+            <table id="aiUsageTable" class="hidden">
+              <thead>
+                <tr><th>시작 (한국 시간)</th><th>주제</th><th class="num">입력 토큰</th><th class="num">출력 토큰</th><th class="num">뉴런</th><th class="num">모델 / 서버 응답</th></tr>
+              </thead>
+              <tbody id="aiUsageBody"></tbody>
+            </table>
+          </div>
+          <p class="hint" id="aiUsageNote">
+            "키 없이 바로" 면담(Cloudflare Workers AI)의 오늘 사용량입니다. 한도는 뉴런 단위이고 하루(UTC)마다 초기화됩니다(한국 시간 오전 9시).
+            입력·출력 토큰은 이 집계를 추가한 이후의 면담부터 기록되며, 그 전 면담은 뉴런만 있습니다.
+          </p>
+        </div>
+
         <div class="panel">
           <h2>계정 목록 (<span id="adminCount">0</span>명)</h2>
           <p class="empty hidden" id="adminEmpty">가입한 계정이 없습니다.</p>
