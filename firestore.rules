@@ -57,6 +57,24 @@ service cloud.firestore {
                                    'consentAt', 'tokenVersion']);
     }
 
+    // ---- AI 키 보관 (면담 탭, 사용자가 "내 계정에 키 저장"을 켠 경우만) ----
+    // 본인만 읽고 쓴다. 관리자(isOwner)도 앱에서는 읽지 못하게 일부러 isOwner() 를 넣지 않았다.
+    // (Firebase 콘솔에서는 프로젝트 소유자가 볼 수 있다 — 화면 안내문에도 그렇게 적혀 있다.)
+    // 허용 제공자는 docs/aikeys.js 의 KEY_PROVIDERS 와 같아야 한다.
+    match /userSecrets/{userId} {
+      allow read, delete: if isSignedIn() && request.auth.uid == userId;
+      allow create, update: if isSignedIn()
+                            && request.auth.uid == userId
+                            && request.resource.data.keys().hasOnly(['aiKeys', 'aiModels', 'aiProvider', 'updatedAt'])
+                            && request.resource.data.aiKeys is map
+                            && request.resource.data.aiKeys.keys().hasOnly(['gemini', 'openai', 'anthropic', 'openrouter'])
+                            && (!('aiModels' in request.resource.data)
+                                || (request.resource.data.aiModels is map
+                                    && request.resource.data.aiModels.keys().hasOnly(['gemini', 'openai', 'anthropic', 'openrouter'])))
+                            && (!('aiProvider' in request.resource.data)
+                                || request.resource.data.aiProvider in ['free', 'gemini', 'openai', 'anthropic', 'openrouter']);
+    }
+
     // ---- CPX 기록 ----
     match /records/{recordId} {
       // 본인 기록만 읽기/삭제 가능

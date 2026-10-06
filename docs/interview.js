@@ -14,14 +14,16 @@
 // 채점이 끝나면 plugin 업로드와 같은 모양의 문서를 records/recordDetails 에 직접 쓴다
 // (여기는 브라우저 세션이라 Firebase Auth 로 이미 로그인돼 있으므로 워커를 거칠 필요가 없다).
 
-import { doc, collection, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { doc, collection, setDoc, getDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
 import { scoreRecord, auditMarks, reconcileNarrative } from "./scoring.js";
 import { parseEvalItems, stripEvalItems, findReason } from "./export.js";
+import { claimConfig, mergeCloud, cloudPayload } from "./aikeys.js";
 
-const CONFIG_STORAGE = "cpx-ai-config"; // { provider, keys: {id: key}, models: {id: model} }
+const CONFIG_STORAGE = "cpx-ai-config"; // { provider, keys: {id: key}, models: {id: model}, ownerUid, cloud }
 const LEGACY_GEMINI_KEY = "cpx-gemini-key"; // 예전 Gemini 전용 시절 저장 위치 — 처음 한 번 옮겨온다
 const MAX_OUTPUT_TOKENS = 8192; // 평가 단계 답이 길다 (채점표 + cpx-record 블록)
 
@@ -169,6 +171,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   function renderProviderForm(id) {
     const p = PROVIDERS[id];
     providerSelect.value = id;
+    renderCloudControls(!!p.noKey);
     keyInput.classList.toggle("hidden", !!p.noKey);
     modelInput.closest("label").classList.toggle("hidden", !!p.noKey);
     $("btnSaveKey").textContent = p.noKey ? "이걸로 시작" : "저장";
@@ -192,7 +195,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   function renderAiSummary() {
     $("ivAiSummary").textContent = isFree()
       ? `AI: ${PROVIDERS.free.label}`
-      : `AI: ${PROVIDERS[currentProvider()].label} · 모델 ${getModel()}`;
+      : `AI: ${PROVIDERS[currentProvider()].label} · 모델 ${getModel()}${config.cloud ? " · 계정에 키 저장됨" : ""}`;
   }
 
   // 오늘 무료 면담이 남았는지 — 설정 화면에서 미리 알려준다 (워커 /interview/ai/status).
@@ -234,29 +237,114 @@ export function initInterviewTab({ db, auth, endpoint }) {
     showKeyPanel();
   }
 
-  $("btnSaveKey").addEventListener("click", () => {
+  // ---------------- 계정에 키 저장 (선택) ----------------
+  // 기본은 이 브라우저에만 둔다. 사용자가 체크박스를 켠 경우에만 userSecrets/{uid} 에 올린다 (firestore.rules: 본인만).
+
+  let autoKeyPanel = false; // 키가 없어서 처음부터 설정 화면이 떠 있는 경우 — 계정에서 키를 받아오면 시작 화면으로 넘어간다
+
+  function renderCloudControls(noKey) {
+    $("ivCloudBox").classList.toggle("hidden", noKey);
+    $("ivCloudSave").checked = config.cloud === true;
+    $("btnDeleteCloudKeys").classList.toggle("hidden", !(config.cloud || Object.keys(config.keys).length));
+  }
+  async function pushCloud() {
+    const user = auth.currentUser;
+    if (!user) throw new Error("login_required");
+    await setDoc(doc(db, "userSecrets", user.uid), { ...cloudPayload(config), updatedAt: serverTimestamp() });
+  }
+  async function deleteCloud() {
+    const user = auth.currentUser;
+    if (user) await deleteDoc(doc(db, "userSecrets", user.uid));
+  }
+
+  // 로그인하면: 이 브라우저의 설정이 내 것인지 확인하고(다른 계정 것이면 비운다), 계정에 저장해 둔 키를 합친다.
+  async function syncAccountKeys(user) {
+    const before = JSON.stringify(config);
+    config = claimConfig(config, user.uid);
+    try {
+      const snap = await getDoc(doc(db, "userSecrets", user.uid));
+      if (snap.exists()) config = mergeCloud(config, snap.data());
+      else config.cloud = false;
+    } catch {
+      /* 규칙이 아직 게시되지 않았거나 오프라인 — 이 기기의 설정만 쓴다 */
+    }
+    saveConfig();
+    if (JSON.stringify(config) === before) return;
+    if (!keyPanel.classList.contains("hidden")) {
+      if (autoKeyPanel && isReady()) showStartPanel();
+      else renderProviderForm(currentProvider());
+    } else {
+      renderAiSummary();
+    }
+    autoKeyPanel = false;
+  }
+
+  $("btnSaveKey").addEventListener("click", async () => {
     const id = providerSelect.value;
-    if (PROVIDERS[id].noKey) {
+    const noKey = !!PROVIDERS[id].noKey;
+    if (noKey) {
       config.provider = id;
+    } else {
+      const k = keyInput.value.trim();
+      if (!k) return;
+      config.provider = id;
+      config.keys[id] = k;
+      const m = modelInput.value.trim();
+      if (m) config.models[id] = m;
+      else delete config.models[id];
+    }
+    const wantCloud = noKey ? config.cloud === true : $("ivCloudSave").checked;
+    const hadCloud = config.cloud === true;
+    const msg = $("ivKeySavedMsg");
+    msg.textContent = "";
+    try {
+      if (wantCloud) {
+        config.cloud = true;
+        await pushCloud();
+      } else if (hadCloud) {
+        await deleteCloud(); // 체크를 껐으면 계정에 올려 둔 사본도 지운다
+        config.cloud = false;
+      }
+    } catch {
+      // 이 기기에는 저장하되, 계정 저장은 실패했음을 알린다 (규칙 미게시·오프라인 등).
+      config.cloud = hadCloud;
       saveConfig();
-      showStartPanel();
+      msg.textContent = "이 기기에는 저장했지만 계정에는 저장하지 못했습니다 (서버 설정 전이거나 연결 문제). 다시 시도하려면 저장을 누르세요.";
       return;
     }
-    const k = keyInput.value.trim();
-    if (!k) return;
-    config.provider = id;
-    config.keys[id] = k;
-    const m = modelInput.value.trim();
-    if (m) config.models[id] = m;
-    else delete config.models[id];
     saveConfig();
     keyInput.value = "";
     showStartPanel();
   });
 
+  $("btnDeleteCloudKeys").addEventListener("click", async () => {
+    if (!confirm("저장된 키를 이 기기와 내 계정에서 모두 지울까요?\n다시 쓰려면 키를 새로 붙여넣어야 합니다.")) return;
+    const msg = $("ivKeySavedMsg");
+    let cloudDeleted = true;
+    try {
+      await deleteCloud();
+    } catch {
+      cloudDeleted = false;
+    }
+    config.keys = {};
+    config.models = {};
+    config.provider = "free";
+    config.cloud = false;
+    saveConfig();
+    keyInput.value = "";
+    renderProviderForm("free");
+    msg.textContent = cloudDeleted ? "이 기기와 계정에서 지웠습니다." : "이 기기에서는 지웠지만 계정의 사본을 지우지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  });
+
   $("btnChangeKey").addEventListener("click", () => {
     renderProviderForm(currentProvider());
     showKeyPanel();
+  });
+
+  // 필요한 함수·변수가 모두 선언된 뒤에 등록한다.
+  autoKeyPanel = !keyPanel.classList.contains("hidden");
+  onAuthStateChanged(auth, (user) => {
+    if (user) syncAccountKeys(user);
   });
 
   // ---------------- 채팅 로그 렌더링 ----------------
