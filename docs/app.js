@@ -55,6 +55,8 @@ import {
   detailFilename,
   recordToMarkdown,
   downloadText,
+  trimTranscript,
+  tabulateEvaluation,
 } from "./export.js";
 
 const app = initializeApp(firebaseConfig);
@@ -150,11 +152,12 @@ const views = {
   settings: $("viewSettings"),
 };
 
-// 면담(AI) 탭은 개발 중이라 로컬 개발 서버나 관리자 계정에서만 연다 (setInterviewTab).
+// 면담(AI) 탭은 개발 중이라 로컬 개발 서버, 관리자 계정, 관리자가 켜 준 계정에서만 연다 (setInterviewTab).
 const IS_DEV_HOST = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 const tabInterview = document.querySelector('.subtab[data-view="interview"]');
-function setInterviewTab(isAdmin) {
-  const on = IS_DEV_HOST || isAdmin;
+function setInterviewTab(isAdmin, granted = false) {
+  // granted: 관리자가 계정 목록에서 켜 준 계정(users/{uid}.aiInterview). 본인은 이 값을 못 바꾼다(firestore.rules).
+  const on = IS_DEV_HOST || isAdmin || granted;
   tabInterview?.classList.toggle("hidden", !on);
   // 관리자로 면담 탭을 보던 중 다른 계정으로 바뀌면 숨은 탭에 머물지 않게 한다.
   if (!on && tabInterview?.classList.contains("active")) activateView("records", { push: false });
@@ -401,7 +404,7 @@ onAuthStateChanged(auth, async (user) => {
   setConsent.checked = profile.consentTranscript === true;
 
   setAdminUi(isAdmin);
-  setInterviewTab(isAdmin);
+  setInterviewTab(isAdmin, profile.aiInterview === true);
   if (isAdmin) {
     setRequireApproval.checked = appConfig.requireApproval === true;
     watchUsers();
@@ -747,10 +750,10 @@ async function openDetail(r) {
 
   const evalText = joinChunks(body.evaluationChunks, body.evaluationText);
   $("paneEval").innerHTML = evalText
-    ? renderMarkdown(evalText)
+    ? renderMarkdown(tabulateEvaluation(evalText))
     : '<p class="muted">(채점 결과 원문이 저장되지 않은 기록입니다)</p>';
 
-  const script = joinChunks(body.transcriptChunks, body.transcript);
+  const script = trimTranscript(joinChunks(body.transcriptChunks, body.transcript));
   $("paneScript").textContent = script
     ? script + (body.transcriptTruncated ? "\n\n— 앞부분이 길어 잘렸습니다 —" : "")
     : "(문진 전사가 저장되지 않은 기록입니다)";
@@ -1199,20 +1202,34 @@ function renderUsers(rows) {
       <td>${escapeHtml(u.nickname || "")}</td>
       <td>${escapeHtml(u.email || "")}</td>
       <td>${fmtDateTime(u.createdAt)}</td>
-      <td>${pill}</td>
+      <td>${pill}${!isAdmin && approved && u.aiInterview === true ? ' <span class="status-pill on">AI 면담</span>' : ""}</td>
       <td class="actions">${
         isAdmin
           ? ""
           : `<button class="btn ghost small js-approve">${approved ? "승인 취소" : "승인"}</button>` +
+            (approved ? ` <button class="btn ghost small js-ai">AI 면담 ${u.aiInterview === true ? "끄기" : "켜기"}</button>` : "") +
             // 승인된 계정은 먼저 승인을 취소해야 한다 — 실수로 한 번에 지우지 않게 삭제는 취소된 뒤에만 보인다.
             (approved ? "" : ' <button class="btn ghost small js-user-del">삭제</button>')
       }</td>
     `;
     const btn = tr.querySelector(".js-approve");
     if (btn) btn.addEventListener("click", () => setApproved(u, !approved));
+    const ai = tr.querySelector(".js-ai");
+    if (ai) ai.addEventListener("click", () => setAiInterview(u, u.aiInterview !== true));
     const del = tr.querySelector(".js-user-del");
     if (del) del.addEventListener("click", () => deleteUserAccount(u));
     body.appendChild(tr);
+  }
+}
+
+// 면담(AI) 탭을 이 계정에게 열거나 닫는다. 켠 계정은 다음에 사이트를 열 때(새로고침) 탭이 보인다.
+async function setAiInterview(u, next) {
+  const who = u.nickname || u.email || u.uid;
+  try {
+    await setDoc(doc(db, "users", u.uid), { aiInterview: next }, { merge: true });
+  } catch {
+    alert(`${who} 계정의 AI 면담 설정을 바꾸지 못했습니다.
+관리자 계정으로 로그인했는지 확인해주세요.`);
   }
 }
 

@@ -757,7 +757,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
       /* 못 읽으면 보수적으로 저장 안 함 */
     }
 
-    const script = history
+    // 전사는 학생이 "평가"를 입력하기 전까지의 문진·진찰만이다. "평가"와 그 뒤의 채점문은 "채점 결과"에 따로 저장된다.
+    const cut = history.findIndex((h) => h.role === "user" && /^\s*평가\s*$/.test(h.text));
+    const script = (cut >= 0 ? history.slice(0, cut) : history)
       .map((h) => `${h.role === "user" ? "의사" : "환자"}: ${h.text}`)
       .join("\n\n");
     const docId = doc(collection(db, "records")).id;

@@ -5,6 +5,8 @@
 // (수 MB) 안 실으면 글자가 깨진다. 대신 app.js 가 브라우저 인쇄로 넘긴다 —
 // 의존성이 없고, 글자가 선택·검색되는 PDF 가 나온다. style.css 의 @media print 참고.
 
+import { SECTIONS } from "./scoring.js";
+
 const p2 = (n) => String(n).padStart(2, "0");
 
 // 긴 텍스트는 Firestore 색인 제한 때문에 1500자씩 잘려 배열로 저장된다.
@@ -18,6 +20,67 @@ export function fmtDateTime(ts) {
   if (!ts || !ts.toDate) return "";
   const d = ts.toDate();
   return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+
+// 문진 전사는 학생이 "평가"를 입력하기 전까지만이다. 웹 면담은 예전에 "평가" 입력과 그 뒤에 나온 채점문까지
+// 전사에 같이 저장했다 — 채점 결과는 "채점 결과" 탭에 따로 있으니, 이미 저장된 기록도 보여 줄 때 여기서 자른다.
+const EVAL_CUE_LINE = /^(?:의사|학생|사용자|나)\s*[:：]\s*평가\s*$/m;
+export function trimTranscript(script) {
+  const s = String(script || "");
+  const m = EVAL_CUE_LINE.exec(s);
+  return m ? s.slice(0, m.index).trimEnd() : s;
+}
+
+// 채점문의 항목 줄("1. 도입 (5점): X (근거)", "ICE: O (근거)")을 읽어 표로 바꾼다. 항목 줄이 이어진 곳만 바꾸고,
+// 이미 표가 있는 채점문(플러그인 기록)이나 항목 줄이 없는 글은 그대로 둔다. 배점이 없으면 채점표(scoring.js)에서 찾는다.
+const MARK_WORD = { O: "O", "△": "△", X: "X", N: "해당없음", 해당없음: "해당없음" };
+const ITEM_LINE = /^\s*(?:\d+[.)]\s+|[-*•]\s+)?(.{1,60}?)\s*[:：]\s*\**\s*(O|△|X|N|해당없음)\**(?![A-Za-z가-힣])\s*(?:[(（](.*)[)）])?\s*$/;
+const PE_KEYS = new Set(["consent", "vitals", "pe1", "pe2"]);
+
+function lookupItem(label) {
+  const clean = label.replace(/[(（]\s*\d+\s*점\s*[)）]/g, "").replace(/\*+/g, "").trim();
+  const norm = (t) => t.replace(/\s+/g, "");
+  for (const sec of SECTIONS) {
+    for (const [key, name, pts] of sec.items) {
+      const base = norm(name.split(" (")[0]);
+      if (norm(clean).startsWith(base)) return { key, pts, label: clean };
+    }
+  }
+  const m = label.match(/[(（]\s*(\d+)\s*점\s*[)）]/);
+  return { key: null, pts: m ? Number(m[1]) : null, label: clean };
+}
+
+const cell = (t) => String(t || "").replace(/\|/g, "／").replace(/\s+/g, " ").trim();
+
+export function tabulateEvaluation(md) {
+  const lines = String(md || "").split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; ) {
+    const run = [];
+    while (i + run.length < lines.length) {
+      const m = ITEM_LINE.exec(lines[i + run.length]);
+      if (!m) break;
+      run.push(m);
+    }
+    if (run.length < 2) {
+      out.push(lines[i]);
+      i += 1;
+      continue;
+    }
+    out.push("| 항목 | 평가 | 점수 | 근거 |", "| --- | --- | --- | --- |");
+    for (const m of run) {
+      const info = lookupItem(m[1]);
+      const mark = m[2];
+      let score = "-";
+      if (info.pts != null) {
+        const ratio = mark === "O" ? 1 : mark === "△" ? 0.5 : mark === "X" ? 0 : PE_KEYS.has(info.key) ? 1 : 0.5;
+        score = `${info.pts * ratio} / ${info.pts}`;
+      }
+      out.push(`| ${cell(info.label)} | ${MARK_WORD[mark]} | ${score} | ${cell(m[3])} |`);
+    }
+    i += run.length;
+  }
+  return out.join("\n");
 }
 
 export function detailFilename(r, ext) {
@@ -47,9 +110,9 @@ export function recordToMarkdown(r) {
   const evalText = joinChunks(r.evaluationChunks, r.evaluationText)
     .replace(/```cpx-record[\s\S]*?```/g, "")
     .trim();
-  if (evalText) out.push("## 채점 결과", "", evalText, "");
+  if (evalText) out.push("## 채점 결과", "", tabulateEvaluation(evalText), "");
 
-  const script = joinChunks(r.transcriptChunks, r.transcript).trim();
+  const script = trimTranscript(joinChunks(r.transcriptChunks, r.transcript)).trim();
   if (script) {
     out.push("## 문진 전사", "");
     if (r.transcriptTruncated) out.push("> 앞부분이 길어 잘린 전사입니다.", "");

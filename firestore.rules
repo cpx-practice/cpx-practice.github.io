@@ -46,7 +46,8 @@ service cloud.firestore {
       // 본인은 승인 상태를 스스로 만들 수 없다 (self-approval 차단).
       allow create: if isSignedIn()
                     && request.auth.uid == userId
-                    && !('approved' in request.resource.data);
+                    && !('approved' in request.resource.data)
+                    && !('aiInterview' in request.resource.data);
 
       // 본인이 고칠 수 있는 필드를 화이트리스트로 못박는다.
       allow update: if isSignedIn()
