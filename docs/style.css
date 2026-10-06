@@ -1463,3 +1463,6 @@ body:has(#ivChatPanel:not(.hidden)) { overflow: hidden; }
 .iv-score tr.sub td:first-child { border-radius: 6px 0 0 6px; }
 .iv-score tr.sub td:last-child { border-radius: 0 6px 6px 0; }
 .iv-eval-body h2, .iv-eval-body h3, .iv-eval-body h4 { font-size: 0.95rem; margin: 14px 0 6px; }
+
+/* 짧은 화면(면담·설정)과 긴 화면(기록·분석)을 오갈 때 스크롤바 유무 때문에 콘텐츠가 좌우로 흔들리지 않게 자리를 항상 확보한다. */
+html { scrollbar-gutter: stable; }
