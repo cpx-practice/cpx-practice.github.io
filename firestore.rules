@@ -60,7 +60,7 @@ service cloud.firestore {
     // ---- AI 키 보관 (면담 탭, 사용자가 "내 계정에 키 저장"을 켠 경우만) ----
     // 본인만 읽고 쓴다. 관리자(isOwner)도 앱에서는 읽지 못하게 일부러 isOwner() 를 넣지 않았다.
     // (Firebase 콘솔에서는 프로젝트 소유자가 볼 수 있다 — 화면 안내문에도 그렇게 적혀 있다.)
-    // 허용 제공자는 docs/aikeys.js 의 KEY_PROVIDERS 와 같아야 한다.
+    // 허용 제공자는 docs/aikeys.js 의 KEY_PROVIDERS 와 같아야 한다 (바꾸면 아래 hasOnly 목록도 같이).
     match /userSecrets/{userId} {
       allow read, delete: if isSignedIn() && request.auth.uid == userId;
       allow create, update: if isSignedIn()
