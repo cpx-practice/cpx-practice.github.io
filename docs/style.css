@@ -1302,8 +1302,8 @@ body {
 
 /* 폭: 표·분석은 넓게, 설정·제보·이용 방법 같은 읽는 화면은 좁게. */
 @media (min-width: 900px) {
-  .container { max-width: 980px; }
-  #viewSettings .panel, #viewReport .panel, #viewPair .panel, #viewInterview .panel { max-width: 740px; }
+  /* 모든 탭이 같은 폭을 쓴다. 화면마다 패널 폭이 다르면 탭을 바꿀 때 한쪽으로 치우쳐 보인다. */
+  .container { max-width: 920px; }
 }
 
 /* 패널 */
@@ -1435,3 +1435,31 @@ body:has(#ivChatPanel:not(.hidden)) { overflow: hidden; }
   #ivResultBackdrop { padding: 0; }
   .iv-result-modal { width: 100%; height: 100vh; height: 100dvh; max-height: none; border-radius: 0; }
 }
+
+/* 채점 결과 표 — 항목·평가·점수와 근거를 한 표에. 근거는 항목 이름 아래 작은 글씨. */
+.iv-score { font-variant-numeric: tabular-nums; margin: 4px 0 6px; }
+.iv-score td, .iv-score th { vertical-align: top; }
+.iv-score td:nth-child(2) { text-align: center; width: 4.5em; white-space: nowrap; }
+.iv-score td:nth-child(3) { text-align: right; width: 5.2em; white-space: nowrap; }
+.iv-score td.mk { font-weight: 700; }
+.iv-score td.mk-o { color: var(--ok); }
+.iv-score td.mk-p { color: var(--warn-text); }
+.iv-score td.mk-x { color: var(--danger-text); }
+.iv-score td.mk-n { color: var(--muted); font-weight: 500; }
+.iv-score tr.sec th {
+  padding: 14px 6px 6px;
+  text-align: left;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  background: none;
+}
+.iv-score tr.item td { padding: 7px 6px; }
+.iv-item-name { font-weight: 500; }
+.iv-item-why { margin-top: 2px; font-size: 0.78rem; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.iv-score tr.sub td { background: var(--inset); font-weight: 700; }
+.iv-score tr.sub td:first-child { border-radius: 6px 0 0 6px; }
+.iv-score tr.sub td:last-child { border-radius: 0 6px 6px 0; }
+.iv-eval-body h2, .iv-eval-body h3, .iv-eval-body h4 { font-size: 0.95rem; margin: 14px 0 6px; }

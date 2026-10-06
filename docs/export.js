@@ -83,6 +83,48 @@ export function tabulateEvaluation(md) {
   return out.join("\n");
 }
 
+// 채점문의 항목 줄에서 [{label, mark, comment}] 를 뽑는다. 점수 표(scoring.js 가 계산)에 근거를 합칠 때 쓴다.
+export function parseEvalItems(md) {
+  const out = [];
+  for (const line of String(md || "").split("\n")) {
+    const m = ITEM_LINE.exec(line);
+    if (m) out.push({ label: lookupItem(m[1]).label, mark: m[2], comment: (m[3] || "").trim() });
+  }
+  return out;
+}
+
+// 항목 줄(2개 이상 이어진 것)과 "I. 병력청취" 같은 구역 제목을 걷어 낸다 — 표로 합친 뒤에 같은 내용이 또 나오지 않게.
+export function stripEvalItems(md) {
+  const lines = String(md || "").split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; ) {
+    let n = 0;
+    while (i + n < lines.length && ITEM_LINE.test(lines[i + n])) n += 1;
+    if (n >= 2) {
+      i += n;
+      continue;
+    }
+    if (/^\s*#{1,6}\s*(?:I{1,3})\.\s/.test(lines[i])) {
+      i += 1;
+      continue;
+    }
+    out.push(lines[i]);
+    i += 1;
+  }
+  return out.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// 점수 표의 항목 이름("ICE (환자의 생각·걱정·기대)")에 맞는 근거를 찾는다. 채점문은 "ICE" 처럼 짧게 쓴다.
+export function findReason(items, rowLabel) {
+  const norm = (t) => String(t).replace(/\s+/g, "");
+  const base = norm(String(rowLabel).split(" (")[0]);
+  const hits = items.filter((it) => {
+    const l = norm(it.label.split(" (")[0]);
+    return l.startsWith(base) || base.startsWith(l);
+  });
+  return hits.map((h) => h.comment).filter(Boolean).join(" / ");
+}
+
 export function detailFilename(r, ext) {
   // 윈도·맥 양쪽에서 파일명에 못 쓰는 글자를 걷어낸다.
   const topic = (r.topic || "무작위").replace(/[\\/:*?"<>|]/g, "-").trim() || "무작위";

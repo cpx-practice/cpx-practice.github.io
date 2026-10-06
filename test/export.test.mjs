@@ -87,3 +87,55 @@ test("내보내기 .md: 전사는 평가 앞까지만, 채점은 표로", () => 
   assert.match(script, /의사: 안녕하세요/);
   assert.ok(!script.includes("채점문") && !script.includes("의사: 평가"));
 });
+
+import { parseEvalItems, stripEvalItems, findReason } from "../docs/export.js";
+
+const NARRATIVE = [
+  "## I. 병력청취 (History taking)",
+  "1. 도입 (5점): O (자기소개, 성함/나이 확인)",
+  "2. ICE: △ (기대 질문 없음)",
+  "## II. 신체진찰 (Physical exam)",
+  "1. 핵심 진찰 수기 1: O (인후 시진)",
+  "2. 핵심 진찰 수기 2: O (폐 청진)",
+  "",
+  "잘한 점",
+  "- 자기소개를 했다",
+  "",
+  "개선점",
+  "- \"안전망\"을 안내하세요",
+  "",
+  "대화 확인으로 조정한 항목",
+  "- ICE: O → △ (기대 질문 없음)",
+].join("\n");
+
+test("채점문에서 항목 근거를 뽑는다", () => {
+  const items = parseEvalItems(NARRATIVE);
+  assert.deepEqual(items.map((i) => [i.label, i.mark]), [["도입", "O"], ["ICE", "△"], ["핵심 진찰 수기 1", "O"], ["핵심 진찰 수기 2", "O"]]);
+  assert.equal(items[0].comment, "자기소개, 성함/나이 확인");
+  // 조정 항목 줄("- ICE: O → △ (…)")은 항목으로 세지 않는다
+  assert.equal(items.length, 4);
+});
+
+test("항목 줄과 구역 제목을 걷고 잘한 점·개선점·조정 항목은 남긴다", () => {
+  const out = stripEvalItems(NARRATIVE);
+  assert.ok(!/도입|핵심 진찰 수기|History taking|Physical exam/.test(out));
+  assert.match(out, /^잘한 점$/m);
+  assert.match(out, /^개선점$/m);
+  assert.match(out, /대화 확인으로 조정한 항목/);
+  assert.match(out, /ICE: O → △/); // 조정 내역은 그대로
+  assert.ok(!/\n{3,}/.test(out));
+});
+
+test("항목 줄이 하나뿐이면 걷지 않는다", () => {
+  const one = "도입: O (좋음)\n\n본문";
+  assert.equal(stripEvalItems(one), one);
+});
+
+test("점수 표 항목 이름에 맞는 근거를 찾는다 (짧은 이름·긴 이름, 수기 1/2 합치기)", () => {
+  const items = parseEvalItems(NARRATIVE);
+  assert.equal(findReason(items, "ICE (환자의 생각·걱정·기대)"), "기대 질문 없음");
+  assert.equal(findReason(items, "도입"), "자기소개, 성함/나이 확인");
+  assert.equal(findReason(items, "핵심 진찰 수기 1"), "인후 시진");
+  assert.equal(findReason(items, "핵심 진찰 수기"), "인후 시진 / 폐 청진"); // 수기가 하나로 합쳐진 케이스
+  assert.equal(findReason(items, "없는 항목"), "");
+});

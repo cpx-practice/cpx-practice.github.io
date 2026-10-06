@@ -19,6 +19,7 @@ import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
 import { scoreRecord, auditMarks, reconcileNarrative } from "./scoring.js";
+import { parseEvalItems, stripEvalItems, findReason } from "./export.js";
 
 const CONFIG_STORAGE = "cpx-ai-config"; // { provider, keys: {id: key}, models: {id: model} }
 const LEGACY_GEMINI_KEY = "cpx-gemini-key"; // 예전 Gemini 전용 시절 저장 위치 — 처음 한 번 옮겨온다
@@ -293,14 +294,23 @@ export function initInterviewTab({ db, auth, endpoint }) {
   }
 
   // 코드가 계산한 항목별 점수표 (scoring.js). AI 가 적은 숫자는 쓰지 않는다.
-  function scoreTableHtml(scored) {
+  // 점수 표 하나에 항목·평가·점수와 채점문의 근거를 합친다. 근거는 항목 이름 아래 작은 글씨로 붙는다.
+  const MARK_CLASS = { O: "mk-o", "△": "mk-p", X: "mk-x", N: "mk-n" };
+  function scoreTableHtml(scored, items = []) {
     if (!scored) return "";
+    let section = "";
     const body = scored.rows
-      .map((r) =>
-        r.subtotal
-          ? `<tr class="sub"><td>${esc(r.section)} 소계</td><td></td><td>${r.got} / ${r.pts}</td></tr>`
-          : `<tr><td>${esc(r.label)}</td><td>${esc(r.mark === "N" ? "해당없음" : r.mark)}</td><td>${r.got} / ${r.pts}</td></tr>`
-      )
+      .map((r) => {
+        if (r.subtotal) return `<tr class="sub"><td>${esc(r.section)} 소계</td><td></td><td>${r.got} / ${r.pts}</td></tr>`;
+        const head = r.section !== section ? `<tr class="sec"><th colspan="3">${esc(r.section)}</th></tr>` : "";
+        section = r.section;
+        const why = findReason(items, r.label);
+        return (
+          head +
+          `<tr class="item"><td><div class="iv-item-name">${esc(r.label)}</div>${why ? `<div class="iv-item-why">${esc(why)}</div>` : ""}</td>` +
+          `<td class="mk ${MARK_CLASS[r.mark] || ""}">${esc(r.mark === "N" ? "해당없음" : r.mark)}</td><td>${r.got} / ${r.pts}</td></tr>`
+        );
+      })
       .join("");
     return `<table class="iv-score"><tbody>${body}</tbody></table>`;
   }
@@ -337,6 +347,10 @@ export function initInterviewTab({ db, auth, endpoint }) {
 
   function showEvalResult(record, mdText, topic, scored) {
     const total = typeof record.total === "number" ? `${record.total} / 100` : "";
+    // 항목별 근거는 점수 표에 합치고, 채점문에는 잘한 점·개선점·조정 항목만 남긴다.
+    // 항목 줄을 못 읽었거나 점수 표가 없으면(예전 형식) 채점문을 그대로 보여 준다.
+    const items = scored ? parseEvalItems(mdText) : [];
+    const narrative = items.length >= 2 ? stripEvalItems(mdText) : mdText;
     $("ivResultBody").innerHTML = `
       <div class="iv-eval-card">
         <div class="iv-eval-head">
@@ -344,8 +358,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
           <span class="score">${esc(total)}</span>
         </div>
         ${topic ? `<div class="iv-eval-topic">케이스: ${esc(topic)}</div>` : ""}
-        ${scoreTableHtml(scored)}
-        <div class="iv-eval-body md">${renderMarkdown(mdText)}</div>
+        ${scoreTableHtml(scored, items)}
+        <div class="iv-eval-body md">${renderMarkdown(narrative)}</div>
       </div>`;
     $("ivResultBody").scrollTop = 0;
     resultReopen.classList.remove("hidden");
