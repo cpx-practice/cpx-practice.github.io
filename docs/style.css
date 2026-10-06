@@ -1466,3 +1466,8 @@ body:has(#ivChatPanel:not(.hidden)) { overflow: hidden; }
 
 /* 짧은 화면(면담·설정)과 긴 화면(기록·분석)을 오갈 때 스크롤바 유무 때문에 콘텐츠가 좌우로 흔들리지 않게 자리를 항상 확보한다. */
 html { scrollbar-gutter: stable; }
+
+/* 키 설정 화면: 계정 저장 체크박스와 안내문 간격 */
+#ivCloudBox { margin: 14px 0 6px; }
+#ivCloudBox .hint { margin: 6px 0 0 26px; font-size: 0.8rem; }
+#ivKeyPanel .pair-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; }

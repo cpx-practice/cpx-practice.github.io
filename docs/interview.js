@@ -309,6 +309,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       // 이 기기에는 저장하되, 계정 저장은 실패했음을 알린다 (규칙 미게시·오프라인 등).
       config.cloud = hadCloud;
       saveConfig();
+      renderCloudControls(noKey); // 이 기기에는 키가 저장됐으니 삭제 버튼도 보여 준다
       msg.textContent = "이 기기에는 저장했지만 계정에는 저장하지 못했습니다 (서버 설정 전이거나 연결 문제). 다시 시도하려면 저장을 누르세요.";
       return;
     }
