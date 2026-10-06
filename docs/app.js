@@ -1181,12 +1181,12 @@ function renderUsers(rows) {
       <td>${escapeHtml(u.nickname || "")}</td>
       <td>${escapeHtml(u.email || "")}</td>
       <td>${fmtDateTime(u.createdAt)}</td>
-      <td>${pill}${!isAdmin && approved && u.aiInterview === true ? ' <span class="status-pill on">면담</span>' : ""}</td>
+      <td>${pill}${!isAdmin && approved && u.aiInterview === true ? ' <span class="status-pill on">AI 면담</span>' : ""}</td>
       <td class="actions">${
         isAdmin
           ? ""
           : `<button class="btn ghost small js-approve">${approved ? "승인 취소" : "승인"}</button>` +
-            (approved ? ` <button class="btn ghost small js-ai">면담 ${u.aiInterview === true ? "끄기" : "켜기"}</button>` : "") +
+            (approved ? ` <button class="btn ghost small js-ai">AI 면담 ${u.aiInterview === true ? "끄기" : "켜기"}</button>` : "") +
             // 승인된 계정은 먼저 승인을 취소해야 한다 — 실수로 한 번에 지우지 않게 삭제는 취소된 뒤에만 보인다.
             (approved ? "" : ' <button class="btn ghost small js-user-del">삭제</button>')
       }</td>
@@ -1207,7 +1207,7 @@ async function setAiInterview(u, next) {
   try {
     await setDoc(doc(db, "users", u.uid), { aiInterview: next }, { merge: true });
   } catch {
-    alert(`${who} 계정의 면담 설정을 바꾸지 못했습니다.
+    alert(`${who} 계정의 AI 면담 설정을 바꾸지 못했습니다.
 관리자 계정으로 로그인했는지 확인해주세요.`);
   }
 }

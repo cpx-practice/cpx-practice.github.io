@@ -244,7 +244,10 @@
         <div class="panel hidden" id="ivChatPanel">
           <div class="panel-header">
             <h2 id="ivChatTitle">면담 중</h2>
-            <button class="btn ghost small" id="btnEndInterview">나가기</button>
+            <div class="iv-head-actions">
+              <button class="btn ghost small hidden" id="btnIvResultReopen">결과 보기</button>
+              <button class="btn ghost small" id="btnEndInterview">나가기</button>
+            </div>
           </div>
           <div class="iv-chat" id="ivChatLog"></div>
           <div class="iv-quick">
@@ -526,6 +529,20 @@
     </section>
 
   </main>
+
+  <!-- 면담 채점 결과 — 평가가 끝나면 대화창 안이 아니라 이 별도 창으로 보여 준다 -->
+  <div id="ivResultBackdrop" class="backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="ivResultTitle">
+    <div class="modal iv-result-modal">
+      <div class="modal-head">
+        <h3 id="ivResultTitle">채점 결과</h3>
+        <div class="modal-actions">
+          <button class="btn small ghost" id="btnIvResultClose">대화 보기</button>
+          <button class="btn small primary" id="btnIvResultExit">면담 나가기</button>
+        </div>
+      </div>
+      <div class="modal-body" id="ivResultBody"></div>
+    </div>
+  </div>
 
   <!-- 기록 상세 -->
   <div id="detailBackdrop" class="backdrop hidden">

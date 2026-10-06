@@ -214,6 +214,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     chatPanel.classList.add("hidden");
   }
   function showStartPanel() {
+    clearResult();
     keyPanel.classList.add("hidden");
     startPanel.classList.remove("hidden");
     chatPanel.classList.add("hidden");
@@ -266,7 +267,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   }
 
   // 케이스 주제(특히 무작위로 뽑힌 것)는 실제 시험처럼 학생이 미리 알면 안 되므로
-  // 여기서는 절대 이름을 보여주지 않는다. 평가가 끝난 뒤 addEvalCard 에서만 공개한다.
+  // 여기서는 절대 이름을 보여주지 않는다. 평가가 끝난 뒤 showEvalResult 에서만 공개한다.
   function addTopicBar() {
     const bar = document.createElement("div");
     bar.className = "iv-topicbar";
@@ -304,11 +305,39 @@ export function initInterviewTab({ db, auth, endpoint }) {
     return `<table class="iv-score"><tbody>${body}</tbody></table>`;
   }
 
-  function addEvalCard(record, mdText, topic, scored) {
-    const row = document.createElement("div");
-    row.className = "iv-msg iv-eval";
+  // 채점 결과는 대화창 안이 아니라 별도 창(#ivResultBackdrop)으로 보여 준다. 창을 닫아도 면담 화면의
+  // "결과 보기" 버튼으로 다시 열 수 있다.
+  const resultBackdrop = $("ivResultBackdrop");
+  const resultReopen = $("btnIvResultReopen");
+  function openResult() {
+    resultBackdrop.classList.remove("hidden");
+    $("btnIvResultExit").focus();
+  }
+  function closeResult() {
+    resultBackdrop.classList.add("hidden");
+  }
+  // showStartPanel 이 초기화 때 먼저 부르므로, 이 아래에 선언된 const 를 참조하지 않고 요소를 직접 찾는다.
+  function clearResult() {
+    $("ivResultBackdrop").classList.add("hidden");
+    $("ivResultBody").innerHTML = "";
+    $("btnIvResultReopen").classList.add("hidden");
+  }
+  $("btnIvResultClose").addEventListener("click", closeResult);
+  $("btnIvResultExit").addEventListener("click", () => {
+    closeResult();
+    $("btnEndInterview").click(); // 평가가 끝난 면담이라 확인창 없이 시작 화면으로 돌아간다
+  });
+  resultReopen.addEventListener("click", openResult);
+  resultBackdrop.addEventListener("click", (e) => {
+    if (e.target === resultBackdrop) closeResult();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !resultBackdrop.classList.contains("hidden")) closeResult();
+  });
+
+  function showEvalResult(record, mdText, topic, scored) {
     const total = typeof record.total === "number" ? `${record.total} / 100` : "";
-    row.innerHTML = `
+    $("ivResultBody").innerHTML = `
       <div class="iv-eval-card">
         <div class="iv-eval-head">
           <span class="grade">${esc(record.grade || "채점 완료")}</span>
@@ -318,8 +347,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
         ${scoreTableHtml(scored)}
         <div class="iv-eval-body md">${renderMarkdown(mdText)}</div>
       </div>`;
-    chatLog.appendChild(row);
-    scrollToBottom();
+    $("ivResultBody").scrollTop = 0;
+    resultReopen.classList.remove("hidden");
+    openResult();
   }
 
   let typingRow = null;
@@ -680,7 +710,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
         if (scored) {
           for (const k of ["history", "pe", "ppi", "total", "grade"]) record[k] = scored[k];
         }
-        addEvalCard(record, shown, record.topic || topicLabel, scored);
+        showEvalResult(record, shown, record.topic || topicLabel, scored);
+        addBubble("__note", "채점이 끝났습니다. 결과는 별도 창에서 볼 수 있고, 위의 \"결과 보기\"로 다시 열 수 있습니다.");
         await saveRecord(record, shown);
         addBubble("__note", "채점 결과가 \"내 기록\" 탭에 저장되었습니다.");
         systemPrompt = null; // 이 면담은 끝 — 새로 시작해야 다음 메시지가 된다
