@@ -1486,3 +1486,8 @@ html { scrollbar-gutter: stable; }
 @media (max-width: 640px) {
   #ivResultBackdrop .modal-actions { flex-wrap: wrap; justify-content: flex-end; }
 }
+
+/* 관리자 계정 표: 계정별 하루 면담 횟수 선택 */
+.ai-limit { display: inline-flex; flex-direction: row; align-items: center; gap: 4px; margin-left: 4px; font-size: 0.78rem; color: var(--muted); white-space: nowrap; }
+.ai-limit select { padding: 3px 6px; font-size: 0.78rem; }
+@media (max-width: 640px) { #adminTable .ai-limit { display: flex; margin: 4px 0 0; } }

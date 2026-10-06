@@ -409,6 +409,7 @@ onAuthStateChanged(auth, async (user) => {
     watchUsers();
     watchAllReports();
     loadAiUsage();
+    loadAiLimits();
   }
 
   watchMyReports(user.uid);
@@ -1154,9 +1155,12 @@ function watchUsers() {
       if (wait(a) !== wait(b)) return wait(a) - wait(b);
       return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
     });
+    lastUserRows = rows;
     renderUsers(rows);
   });
 }
+let lastUserRows = [];
+let aiLimits = { defaultLimit: 2, maxLimit: 20, limits: {} }; // 서버(/interview/ai/limits)가 알려 준 계정별 하루 면담 횟수
 
 function renderUsers(rows) {
   $("adminCount").textContent = rows.length;
@@ -1188,12 +1192,15 @@ function renderUsers(rows) {
           ? ""
           : `<button class="btn ghost small js-approve">${approved ? "승인 취소" : "승인"}</button>` +
             (approved ? ` <button class="btn ghost small js-ai">AI 면담 ${u.aiInterview === true ? "끄기" : "켜기"}</button>` : "") +
+            (approved && u.aiInterview === true ? limitSelectHtml(u.uid) : "") +
             // 승인된 계정은 먼저 승인을 취소해야 한다 — 실수로 한 번에 지우지 않게 삭제는 취소된 뒤에만 보인다.
             (approved ? "" : ' <button class="btn ghost small js-user-del">삭제</button>')
       }</td>
     `;
     const btn = tr.querySelector(".js-approve");
     if (btn) btn.addEventListener("click", () => setApproved(u, !approved));
+    const lim = tr.querySelector(".js-ai-limit");
+    if (lim) lim.addEventListener("change", () => setAiLimit(u, lim.value));
     const ai = tr.querySelector(".js-ai");
     if (ai) ai.addEventListener("click", () => setAiInterview(u, u.aiInterview !== true));
     const del = tr.querySelector(".js-user-del");
@@ -1257,6 +1264,53 @@ async function loadAiUsage() {
   }
 }
 $("btnAiUsageRefresh").addEventListener("click", loadAiUsage);
+
+// 계정별 하루 면담 횟수 — 무료 뉴런 전체 한도는 그대로 적용된다(남아 있는 한에서만 늘어난다).
+function limitSelectHtml(uid) {
+  const def = aiLimits.defaultLimit;
+  const cur = aiLimits.limits[uid];
+  const opts = [...new Set([3, 5, 10, cur].filter((n) => Number.isInteger(n) && n > def))].sort((a, b) => a - b);
+  return (
+    ` <label class="ai-limit" title="이 계정의 하루 면담 횟수 (무료 뉴런이 남아 있는 한)">하루 ` +
+    `<select class="js-ai-limit"><option value=""${cur ? "" : " selected"}>기본 ${def}회</option>` +
+    opts.map((n) => `<option value="${n}"${cur === n ? " selected" : ""}>${n}회</option>`).join("") +
+    `</select></label>`
+  );
+}
+
+async function adminWorker(action, extra) {
+  const user = auth.currentUser;
+  if (!user) throw new Error("login_required");
+  const res = await fetch(INTERVIEW_ENDPOINT + "/interview/ai/limits", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${await user.getIdToken()}` },
+    body: JSON.stringify({ action, ...extra }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+async function loadAiLimits() {
+  try {
+    aiLimits = await adminWorker("list");
+    renderUsers(lastUserRows);
+  } catch {
+    /* 못 불러와도 계정 목록은 그대로 쓴다 — 기본 횟수로 표시된다 */
+  }
+}
+
+async function setAiLimit(u, value) {
+  const who = u.nickname || u.email || u.uid;
+  try {
+    await adminWorker("set", { uid: u.uid, limit: value === "" ? null : Number(value) });
+    await loadAiLimits();
+  } catch (err) {
+    alert(`${who} 계정의 하루 면담 횟수를 바꾸지 못했습니다.
+(${err.message})`);
+    await loadAiLimits();
+  }
+}
 
 // 면담 탭을 이 계정에게 열거나 닫는다. 켠 계정은 다음에 사이트를 열 때(새로고침) 탭이 보인다.
 async function setAiInterview(u, next) {
