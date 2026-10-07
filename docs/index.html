@@ -375,6 +375,12 @@
             <span class="hint">설치부터 면담·채점·기록판 사용법까지 담은 15쪽 문서입니다. 인쇄해서 옆에 두고 봐도 됩니다.</span>
           </p>
 
+          <p class="hint">
+            <b>면담만 하려면 3·4단계(연결)는 건너뛰어도 됩니다.</b> 플러그인만 설치하면 <code>/cpx:start</code> 로 면담과 채점을
+            받을 수 있습니다. 다만 <b>연결하지 않으면 결과가 이 사이트의 "내 기록"에 저장되지 않고</b>, 아무것도 전송되지 않습니다.
+            기록을 남기고 싶을 때만 연결하세요. 나중에 연결해도 됩니다.
+          </p>
+
           <p class="warn">
             <b>이 방법은 Claude 유료 플랜(Pro 이상)이 필요합니다.</b> 무료 플랜 계정으로는 앱이 깔려도 면담 명령이
             나타나지 않습니다. 설치 전에 플랜부터 확인하세요. (플랜 없이 연습하려면 위의 방법 1을 쓰세요.)
@@ -419,7 +425,7 @@
             </li>
 
             <li>
-              <b>연결 코드 발급</b>
+              <b>연결 코드 발급</b> <span class="hint">(기록을 사이트에 저장하려는 경우만)</span>
               <div class="pair-box">
                 <button class="btn primary" id="btnMakeToken">연결 코드 만들기</button>
                 <textarea id="pairToken" class="token" rows="4" readonly placeholder="버튼을 누르면 여기에 코드가 표시됩니다"></textarea>
@@ -436,13 +442,13 @@
             </li>
 
             <li>
-              <b>Claude에 붙여넣기</b>
+              <b>Claude에 붙여넣기</b> <span class="hint">(위와 같음)</span>
               <pre class="code">/cpx:pair &lt;위에서 복사한 코드&gt;</pre>
             </li>
 
             <li>
               <b>연습 시작</b> — <code>/cpx:start</code> → 문진 → <code>진찰</code> → <code>평가</code>.
-              평가가 끝나면 자동으로 여기에 기록됩니다. 주제를 고르려면
+              평가가 끝나면 (연결했다면) 자동으로 여기에 기록됩니다. 주제를 고르려면
               <code>/cpx:start 가슴통증</code> 처럼 뒤에 붙이면 됩니다.
             </li>
           </ol>
