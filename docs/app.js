@@ -1240,7 +1240,7 @@ function renderAiUsage(status, usage) {
   const who = (uid) => {
     if (!uid) return "(기록 없음)";
     const u = lastUserRows.find((r) => r.uid === uid);
-    return u ? u.nickname || u.email || uid.slice(0, 6) : `${uid.slice(0, 6)}…`;
+    return u ? u.email || u.nickname || uid.slice(0, 6) : `${uid.slice(0, 6)}…`;
   };
   const byUser = new Map();
   for (const s of sessions) {
