@@ -151,11 +151,11 @@ const views = {
   settings: $("viewSettings"),
 };
 
-// 면담 탭은 개발 중이라 로컬 개발 서버, 관리자 계정, 관리자가 켜 준 계정에서만 연다 (setInterviewTab).
+// 면담 탭은 가입(승인)된 계정 모두에게 열려 있고, 관리자가 계정 목록에서 끈 계정(aiInterview === false)에서만 숨긴다 (setInterviewTab).
 const IS_DEV_HOST = ["localhost", "127.0.0.1", "[::1]"].includes(location.hostname);
 const tabInterview = document.querySelector('.subtab[data-view="interview"]');
 function setInterviewTab(isAdmin, granted = false) {
-  // granted: 관리자가 계정 목록에서 켜 준 계정(users/{uid}.aiInterview). 본인은 이 값을 못 바꾼다(firestore.rules).
+  // granted: 관리자가 끄지 않은 계정(users/{uid}.aiInterview !== false). 본인은 이 값을 못 바꾼다(firestore.rules).
   const on = IS_DEV_HOST || isAdmin || granted;
   tabInterview?.classList.toggle("hidden", !on);
   // 관리자로 면담 탭을 보던 중 다른 계정으로 바뀌면 숨은 탭에 머물지 않게 한다.
@@ -403,7 +403,7 @@ onAuthStateChanged(auth, async (user) => {
   setConsent.checked = profile.consentTranscript === true;
 
   setAdminUi(isAdmin);
-  setInterviewTab(isAdmin, profile.aiInterview === true);
+  setInterviewTab(isAdmin, profile.aiInterview !== false);
   if (isAdmin) {
     setRequireApproval.checked = appConfig.requireApproval === true;
     watchUsers();
@@ -1186,13 +1186,13 @@ function renderUsers(rows) {
       <td>${escapeHtml(u.nickname || "")}</td>
       <td>${escapeHtml(u.email || "")}</td>
       <td>${fmtDateTime(u.createdAt)}</td>
-      <td>${pill}${!isAdmin && approved && u.aiInterview === true ? ' <span class="status-pill on">AI 면담</span>' : ""}</td>
+      <td>${pill}${!isAdmin && approved && u.aiInterview === false ? ' <span class="status-pill wait">AI 면담 꺼짐</span>' : ""}</td>
       <td class="actions">${
         isAdmin
           ? ""
           : `<button class="btn ghost small js-approve">${approved ? "승인 취소" : "승인"}</button>` +
-            (approved ? ` <button class="btn ghost small js-ai">AI 면담 ${u.aiInterview === true ? "끄기" : "켜기"}</button>` : "") +
-            (approved && u.aiInterview === true ? limitSelectHtml(u.uid) : "") +
+            (approved ? ` <button class="btn ghost small js-ai">AI 면담 ${u.aiInterview !== false ? "끄기" : "켜기"}</button>` : "") +
+            (approved && u.aiInterview !== false ? limitSelectHtml(u.uid) : "") +
             // 승인된 계정은 먼저 승인을 취소해야 한다 — 실수로 한 번에 지우지 않게 삭제는 취소된 뒤에만 보인다.
             (approved ? "" : ' <button class="btn ghost small js-user-del">삭제</button>')
       }</td>
@@ -1202,7 +1202,7 @@ function renderUsers(rows) {
     const lim = tr.querySelector(".js-ai-limit");
     if (lim) lim.addEventListener("change", () => setAiLimit(u, lim.value));
     const ai = tr.querySelector(".js-ai");
-    if (ai) ai.addEventListener("click", () => setAiInterview(u, u.aiInterview !== true));
+    if (ai) ai.addEventListener("click", () => setAiInterview(u, u.aiInterview === false));
     const del = tr.querySelector(".js-user-del");
     if (del) del.addEventListener("click", () => deleteUserAccount(u));
     body.appendChild(tr);
@@ -1228,6 +1228,9 @@ function renderAiUsage(status, usage) {
   $("aiUsageSummary").innerHTML =
     `뉴런 <b>${nf(used)}</b> / ${nf(cap)} (${pct}%) · 남은 양 ${nf(Math.max(0, cap - used))}<br>` +
     `면담 ${sessions.length}회 · 모델 호출 ${nf(modelTurns)}턴 · 서버가 직접 답한 ${nf(localTurns)}턴<br>` +
+    (usage.gemini?.configured
+      ? `Gemini 폴백 면담 ${nf(usage.gemini.sessions)}/${nf(usage.gemini.maxSessions)}회 · 호출 ${nf(usage.gemini.requests)}/${nf(usage.gemini.maxRequests)}회 (뉴런이 모자랄 때만 사용)<br>`
+      : "") +
     (withTokens.length
       ? `토큰 <b>${nf(tin + tout)}</b> (입력 ${nf(tin)} + 출력 ${nf(tout)}) — 토큰 집계가 있는 면담 ${withTokens.length}/${sessions.length}회 기준`
       : "토큰: 아직 집계된 면담이 없습니다(이 기능을 넣은 뒤의 면담부터 기록됩니다)");
@@ -1240,7 +1243,7 @@ function renderAiUsage(status, usage) {
       : "-";
     const tr = document.createElement("tr");
     tr.innerHTML =
-      `<td>${escapeHtml(when)}</td><td>${escapeHtml(s.topic || "-")}</td>` +
+      `<td>${escapeHtml(when)}</td><td>${escapeHtml(s.topic || "-")}${s.backend === "gemini" ? " <small>(Gemini)</small>" : ""}</td>` +
       `<td class="num">${nf(s.tokensIn)}</td><td class="num">${nf(s.tokensOut)}</td>` +
       `<td class="num">${nf(s.neurons)}</td><td class="num">${nf(s.modelTurns)} / ${nf(s.localTurns)}</td>`;
     body.appendChild(tr);
@@ -1312,7 +1315,7 @@ async function setAiLimit(u, value) {
   }
 }
 
-// 면담 탭을 이 계정에게 열거나 닫는다. 켠 계정은 다음에 사이트를 열 때(새로고침) 탭이 보인다.
+// 면담 탭을 이 계정에게 열거나 닫는다 (기본은 열림). 바뀐 값은 그 계정이 다음에 사이트를 열 때(새로고침) 반영된다.
 async function setAiInterview(u, next) {
   const who = u.nickname || u.email || u.uid;
   try {
