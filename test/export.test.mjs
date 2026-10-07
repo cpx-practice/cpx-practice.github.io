@@ -1,7 +1,7 @@
 // 기록 상세·내보내기 보정 테스트.  cd cpx-tracker && node --test test/export.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { trimTranscript, tabulateEvaluation, recordToMarkdown } from "../docs/export.js";
+import { trimTranscript, tabulateEvaluation, recordToMarkdown, applyMarkChanges } from "../docs/export.js";
 
 test("전사: '평가' 입력과 그 뒤 채점문은 잘라 낸다", () => {
   const script = [
@@ -184,4 +184,19 @@ test("Gemini 형식: '도입(intro): O / 근거' 줄을 표로 합치고 소제�
   assert.ok(!/섹션별|intro|ice\)/.test(rest));
   assert.ok(rest.includes("잘한 점"));
   assert.match(tabulateEvaluation(md), /\| 도입 \| O \|/);
+});
+
+test("applyMarkChanges: 조정된 평가를 항목 줄에 반영하고 이유를 근거에 붙인다 (슬래시·괄호 두 형식)", () => {
+  const md = ["도입(intro): O / 자기소개 사용함", "ICE (환자의 생각·걱정·기대): X (묻지 않음)", "활력징후 확인: O (혈압 확인)"].join("\n");
+  const out = applyMarkChanges(md, [
+    { label: "도입", from: "O", to: "△", reason: "자기소개 발화 없음" },
+    { label: "ICE (환자의 생각·걱정·기대)", from: "X", to: "X", reason: "이유" },
+  ]);
+  const lines = out.split("\n");
+  assert.match(lines[0], /^도입\(intro\): △ \/ 자기소개 사용함 \(대화 확인 조정: 자기소개 발화 없음\)$/);
+  assert.match(lines[1], /X \(묻지 않음; 대화 확인 조정: 이유\)$/);
+  assert.equal(lines[2], "활력징후 확인: O (혈압 확인)");
+  const t = tabulateEvaluation(out);
+  assert.match(t, /\| 도입 \| △ \| 2\.5 \/ 5 \|/);
+  assert.equal(applyMarkChanges(md, []), md);
 });

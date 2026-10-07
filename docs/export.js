@@ -92,6 +92,32 @@ export function tabulateEvaluation(md) {
   return out.join("\n");
 }
 
+// auditMarks 가 낮춘 항목을 채점문의 항목 줄에도 반영한다 — 점수 합계는 조정 후 값인데 표만 AI 의 원래 표시로 남지 않게.
+// changes: [{label, from, to, reason}]. 근거 끝에 "(대화 확인 조정: 이유)" 를 덧붙여 평가와 근거가 어긋나 보이지 않게 한다.
+export function applyMarkChanges(md, changes) {
+  if (!changes || !changes.length) return String(md || "");
+  const byKey = new Map();
+  for (const c of changes) {
+    const key = lookupItem(c.label).key;
+    if (key) byKey.set(key, c);
+  }
+  return String(md || "")
+    .split("\n")
+    .map((line) => {
+      const m = ITEM_LINE.exec(line);
+      if (!m) return line;
+      const c = byKey.get(lookupItem(m[1]).key);
+      if (!c) return line;
+      const note = `대화 확인 조정: ${c.reason}`;
+      let out = line.replace(/([:：]\s*\**\s*)(O|△|X|N|해당없음)/, `$1${c.to}`);
+      // 근거가 "(…)" 로 감싸진 형식이면 닫는 괄호 앞에, 아니면 끝에 붙인다.
+      if (m[3] !== undefined && /[)）]\s*$/.test(out)) out = out.replace(/([)）])(\s*)$/, `; ${note}$1$2`);
+      else out = `${out.trimEnd()} (${note})`;
+      return out;
+    })
+    .join("\n");
+}
+
 // 채점문의 항목 줄에서 [{label, mark, comment}] 를 뽑는다. 점수 표(scoring.js 가 계산)에 근거를 합칠 때 쓴다.
 export function parseEvalItems(md) {
   const out = [];

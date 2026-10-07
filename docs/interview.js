@@ -20,7 +20,7 @@ import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
 import { scoreRecord, auditMarks, reconcileNarrative } from "./scoring.js";
-import { parseEvalItems, stripEvalItems, findReason } from "./export.js";
+import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges } from "./export.js";
 import { claimConfig, mergeCloud, cloudPayload } from "./aikeys.js";
 
 const CONFIG_STORAGE = "cpx-ai-config"; // { provider, keys: {id: key}, models: {id: model}, ownerUid, cloud }
@@ -902,6 +902,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
         const changes = auditMarks(record, history.slice(0, -1));
         shown = reconcileNarrative(shown, record, history.slice(0, -1), changes);
         if (changes.length) {
+          shown = applyMarkChanges(shown, changes); // 표의 평가도 조정 후 값으로 (아래 목록은 이유 설명으로 남긴다)
           shown +=
             "\n\n대화 확인으로 조정한 항목\n" +
             changes.map((c) => `- ${c.label}: ${c.from} → ${c.to} (${c.reason})`).join("\n");
