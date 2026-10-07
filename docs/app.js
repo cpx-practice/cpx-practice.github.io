@@ -1229,7 +1229,9 @@ function renderAiUsage(status, usage) {
     `뉴런 <b>${nf(used)}</b> / ${nf(cap)} (${pct}%) · 남은 양 ${nf(Math.max(0, cap - used))}<br>` +
     `면담 ${sessions.length}회 · 모델 호출 ${nf(modelTurns)}턴 · 서버가 직접 답한 ${nf(localTurns)}턴<br>` +
     (usage.gemini?.configured
-      ? `Gemini 폴백 면담 ${nf(usage.gemini.sessions)}/${nf(usage.gemini.maxSessions)}회 · 호출 ${nf(usage.gemini.requests)}/${nf(usage.gemini.maxRequests)}회 (뉴런이 모자랄 때만 사용)<br>`
+      ? `Gemini 폴백 면담 ${nf(usage.gemini.sessions)}/${nf(usage.gemini.maxSessions)}회 · 호출 ${nf(usage.gemini.requests)}/${nf(usage.gemini.maxRequests)}회 (뉴런이 모자랄 때만 사용) · 연결 ` +
+        (usage.probe ? (usage.probe.ok ? "<b>정상</b>" : `<b>실패</b> (${usage.probe.status} ${escapeHtml(usage.probe.detail || "")})`) : "미확인") +
+        "<br>"
       : "") +
     (withTokens.length
       ? `토큰 <b>${nf(tin + tout)}</b> (입력 ${nf(tin)} + 출력 ${nf(tout)}) — 토큰 집계가 있는 면담 ${withTokens.length}/${sessions.length}회 기준`
@@ -1257,7 +1259,7 @@ async function loadAiUsage() {
     const user = auth.currentUser;
     if (!user) return;
     const token = await user.getIdToken();
-    const post = (path, headers) => fetch(INTERVIEW_ENDPOINT + path, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: "{}" });
+    const post = (path, headers) => fetch(INTERVIEW_ENDPOINT + path, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: path.endsWith("/usage") ? '{"probe":true}' : "{}" });
     const [st, us] = await Promise.all([post("/interview/ai/status"), post("/interview/ai/usage", { Authorization: `Bearer ${token}` })]);
     if (!us.ok) throw new Error(`HTTP ${us.status}`);
     renderAiUsage(await st.json().catch(() => ({})), await us.json());
