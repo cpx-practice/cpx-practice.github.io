@@ -95,6 +95,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   const ivInput = $("ivInput");
   const ivStatus = $("ivStatus");
   const startErr = $("ivStartErr");
+  const startAlt = $("ivStartAlt"); // 무료 한도가 소진됐을 때 "내 키로 계속하기" 버튼을 담는 자리
 
   // 술기 카드(49-*)와 "나쁜 소식 전하기"(12, 별도 스키마)는 아직 웹 면담이 다루지 않는다.
   for (const t of TOPICS.filter((t) => !t.num.startsWith("49") && t.num !== "12")) {
@@ -224,6 +225,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     startPanel.classList.remove("hidden");
     chatPanel.classList.add("hidden");
     startErr.classList.add("hidden");
+    startAlt.classList.add("hidden");
     renderAiSummary();
   }
   function showChatPanel() {
@@ -782,8 +784,34 @@ export function initInterviewTab({ db, auth, endpoint }) {
     throw lastErr;
   }
 
+  // 무료 한도(전체 소진·1인당 횟수)에 걸렸을 때 — 내 Gemini 키로 바로 이어가거나, 키를 연결하는 화면으로 안내한다.
+  function offerOwnKey() {
+    startAlt.innerHTML = "";
+    const btn = document.createElement("button");
+    btn.className = "btn primary small";
+    if (config.keys.gemini) {
+      btn.textContent = "내 Gemini 키로 계속하기";
+      btn.addEventListener("click", () => {
+        config.provider = "gemini";
+        saveConfig();
+        renderAiSummary();
+        startAlt.classList.add("hidden");
+        $("btnStartInterview").click();
+      });
+    } else {
+      btn.textContent = "내 Gemini 키 연결하기";
+      btn.addEventListener("click", () => {
+        renderProviderForm("gemini");
+        showKeyPanel();
+      });
+    }
+    startAlt.appendChild(btn);
+    startAlt.classList.remove("hidden");
+  }
+
   $("btnStartInterview").addEventListener("click", async () => {
     startErr.classList.add("hidden");
+    startAlt.classList.add("hidden");
     const btn = $("btnStartInterview");
     btn.disabled = true;
     try {
@@ -812,6 +840,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     } catch (err) {
       startErr.textContent = friendlyStartError(err);
       startErr.classList.remove("hidden");
+      if (isFree() && ["daily_budget_exhausted", "user_daily_limit"].includes(err?.data?.error)) offerOwnKey();
     } finally {
       btn.disabled = false;
     }
