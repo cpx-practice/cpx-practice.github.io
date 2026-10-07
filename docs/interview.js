@@ -814,6 +814,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     }
     systemPrompt = data.systemPrompt;
     safetySettings = data.safetySettings || safetySettings;
+    workerModel = null; // 무료 모드에서 받아 둔 Workers AI 모델 id 가 Gemini 모델명으로 새어 들어가지 않게 (getModel 참고)
     config.provider = "gemini";
     saveConfig();
     renderAiSummary();
