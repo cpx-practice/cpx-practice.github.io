@@ -757,7 +757,82 @@ export function initInterviewTab({ db, auth, endpoint }) {
 
   // 무료 인기 모델은 "지금 붐빕니다"(503) 가 흔하고 보통 몇 초 안에 풀린다.
   // 학생에게 바로 에러를 보여주기 전에 짧게 재시도하고, Gemini 는 대체 모델로도 갈아타 본다.
+  // 서버가 돌려준 무료 모드 에러 코드 (본문이 JSON 이 아니면 null).
+  function freeErrorCode(err) {
+    try {
+      return JSON.parse(err.bodyText || "null")?.error || null;
+    } catch {
+      return null;
+    }
+  }
+
+  // 대화창 안에서 본인 Gemini 키를 받는다 — 키를 붙여넣고 "이어서 하기"를 누르면 키를, "그만두기"면 null 을 돌려준다.
+  function askOwnKey() {
+    return new Promise((resolve) => {
+      const row = document.createElement("div");
+      row.className = "iv-msg iv-note";
+      row.innerHTML =
+        `<span class="iv-bubble">` +
+        `<a href="${PROVIDERS.gemini.keyUrl}" target="_blank" rel="noopener">Google AI Studio</a> 에서 무료 키를 만들어 붙여넣으세요.<br>` +
+        `<input type="password" class="iv-ownkey" autocomplete="off" placeholder="Gemini API 키" style="width:70%;margin:6px 0"> ` +
+        `<button class="btn primary small js-ok">이어서 하기</button> <button class="btn ghost small js-no">그만두기</button>` +
+        `</span>`;
+      chatLog.appendChild(row);
+      scrollToBottom();
+      const input = row.querySelector("input");
+      input.focus();
+      const done = (v) => {
+        row.remove();
+        resolve(v);
+      };
+      row.querySelector(".js-ok").addEventListener("click", () => {
+        const v = input.value.trim();
+        if (v) done(v);
+        else input.focus();
+      });
+      row.querySelector(".js-no").addEventListener("click", () => done(null));
+    });
+  }
+
+  // 두 AI(Workers AI·운영자 Gemini)가 모두 소진돼 면담이 끊기게 됐을 때 — 본인 Gemini 키로 같은 면담을 이어간다.
+  // 소진이 확인된 경우에만 서버가 전체 프롬프트를 내려준다 (/interview/ai/handoff). 성공하면 true.
+  async function handoffToOwnKey() {
+    hideTyping();
+    addBubble("__note", "오늘 무료 AI 한도가 모두 소진됐습니다. 내 Gemini 키가 있으면 이 면담을 이어서 진행할 수 있습니다.");
+    if (!config.keys.gemini) {
+      const key = await askOwnKey();
+      if (!key) return false;
+      config.keys.gemini = key;
+      saveConfig();
+    }
+    let data;
+    try {
+      data = await callWorker("/interview/ai/handoff", { sessionId: aiSessionId }, { withAuth: true });
+    } catch {
+      addBubble("__note", "면담을 이어가지 못했습니다. \"나가기\"를 눌러 새로 시작해주세요.");
+      return false;
+    }
+    systemPrompt = data.systemPrompt;
+    safetySettings = data.safetySettings || safetySettings;
+    config.provider = "gemini";
+    saveConfig();
+    renderAiSummary();
+    addBubble("__note", "내 Gemini 키로 이어서 진행합니다.");
+    showTyping();
+    return true;
+  }
+
   async function callAI() {
+    try {
+      return await callAIOnce();
+    } catch (err) {
+      if (!(currentProvider() === "free" && aiSessionId && err.status === 429 && freeErrorCode(err) === "daily_budget_exhausted")) throw err;
+      if (!(await handoffToOwnKey())) throw err;
+      return callAIOnce(); // 이제 제공자는 gemini
+    }
+  }
+
+  async function callAIOnce() {
     const provider = currentProvider();
     const primary = getModel();
     const models = [primary, ...(PROVIDERS[provider].fallbacks || []).filter((m) => m !== primary)];
