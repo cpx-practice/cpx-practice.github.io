@@ -36,7 +36,7 @@ export function trimTranscript(script) {
 const MARK_WORD = { O: "O", "△": "△", X: "X", N: "해당없음", 해당없음: "해당없음" };
 // 근거는 모델이 "(근거)" 로도, "| 근거" · "— 근거" · "- 근거" · ": 근거" 로도 쓴다 (실제로 형식이 바뀐 적이 있다).
 // 앞의 것은 3번, 뒤의 것은 4번 그룹이다. 읽을 때는 commentOf 로 둘 중 있는 쪽을 쓴다.
-const ITEM_LINE = /^\s*(?:\d+[.)]\s+|[-*•]\s+)?(.{1,60}?)\s*[:：]\s*\**\s*(O|△|X|N|해당없음)\**(?![A-Za-z가-힣])\s*(?:[(（](.*)[)）]|[|｜—–:：-]\s*(.*))?\s*$/;
+const ITEM_LINE = /^\s*(?:\d+[.)]\s+|[-*•]\s+)?(.{1,60}?)\s*[:：]\s*\**\s*(O|△|X|N|해당없음)\**(?![A-Za-z가-힣])\s*(?:[(（](.*)[)）]|[|｜/／—–:：-]\s*(.*))?\s*$/;
 // 근거 전체가 따옴표 하나로 감싸진 경우("…")에만 바깥 따옴표를 벗긴다. 안쪽에 따옴표가 섞인 근거(생각: "독감", …)는 그대로 둔다.
 const commentOf = (m) => {
   const t = String(m[3] ?? m[4] ?? "").trim();
@@ -46,7 +46,8 @@ const commentOf = (m) => {
 const PE_KEYS = new Set(["consent", "vitals", "pe1", "pe2"]);
 
 function lookupItem(label) {
-  const clean = label.replace(/[(（]\s*\d+\s*점\s*[)）]/g, "").replace(/\*+/g, "").trim();
+  // Gemini 는 항목 키를 괄호로 덧붙인다 ("도입(intro): O / …") — 보여 줄 이름에서는 뗀다.
+  const clean = label.replace(/[(（]\s*\d+\s*점\s*[)）]/g, "").replace(/[(（]\s*[A-Za-z][A-Za-z0-9]*\s*[)）]/g, "").replace(/\*+/g, "").trim();
   const norm = (t) => t.replace(/\s+/g, "");
   for (const sec of SECTIONS) {
     for (const [key, name, pts] of sec.items) {
@@ -110,6 +111,11 @@ export function stripEvalItems(md) {
     while (i + n < lines.length && ITEM_LINE.test(lines[i + n])) n += 1;
     if (n >= 2) {
       i += n;
+      continue;
+    }
+    // 항목 줄 위에 붙는 "섹션별 항목 채점표" 같은 소제목도 표와 같이 걷어 낸다.
+    if (/^\s*(?:#{1,6}\s*)?(?:\d+[.)]\s*)?\**\s*섹션별\s*항목\s*채점표\s*\**\s*$/.test(lines[i])) {
+      i += 1;
       continue;
     }
     // 구역 제목: "## I. 병력청취 (History taking)" 도, `#` 없는 "III. PPI (Patient-Physician Interaction) — 20점" 도 있다.

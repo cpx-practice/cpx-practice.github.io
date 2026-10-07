@@ -165,3 +165,23 @@ test("근거 구분자가 '|' · '—' · '-' 로 바뀌어도 읽고, '#' 없�
   assert.ok(!/도입|라포 형성|PPI|History taking/.test(out));
   assert.match(out, /^잘한 점$/m);
 });
+
+test("Gemini 형식: '도입(intro): O / 근거' 줄을 표로 합치고 소제목·항목 줄은 걷어 낸다", () => {
+  const md = [
+    "섹션별 항목 채점표",
+    "도입(intro): O / 자기소개·환자확인 및 개방형 질문 사용함",
+    "ICE(ice): X / 환자의 생각을 직접 묻지 않음",
+    "Red Flag/감별진단(redflag): △ / 항생제 복용력만 확인함",
+    "잘한 점",
+    "개방형 질문으로 시작했다.",
+  ].join("\n");
+  const items = parseEvalItems(md);
+  assert.equal(items.length, 3);
+  assert.equal(items[0].label, "도입");
+  assert.equal(items[0].comment, "자기소개·환자확인 및 개방형 질문 사용함");
+  assert.equal(items[2].label, "Red Flag/감별진단");
+  const rest = stripEvalItems(md);
+  assert.ok(!/섹션별|intro|ice\)/.test(rest));
+  assert.ok(rest.includes("잘한 점"));
+  assert.match(tabulateEvaluation(md), /\| 도입 \| O \|/);
+});
