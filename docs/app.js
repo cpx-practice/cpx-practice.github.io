@@ -1229,7 +1229,7 @@ function renderAiUsage(status, usage) {
     `뉴런 <b>${nf(used)}</b> / ${nf(cap)} (${pct}%) · 남은 양 ${nf(Math.max(0, cap - used))}<br>` +
     `면담 ${sessions.length}회 · 모델 호출 ${nf(modelTurns)}턴 · 서버가 직접 답한 ${nf(localTurns)}턴<br>` +
     (usage.gemini?.configured
-      ? `Gemini 폴백 면담 ${nf(usage.gemini.sessions)}/${nf(usage.gemini.maxSessions)}회 · 호출 ${nf(usage.gemini.requests)}/${nf(usage.gemini.maxRequests)}회 (뉴런이 모자랄 때만 사용) · 연결 ` +
+      ? `Gemini 폴백 면담 ${nf(usage.gemini.sessions)}회 · 호출 ${nf(usage.gemini.requests)}회 (뉴런이 모자랄 때만 사용)${usage.gemini.exhausted ? " · <b>오늘 한도 도달</b>" : ""} · 연결 ` +
         (usage.probe ? (usage.probe.ok ? "<b>정상</b>" : `<b>실패</b> (${usage.probe.status} ${escapeHtml(usage.probe.detail || "")})`) : "미확인") +
         "<br>"
       : "") +
