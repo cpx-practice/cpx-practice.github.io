@@ -1236,6 +1236,33 @@ function renderAiUsage(status, usage) {
     (withTokens.length
       ? `토큰 <b>${nf(tin + tout)}</b> (입력 ${nf(tin)} + 출력 ${nf(tout)}) — 토큰 집계가 있는 면담 ${withTokens.length}/${sessions.length}회 기준`
       : "토큰: 아직 집계된 면담이 없습니다(이 기능을 넣은 뒤의 면담부터 기록됩니다)");
+  // 사용자 이름: 계정 목록(lastUserRows)에서 uid 로 찾는다. 사용자 기록을 넣기 전 면담은 uid 가 없다.
+  const who = (uid) => {
+    if (!uid) return "(기록 없음)";
+    const u = lastUserRows.find((r) => r.uid === uid);
+    return u ? u.nickname || u.email || uid.slice(0, 6) : `${uid.slice(0, 6)}…`;
+  };
+  const byUser = new Map();
+  for (const s of sessions) {
+    const k = s.uid || "";
+    const a = byUser.get(k) || { n: 0, tin: 0, tout: 0, neurons: 0, gem: 0 };
+    a.n += 1;
+    a.tin += s.tokensIn || 0;
+    a.tout += s.tokensOut || 0;
+    a.neurons += s.neurons || 0;
+    if (s.backend === "gemini") a.gem += 1;
+    byUser.set(k, a);
+  }
+  const ubody = $("aiUsageUserBody");
+  ubody.innerHTML = "";
+  $("aiUsageUserTable").classList.toggle("hidden", sessions.length === 0);
+  for (const [uid, a] of [...byUser.entries()].sort((x, y) => y[1].n - x[1].n)) {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>${escapeHtml(who(uid))}</td><td class="num">${nf(a.n)}</td><td class="num">${nf(a.tin)}</td>` +
+      `<td class="num">${nf(a.tout)}</td><td class="num">${nf(a.neurons)}</td><td class="num">${nf(a.gem)}</td>`;
+    ubody.appendChild(tr);
+  }
   const body = $("aiUsageBody");
   body.innerHTML = "";
   $("aiUsageTable").classList.toggle("hidden", sessions.length === 0);
@@ -1245,7 +1272,7 @@ function renderAiUsage(status, usage) {
       : "-";
     const tr = document.createElement("tr");
     tr.innerHTML =
-      `<td>${escapeHtml(when)}</td><td>${escapeHtml(s.topic || "-")}${s.backend === "gemini" ? " <small>(Gemini)</small>" : ""}</td>` +
+      `<td>${escapeHtml(when)}</td><td>${escapeHtml(who(s.uid))}</td><td>${escapeHtml(s.topic || "-")}${s.backend === "gemini" ? " <small>(Gemini)</small>" : ""}</td>` +
       `<td class="num">${nf(s.tokensIn)}</td><td class="num">${nf(s.tokensOut)}</td>` +
       `<td class="num">${nf(s.neurons)}</td><td class="num">${nf(s.modelTurns)} / ${nf(s.localTurns)}</td>`;
     body.appendChild(tr);

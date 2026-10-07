@@ -519,9 +519,17 @@
           </div>
           <p class="hint" id="aiUsageSummary">불러오는 중…</p>
           <div class="table-scroll">
+            <table id="aiUsageUserTable" class="hidden">
+              <thead>
+                <tr><th>사용자별</th><th class="num">면담</th><th class="num">입력 토큰</th><th class="num">출력 토큰</th><th class="num">뉴런</th><th class="num">Gemini 면담</th></tr>
+              </thead>
+              <tbody id="aiUsageUserBody"></tbody>
+            </table>
+          </div>
+          <div class="table-scroll">
             <table id="aiUsageTable" class="hidden">
               <thead>
-                <tr><th>시작 (한국 시간)</th><th>주제</th><th class="num">입력 토큰</th><th class="num">출력 토큰</th><th class="num">뉴런</th><th class="num">모델 / 서버 응답</th></tr>
+                <tr><th>시작 (한국 시간)</th><th>사용자</th><th>주제</th><th class="num">입력 토큰</th><th class="num">출력 토큰</th><th class="num">뉴런</th><th class="num">모델 / 서버 응답</th></tr>
               </thead>
               <tbody id="aiUsageBody"></tbody>
             </table>
