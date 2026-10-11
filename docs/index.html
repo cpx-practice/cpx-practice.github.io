@@ -7,6 +7,10 @@
 <meta name="color-scheme" content="light dark" />
 <link rel="stylesheet" href="style.css" />
 <script>
+  // 옛 주소(github.io)로 들어오면 새 주소로 넘긴다. 경로·쿼리·해시는 그대로 (?upload=1 같은 링크가 깨지지 않게).
+  if (location.hostname.endsWith(".github.io")) location.replace("https://cpxpert.web.app" + location.pathname.replace("/cpx-tracker", "") + location.search + location.hash);
+</script>
+<script>
   // 저장된 테마를 첫 페인트 전에 입힌다 — 안 그러면 다크모드에서 흰 화면이 한 번 번쩍인다.
   try {
     const t = localStorage.getItem("cpx-theme");
