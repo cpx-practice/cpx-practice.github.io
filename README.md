@@ -42,8 +42,14 @@ firebase deploy --only firestore:rules,firestore:indexes
 firebase login
 ```
 
-호스팅은 계속 GitHub Pages 를 씁니다 — `firebase deploy --only hosting` 은 쓰지 마세요.
-두 곳에 같은 사이트가 생겨 어느 쪽이 최신인지 헷갈립니다.
+호스팅은 Firebase Hosting 사이트 `cpxpert` (https://cpxpert.web.app) 입니다. `docs/` 를 바로 올립니다:
+
+```bash
+firebase deploy --only hosting
+```
+
+옛 GitHub Pages 주소(github.io)는 새 주소로 넘기기만 합니다. 사이트를 고쳤을 때는 이 명령으로 배포해야 반영됩니다
+(`main` 에 push 하는 것만으로는 `cpxpert.web.app` 이 바뀌지 않습니다).
 
 > 설치 위치는 `~/.firebase-cli/` 이고 `~/bin/firebase` 래퍼로 부릅니다.
 > 전역 설치(`npm i -g`)는 npm prefix 가 Program Files 라 관리자 권한이 필요해서 피했습니다.
