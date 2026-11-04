@@ -352,6 +352,7 @@ async function handlePendingUpload(user) {
 }
 
 // ---------- 로그인 상태 ----------
+const bootMsg = $("bootMsg");
 onAuthStateChanged(auth, async (user) => {
   if (unsubscribeRecords) {
     unsubscribeRecords();
@@ -375,6 +376,7 @@ onAuthStateChanged(auth, async (user) => {
     dashboardSection.classList.add("hidden");
     pendingSection.classList.add("hidden");
     navAuthed.classList.add("hidden");
+    bootMsg.classList.add("hidden");
     return;
   }
 
@@ -393,11 +395,13 @@ onAuthStateChanged(auth, async (user) => {
     dashboardSection.classList.add("hidden");
     pendingSection.classList.remove("hidden");
     $("pendingWho").textContent = `${user.email} 계정으로 신청되어 있습니다.`;
+    bootMsg.classList.add("hidden");
     return;
   }
 
   pendingSection.classList.add("hidden");
   dashboardSection.classList.remove("hidden");
+  bootMsg.classList.add("hidden");
 
   $("installCmd").textContent = `claude plugin marketplace add ${MARKETPLACE}`;
   setConsent.checked = profile.consentTranscript === true;
@@ -536,14 +540,18 @@ const fltSort = $("fltSort");
 const fltReset = $("fltReset");
 
 for (const c of [fltQuery, fltTopic, fltPeriod, fltSort]) {
-  c.addEventListener("input", () => renderRecords(applyFilters(currentRows)));
+  c.addEventListener("input", () => renderRecords(applyFilters(currentRows), { resetPaging: true }));
 }
+$("btnRecordMore").addEventListener("click", () => {
+  recordLimit += RECORD_PAGE;
+  renderRecords(lastRecordRows);
+});
 fltReset.addEventListener("click", () => {
   fltQuery.value = "";
   fltTopic.value = "";
   fltPeriod.value = "0";
   fltSort.value = "new";
-  renderRecords(applyFilters(currentRows));
+  renderRecords(applyFilters(currentRows), { resetPaging: true });
 });
 
 // 주제 드롭다운에는 실제로 기록이 있는 주제만 넣는다. 케이스 뱅크 순서를 따르고,
@@ -601,7 +609,15 @@ function applyFilters(rows) {
   return out;
 }
 
-function renderRecords(rows) {
+// 기록이 많아도 한 번에 다 그리지 않는다 — 처음 RECORD_PAGE 건만 보이고 "더 보기" 로 늘린다.
+// 검색·필터·정렬을 바꾸면 처음 분량으로 돌아간다(resetPaging). 기록이 실시간으로 갱신될 때는 늘려 둔 분량을 유지한다.
+const RECORD_PAGE = 30;
+let recordLimit = RECORD_PAGE;
+let lastRecordRows = [];
+
+function renderRecords(rows, { resetPaging = false } = {}) {
+  if (resetPaging) recordLimit = RECORD_PAGE;
+  lastRecordRows = rows;
   const total = currentRows.length;
   const filtered = rows.length !== total;
   recordCount.textContent = filtered ? `${rows.length} / ${total}` : total;
@@ -615,6 +631,7 @@ function renderRecords(rows) {
     recordTable.classList.add("hidden");
     avgScore.textContent = "";
     recordBody.innerHTML = "";
+    $("recordMoreWrap").classList.add("hidden");
     return;
   }
 
@@ -628,7 +645,11 @@ function renderRecords(rows) {
     : "";
 
   recordBody.innerHTML = "";
-  for (const r of rows) {
+  const shown = rows.slice(0, recordLimit);
+  const moreWrap = $("recordMoreWrap");
+  moreWrap.classList.toggle("hidden", rows.length <= shown.length);
+  $("btnRecordMore").textContent = `더 보기 (${shown.length} / ${rows.length}건 표시 중)`;
+  for (const r of shown) {
     const dash = (v) => (typeof v === "number" ? v : "-");
     // 총점은 점수대별 칩으로 보여 준다 (구간은 분석 탭의 band 와 같다: 90+ / 80 / 70 / 그 아래).
     const chip = (v) =>
@@ -643,9 +664,9 @@ function renderRecords(rows) {
       <td data-label="날짜">${fmtDateTime(r.createdAt)}</td>
       <td data-label="주제">${escapeHtml(r.topic || "")}${r.source === "plugin" ? '<span class="pill">자동</span>' : ""}${r.source === "manual" ? '<span class="pill">링크</span>' : ""}</td>
       <td data-label="총점" class="score">${chip(r.totalScore)}</td>
-      <td data-label="병력">${dash(r.historyScore)}</td>
-      <td data-label="진찰">${dash(r.peScore)}</td>
-      <td data-label="PPI">${dash(r.ppiScore)}</td>
+      <td data-label="병력 /60">${dash(r.historyScore)}</td>
+      <td data-label="진찰 /20">${dash(r.peScore)}</td>
+      <td data-label="PPI /20">${dash(r.ppiScore)}</td>
       <td data-label="총평" class="note">${escapeHtml(r.note || "")}</td>
       <td class="actions">${hasDetail ? '<button class="btn ghost small js-detail">보기</button>' : ""}<button class="btn ghost small js-del">삭제</button></td>
     `;
@@ -1227,7 +1248,7 @@ function renderAiUsage(status, usage) {
   const localTurns = sum("localTurns");
   $("aiUsageSummary").innerHTML =
     `뉴런 <b>${nf(used)}</b> / ${nf(cap)} (${pct}%) · 남은 양 ${nf(Math.max(0, cap - used))}<br>` +
-    `면담 ${sessions.length}회 · 모델 호출 ${nf(modelTurns)}턴 · 서버가 직접 답한 ${nf(localTurns)}턴<br>` +
+    `면담 ${sessions.length}회 · AI가 답한 ${nf(modelTurns)}턴 · AI 없이 서버가 답한 ${nf(localTurns)}턴 (첫 대사·진찰·퇴실 등, 뉴런 0)<br>` +
     (usage.gemini?.configured
       ? `Gemini 폴백 면담 ${nf(usage.gemini.sessions)}회 · 호출 ${nf(usage.gemini.requests)}회 (뉴런이 모자랄 때만 사용)${usage.gemini.exhausted ? " · <b>오늘 한도 도달</b>" : ""} · 연결 ` +
         (usage.probe ? (usage.probe.ok ? "<b>정상</b>" : `<b>실패</b> (${usage.probe.status} ${escapeHtml(usage.probe.detail || "")})`) : "미확인") +
