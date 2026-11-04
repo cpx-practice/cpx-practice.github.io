@@ -123,6 +123,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
   let sessionId = null;
   let evalDone = false; // 평가가 끝났는지 — 오류 제보에 주제를 넣어도 되는 때(평가 전에는 무작위 케이스를 가려야 한다)
   let sending = false;
+  let walkedOut = false; // 환자가 퇴실한 면담 — 서버(misconduct.js)의 고정 응답을 알아보고 입력을 막는다
+
   let lastModelUsed = "";
   let freeModel = ""; // 워커가 알려준 Workers AI 모델 id (기록의 aiModel 에 남긴다)
   let aiSessionId = null; // "키 없이" 모드 — 시스템 프롬프트는 워커 KV 에 있고 이 id 로 찾는다
@@ -367,7 +369,10 @@ export function initInterviewTab({ db, auth, endpoint }) {
 
   function addBubble(role, text) {
     const row = document.createElement("div");
-    if (role === "__note") {
+    if (role === "__walkout") {
+      row.className = "iv-msg iv-note iv-walkout";
+      row.innerHTML = `<span class="iv-bubble">🚪 ${esc(text)}</span>`;
+    } else if (role === "__note") {
       row.className = "iv-msg iv-note";
       row.innerHTML = `<span class="iv-bubble">${esc(text)}</span>`;
     } else {
@@ -380,6 +385,19 @@ export function initInterviewTab({ db, auth, endpoint }) {
     chatLog.appendChild(row);
     scrollToBottom();
     return row;
+  }
+
+  // 서버가 무례·부정행위로 환자를 퇴실시키면 고정 응답이 온다. 말풍선 대신 안내 카드로 보이고, "평가"만 받는다.
+  const WALKOUT_REPLY = /^\(환자(가 화를 내며[\s\S]*진료실을 나가 버렸|는 이미 진료실을 나갔)[\s\S]{0,120}\)$/;
+  function setWalkedOut(on) {
+    walkedOut = on;
+    ivInput.disabled = on;
+    ivInput.placeholder = on ? '환자가 나갔습니다 — 위의 "평가"를 눌러 결과를 확인하세요' : "메시지를 입력하세요";
+    $("btnIvSend").disabled = on || sending;
+    $("btnCuePE").disabled = on;
+    $("btnCueEval").classList.toggle("primary", on);
+    $("btnCueEval").classList.toggle("ghost", !on);
+    if (on) $("btnCueEval").focus();
   }
 
   // 코드가 계산한 항목별 점수표 (scoring.js). AI 가 적은 숫자는 쓰지 않는다.
@@ -907,6 +925,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       history = [];
       sessionId = crypto.randomUUID();
       ivInput.value = ""; // 이전 면담의 남은 글자가 첫 메시지에 섞이지 않게
+      setWalkedOut(false);
       chatLog.innerHTML = "";
       chatTitle.textContent = "면담";
       addTopicBar();
@@ -931,6 +950,10 @@ export function initInterviewTab({ db, auth, endpoint }) {
     }
     if (history.filter((h) => h.role === "user").length >= MAX_TURNS) {
       addBubble("__note", "이 면담은 길이 제한에 도달했습니다. \"나가기\"를 눌러 새로 시작해주세요.");
+      return;
+    }
+    if (walkedOut && text.trim() !== "평가") {
+      addBubble("__note", '환자가 진료실을 나갔습니다. "평가"를 눌러 결과를 확인해주세요.');
       return;
     }
     sending = true;
@@ -992,6 +1015,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
         await saveRecord(record, shown);
         addBubble("__note", "채점 결과가 \"내 기록\" 탭에 저장되었습니다.");
         systemPrompt = null; // 이 면담은 끝 — 새로 시작해야 다음 메시지가 된다
+      } else if (WALKOUT_REPLY.test(shown.trim())) {
+        addBubble("__walkout", shown.trim().replace(/^\(|\)$/g, ""));
+        setWalkedOut(true);
       } else {
         addBubble("환자", shown);
       }
@@ -1009,7 +1035,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       }
     } finally {
       sending = false;
-      $("btnIvSend").disabled = false;
+      $("btnIvSend").disabled = walkedOut;
     }
   }
 
