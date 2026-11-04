@@ -376,7 +376,7 @@ onAuthStateChanged(auth, async (user) => {
     dashboardSection.classList.add("hidden");
     pendingSection.classList.add("hidden");
     navAuthed.classList.add("hidden");
-    bootMsg.classList.add("hidden");
+    bootMsg?.classList.add("hidden");
     return;
   }
 
@@ -395,13 +395,13 @@ onAuthStateChanged(auth, async (user) => {
     dashboardSection.classList.add("hidden");
     pendingSection.classList.remove("hidden");
     $("pendingWho").textContent = `${user.email} 계정으로 신청되어 있습니다.`;
-    bootMsg.classList.add("hidden");
+    bootMsg?.classList.add("hidden");
     return;
   }
 
   pendingSection.classList.add("hidden");
   dashboardSection.classList.remove("hidden");
-  bootMsg.classList.add("hidden");
+  bootMsg?.classList.add("hidden");
 
   $("installCmd").textContent = `claude plugin marketplace add ${MARKETPLACE}`;
   setConsent.checked = profile.consentTranscript === true;
@@ -542,7 +542,7 @@ const fltReset = $("fltReset");
 for (const c of [fltQuery, fltTopic, fltPeriod, fltSort]) {
   c.addEventListener("input", () => renderRecords(applyFilters(currentRows), { resetPaging: true }));
 }
-$("btnRecordMore").addEventListener("click", () => {
+$("btnRecordMore")?.addEventListener("click", () => {
   recordLimit += RECORD_PAGE;
   renderRecords(lastRecordRows);
 });
@@ -631,7 +631,7 @@ function renderRecords(rows, { resetPaging = false } = {}) {
     recordTable.classList.add("hidden");
     avgScore.textContent = "";
     recordBody.innerHTML = "";
-    $("recordMoreWrap").classList.add("hidden");
+    $("recordMoreWrap")?.classList.add("hidden");
     return;
   }
 
@@ -646,9 +646,9 @@ function renderRecords(rows, { resetPaging = false } = {}) {
 
   recordBody.innerHTML = "";
   const shown = rows.slice(0, recordLimit);
-  const moreWrap = $("recordMoreWrap");
-  moreWrap.classList.toggle("hidden", rows.length <= shown.length);
-  $("btnRecordMore").textContent = `더 보기 (${shown.length} / ${rows.length}건 표시 중)`;
+  // 옛 HTML 이 캐시에 남은 방문자는 이 요소가 없다 — 없어도 표는 그려져야 한다.
+  $("recordMoreWrap")?.classList.toggle("hidden", rows.length <= shown.length);
+  if ($("btnRecordMore")) $("btnRecordMore").textContent = `더 보기 (${shown.length} / ${rows.length}건 표시 중)`;
   for (const r of shown) {
     const dash = (v) => (typeof v === "number" ? v : "-");
     // 총점은 점수대별 칩으로 보여 준다 (구간은 분석 탭의 band 와 같다: 90+ / 80 / 70 / 그 아래).
