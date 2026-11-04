@@ -392,7 +392,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   function setWalkedOut(on) {
     walkedOut = on;
     ivInput.disabled = on;
-    ivInput.placeholder = on ? '환자가 나갔습니다 — 위의 "평가"를 눌러 결과를 확인하세요' : "메시지를 입력하세요";
+    ivInput.placeholder = on ? '환자가 나갔습니다 — "평가"를 눌러주세요' : "메시지를 입력하세요";
     $("btnIvSend").disabled = on || sending;
     $("btnCuePE").disabled = on;
     $("btnCueEval").classList.toggle("primary", on);
