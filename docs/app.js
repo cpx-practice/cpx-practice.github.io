@@ -542,9 +542,21 @@ const fltReset = $("fltReset");
 for (const c of [fltQuery, fltTopic, fltPeriod, fltSort]) {
   c.addEventListener("input", () => renderRecords(applyFilters(currentRows), { resetPaging: true }));
 }
-$("btnRecordMore")?.addEventListener("click", () => {
-  recordLimit += RECORD_PAGE;
+function goRecordPage(delta) {
+  recordPage += delta;
   renderRecords(lastRecordRows);
+  recordTable.scrollIntoView({ block: "start" }); // 아래쪽 버튼을 눌렀을 때 표 맨 위로 돌아오게
+}
+$("btnRecordPrev")?.addEventListener("click", () => goRecordPage(-1));
+$("btnRecordNext")?.addEventListener("click", () => goRecordPage(1));
+$("recordPageSize")?.addEventListener("change", (e) => {
+  recordPageSize = Number(e.target.value);
+  try {
+    localStorage.setItem(PAGE_SIZE_KEY, String(recordPageSize));
+  } catch {
+    /* 저장 못 해도 이번 화면에는 적용된다 */
+  }
+  renderRecords(lastRecordRows, { resetPaging: true });
 });
 fltReset.addEventListener("click", () => {
   fltQuery.value = "";
@@ -609,14 +621,29 @@ function applyFilters(rows) {
   return out;
 }
 
-// 기록이 많아도 한 번에 다 그리지 않는다 — 처음 RECORD_PAGE 건만 보이고 "더 보기" 로 늘린다.
-// 검색·필터·정렬을 바꾸면 처음 분량으로 돌아간다(resetPaging). 기록이 실시간으로 갱신될 때는 늘려 둔 분량을 유지한다.
-const RECORD_PAGE = 30;
-let recordLimit = RECORD_PAGE;
+// 기록은 한 페이지에 고른 개수만큼만 그린다(10·30·50·100). 검색·필터·정렬을 바꾸면 1쪽으로 돌아가고(resetPaging),
+// 기록이 실시간으로 갱신될 때는 보던 쪽을 유지한다(범위를 벗어나면 마지막 쪽으로 당긴다).
+const PAGE_SIZES = [10, 30, 50, 100];
+const PAGE_SIZE_KEY = "cpx-record-page-size";
+let recordPageSize = 30;
+try {
+  const saved = Number(localStorage.getItem(PAGE_SIZE_KEY));
+  if (PAGE_SIZES.includes(saved)) recordPageSize = saved;
+} catch {
+  /* 저장소를 못 쓰면 기본값 */
+}
+let recordPage = 0; // 0부터
 let lastRecordRows = [];
 
+/** 전체 len 건을 size 씩 나눴을 때 page(0부터)의 범위. page 가 범위를 벗어나면 가까운 쪽으로 당긴다. */
+function paginate(len, page, size) {
+  const pages = Math.max(1, Math.ceil(len / size));
+  const p = Math.min(Math.max(0, page), pages - 1);
+  return { page: p, pages, start: p * size, end: Math.min(len, (p + 1) * size) };
+}
+
 function renderRecords(rows, { resetPaging = false } = {}) {
-  if (resetPaging) recordLimit = RECORD_PAGE;
+  if (resetPaging) recordPage = 0;
   lastRecordRows = rows;
   const total = currentRows.length;
   const filtered = rows.length !== total;
@@ -631,7 +658,7 @@ function renderRecords(rows, { resetPaging = false } = {}) {
     recordTable.classList.add("hidden");
     avgScore.textContent = "";
     recordBody.innerHTML = "";
-    $("recordMoreWrap")?.classList.add("hidden");
+    $("recordPager")?.classList.add("hidden");
     return;
   }
 
@@ -645,10 +672,15 @@ function renderRecords(rows, { resetPaging = false } = {}) {
     : "";
 
   recordBody.innerHTML = "";
-  const shown = rows.slice(0, recordLimit);
+  const pg = paginate(rows.length, recordPage, recordPageSize);
+  recordPage = pg.page;
+  const shown = rows.slice(pg.start, pg.end);
   // 옛 HTML 이 캐시에 남은 방문자는 이 요소가 없다 — 없어도 표는 그려져야 한다.
-  $("recordMoreWrap")?.classList.toggle("hidden", rows.length <= shown.length);
-  if ($("btnRecordMore")) $("btnRecordMore").textContent = `더 보기 (${shown.length} / ${rows.length}건 표시 중)`;
+  $("recordPager")?.classList.remove("hidden");
+  if ($("recordPageSize")) $("recordPageSize").value = String(recordPageSize);
+  if ($("recordPageInfo")) $("recordPageInfo").textContent = `${pg.page + 1} / ${pg.pages}쪽 · ${pg.start + 1}–${pg.end} / ${rows.length}건`;
+  if ($("btnRecordPrev")) $("btnRecordPrev").disabled = pg.page === 0;
+  if ($("btnRecordNext")) $("btnRecordNext").disabled = pg.page >= pg.pages - 1;
   for (const r of shown) {
     const dash = (v) => (typeof v === "number" ? v : "-");
     // 총점은 점수대별 칩으로 보여 준다 (구간은 분석 탭의 band 와 같다: 90+ / 80 / 70 / 그 아래).

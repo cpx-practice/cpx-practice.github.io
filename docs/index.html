@@ -144,8 +144,20 @@
               </thead>
               <tbody id="recordBody"></tbody>
             </table>
-            <div class="more-wrap hidden" id="recordMoreWrap">
-              <button type="button" class="btn ghost" id="btnRecordMore"></button>
+            <div class="pager hidden" id="recordPager">
+              <label class="pager-size">페이지당
+                <select id="recordPageSize" aria-label="페이지당 기록 수">
+                  <option value="10">10개</option>
+                  <option value="30">30개</option>
+                  <option value="50">50개</option>
+                  <option value="100">100개</option>
+                </select>
+              </label>
+              <span class="pager-nav">
+                <button type="button" class="btn ghost small" id="btnRecordPrev">이전</button>
+                <span class="pager-info" id="recordPageInfo" aria-live="polite"></span>
+                <button type="button" class="btn ghost small" id="btnRecordNext">다음</button>
+              </span>
             </div>
           </div>
         </div>
