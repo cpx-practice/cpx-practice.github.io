@@ -635,7 +635,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
         /* 무시 */
       }
       if (data?.error === "ai_timeout") return "AI 응답이 지연됐습니다. 방금 보낸 말을 입력창에 다시 넣어 두었으니, 잠시 후 다시 보내주세요.";
-      return freeLimitMessage(data) || "환자 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.";
+      // 원인을 나중에 추적할 수 있게 상태·오류 코드를 작게 덧붙인다 (사용자가 제보할 때 그대로 알려줄 수 있다).
+      const code = [err.status, data?.error].filter(Boolean).join(" ");
+      return freeLimitMessage(data) || `환자 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.${code ? ` (${code})` : " (연결 실패)"}`;
     }
     const name = PROVIDERS[currentProvider()].label.replace(/\s*\(.*\)$/, "");
     if (err.status === undefined) return `${name}에 연결하지 못했습니다. 인터넷 연결을 확인해주세요.`;
@@ -1024,6 +1026,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     } catch (err) {
       hideTyping();
       ivStatus.textContent = "";
+      console.warn("면담 응답 실패", { status: err.status, timeout: !!err.timeout, body: String(err.bodyText || "").slice(0, 300) });
       history.pop(); // 실패한 학생 턴은 대화 맥락에서 뺀다 (다시 보내면 중복되지 않게)
       // 지연으로 실패한 말은 입력창에 돌려줘서 다시 보내기만 하면 되게 한다.
       const delayed = err.timeout || (isFree() && /"ai_timeout"/.test(err.bodyText || ""));
