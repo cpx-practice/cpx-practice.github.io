@@ -1,7 +1,7 @@
 // 웹 면담 채점 보정 테스트.  cd cpx-tracker && node --test test/
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { auditMarks, reconcileNarrative, scoreRecord } from "../docs/scoring.js";
+import { auditMarks, reconcileNarrative, reconcileTotal, scoreRecord } from "../docs/scoring.js";
 
 const u = (text) => ({ role: "user", text });
 const a = (text) => ({ role: "assistant", text });
@@ -120,4 +120,21 @@ test("진찰을 아예 하지 않으면 활력징후·진찰 수기·동의가 �
 test("과거력·가족력·사회력을 하나도 묻지 않으면 X, 하나라도 물었으면 유지", () => {
   assert.equal(auditAll(["안녕하세요", "두통은 언제부터였나요?", "진찰", "(복부를 촉진한다)"]).pmh, "X");
   assert.equal(auditAll(["안녕하세요", "가족 중에 비슷한 분이 있나요?", "진찰", "(복부를 촉진한다)"]).pmh, "O");
+});
+
+test("서술문의 총점 줄은 계산된 점수와 등급으로 맞춘다 (표는 90점 우수인데 문장은 85점 양호였던 경우)", () => {
+  const scored = { total: 90, grade: "우수" };
+  const body = "잘한 점\n...\n\n총점: 85점 (양호)\n\n개선점\n...";
+  assert.equal(reconcileTotal(body, scored), "잘한 점\n...\n\n총점: 90점 (우수)\n\n개선점\n...");
+  // 굵은 글씨·목록 기호·점수 표기가 달라도 같은 줄로 본다
+  assert.equal(reconcileTotal("**총점: 85점 (양호)**", scored), "총점: 90점 (우수)");
+  assert.equal(reconcileTotal("- 총점 85/100 (양호)", scored), "- 총점: 90점 (우수)");
+  assert.equal(reconcileTotal("총점 85", scored), "총점: 90점 (우수)");
+});
+
+test("총점 줄이 없거나 점수가 없으면 건드리지 않고, 소계·다른 줄은 바뀌지 않는다", () => {
+  const body = "I. 병력청취 소계\t\t53 / 60\n평균 총점을 높이려면\n";
+  assert.equal(reconcileTotal(body, { total: 90, grade: "우수" }), body);
+  assert.equal(reconcileTotal("총점: 85점 (양호)", null), "총점: 85점 (양호)");
+  assert.equal(reconcileTotal("", { total: 90, grade: "우수" }), "");
 });

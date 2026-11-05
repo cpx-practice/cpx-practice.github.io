@@ -19,7 +19,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/f
 import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
-import { scoreRecord, auditMarks, reconcileNarrative } from "./scoring.js";
+import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal } from "./scoring.js";
 import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges } from "./export.js";
 import { claimConfig, mergeCloud, cloudPayload } from "./aikeys.js";
 
@@ -607,6 +607,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     if (code === "login_required" || code === "bad_token") return "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요.";
     if (code === "not_approved") return "관리자 승인 후에 쓸 수 있습니다.";
     if (code === "session_expired") return "면담 세션이 만료됐습니다. \"나가기\"를 눌러 새로 시작해주세요.";
+    if (code === "ai_busy") return "AI 서버가 잠시 혼잡합니다. 방금 보낸 말을 입력창에 다시 넣어 두었으니, 잠시 후 다시 보내주세요.";
     if (code === "ai_not_configured") return "지금은 키 없이 면담을 쓸 수 없습니다 (운영자 설정 전).";
     return null;
   }
@@ -1011,6 +1012,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
         const scored = scoreRecord(record);
         if (scored) {
           for (const k of ["history", "pe", "ppi", "total", "grade"]) record[k] = scored[k];
+          shown = reconcileTotal(shown, scored); // 서술문의 총점도 계산값으로 (AI 가 쓴 숫자가 표와 엇갈리지 않게)
         }
         showEvalResult(record, shown, record.topic || topicLabel, scored);
         addBubble("__note", "채점이 끝났습니다. 결과는 별도 창에서 볼 수 있고, 위의 \"결과 보기\"로 다시 열 수 있습니다.");
@@ -1029,7 +1031,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
       console.warn("면담 응답 실패", { status: err.status, timeout: !!err.timeout, body: String(err.bodyText || "").slice(0, 300) });
       history.pop(); // 실패한 학생 턴은 대화 맥락에서 뺀다 (다시 보내면 중복되지 않게)
       // 지연으로 실패한 말은 입력창에 돌려줘서 다시 보내기만 하면 되게 한다.
-      const delayed = err.timeout || (isFree() && /"ai_timeout"/.test(err.bodyText || ""));
+      const delayed = err.timeout || (isFree() && /"ai_timeout"|"ai_busy"/.test(err.bodyText || ""));
       if (delayed && !ivInput.value) ivInput.value = text;
       if (err.message === "empty_response") {
         addBubble("__note", "환자 역할 응답이 비어 왔습니다" + (err.blockReason ? ` (사유: ${err.blockReason})` : "") + ". 다시 시도해주세요.");

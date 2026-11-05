@@ -218,6 +218,18 @@ export function auditMarks(record, history) {
  *     확인된 사실로 바꾼다.
  * 점수 자체는 바꾸지 않는다. shown(채점 본문)을 고쳐 돌려준다.
  */
+/**
+ * 서술문 속 "총점: 85점 (양호)" 줄을 코드가 계산한 점수로 맞춘다. 점수는 코드가 정답이고 AI 가 적은 숫자는 믿지 않는다 —
+ * 표 위쪽은 "우수 90 / 100"인데 아래 문장은 AI 가 쓴 "85점 (양호)"로 남아 두 숫자가 엇갈린 적이 있다(2026-11-05, 월경이상).
+ * 그 줄이 없으면 그대로 돌려준다.
+ */
+export function reconcileTotal(shown, scored) {
+  if (!scored || typeof scored.total !== "number" || !scored.grade) return String(shown || "");
+  // 공백은 같은 줄 안(스페이스·탭)만 — \s 를 쓰면 줄바꿈까지 먹어 앞의 빈 줄이 사라진다.
+  const re = /^([ \t>]*(?:[-*•][ \t]+|\d+[.)][ \t]+)?)(?:\*\*)?[ \t]*총점[ \t]*[:：]?[ \t]*(?:\*\*)?[ \t]*\d+(?:\.\d+)?[ \t]*(?:점|\/[ \t]*100)?[^\n]*$/m;
+  return String(shown || "").replace(re, (_m, lead) => `${lead}총점: ${scored.total}점 (${scored.grade})`);
+}
+
 export function reconcileNarrative(shown, record, history, changes = []) {
   let text = String(shown || "");
   // 모델이 줄 앞에 목록 기호(-, *, •, 번호)나 굵은 글씨(**)를 붙이는 일이 있다. 화면에선 마크다운이라 안 보인다.
