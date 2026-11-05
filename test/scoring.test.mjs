@@ -138,3 +138,12 @@ test("총점 줄이 없거나 점수가 없으면 건드리지 않고, 소계·�
   assert.equal(reconcileTotal("총점: 85점 (양호)", null), "총점: 85점 (양호)");
   assert.equal(reconcileTotal("", { total: 90, grade: "우수" }), "");
 });
+
+test("숫자 없이 등급만 적힌 총점 줄도 계산값으로 바꾼다 (표는 양호 89인데 문장은 '총점: 우수'였던 경우)", () => {
+  const scored = { total: 89, grade: "양호" };
+  assert.equal(reconcileTotal("끝\n\n총점: 우수\n\n잘한 점", scored), "끝\n\n총점: 89점 (양호)\n\n잘한 점");
+  assert.equal(reconcileTotal("총점: 우수 (92점)", scored), "총점: 89점 (양호)");
+  assert.equal(reconcileTotal("총점: **우수**", scored), "총점: 89점 (양호)");
+  // 문장 속의 '총점'은 그대로
+  assert.equal(reconcileTotal("총점을 높이려면 안전망 안내를 넣으세요.", scored), "총점을 높이려면 안전망 안내를 넣으세요.");
+});

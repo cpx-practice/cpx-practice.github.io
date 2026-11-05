@@ -226,7 +226,8 @@ export function auditMarks(record, history) {
 export function reconcileTotal(shown, scored) {
   if (!scored || typeof scored.total !== "number" || !scored.grade) return String(shown || "");
   // 공백은 같은 줄 안(스페이스·탭)만 — \s 를 쓰면 줄바꿈까지 먹어 앞의 빈 줄이 사라진다.
-  const re = /^([ \t>]*(?:[-*•][ \t]+|\d+[.)][ \t]+)?)(?:\*\*)?[ \t]*총점[ \t]*[:：]?[ \t]*(?:\*\*)?[ \t]*\d+(?:\.\d+)?[ \t]*(?:점|\/[ \t]*100)?[^\n]*$/m;
+  // "총점: 85점 (양호)", "총점 85/100", 숫자 없이 "총점: 우수" 만 적힌 줄까지. 콜론이나 숫자가 바로 붙은 줄만 — "총점을 높이려면…" 같은 문장은 건드리지 않는다.
+  const re = /^([ \t>]*(?:[-*•][ \t]+|\d+[.)][ \t]+)?)(?:\*\*)?[ \t]*총점[ \t]*(?:[:：][^\n]*|\d[^\n]*)$/m;
   return String(shown || "").replace(re, (_m, lead) => `${lead}총점: ${scored.total}점 (${scored.grade})`);
 }
 
