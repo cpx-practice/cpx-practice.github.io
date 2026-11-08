@@ -1139,14 +1139,17 @@ export function initInterviewTab({ db, auth, endpoint }) {
   const scenarioWrap = $("ivScenarioWrap");
   const scenarioSelect = $("ivScenario");
   let adminOn = false;
+  let scenarioReq = 0;
   async function loadScenarios() {
     if (!scenarioWrap || !scenarioSelect) return;
+    const myReq = ++scenarioReq; // 주제를 빠르게 바꾸면 늦게 온 이전 응답이 새 목록에 섞이지 않게 한다
     scenarioSelect.innerHTML = '<option value="">무작위</option>';
     const topic = topicSelect.value;
     scenarioWrap.classList.toggle("hidden", !(adminOn && topic));
     if (!adminOn || !topic) return;
     try {
       const data = await callWorker("/interview/ai/scenarios", { topic }, { withAuth: true });
+      if (myReq !== scenarioReq) return;
       for (const s of data.scenarios || []) {
         const opt = document.createElement("option");
         opt.value = s.id;
