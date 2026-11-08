@@ -915,6 +915,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
       const payload = { topic: topicSelect.value || undefined };
       // 관리자 점검용 시나리오 지정 (서버가 관리자일 때만 받는다)
       if (adminOn && topicSelect.value && scenarioSelect && scenarioSelect.value) payload.scenarioId = scenarioSelect.value;
+      // 지정은 이번 면담 한 번만 쓴다 — 다음 면담은 다시 무작위로 시작한다.
+      if (scenarioSelect) scenarioSelect.value = "";
       const data = isFree()
         ? await callWorker("/interview/ai/start", payload, { withAuth: true })
         : await callWorker("/interview/start", payload);
