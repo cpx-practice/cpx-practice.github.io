@@ -161,7 +161,7 @@ function setInterviewTab(isAdmin, granted = false) {
   // 관리자로 면담 탭을 보던 중 다른 계정으로 바뀌면 숨은 탭에 머물지 않게 한다.
   if (!on && tabInterview?.classList.contains("active")) activateView("records", { push: false });
 }
-initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
+const interviewTab = initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
 
 // 탭 전환마다 히스토리를 쌓아둔다. 안 쌓으면 "오류 제보"처럼 설정에서 들어간 화면에서
 // 뒤로가기를 눌렀을 때 돌아갈 앱 내 기록이 없어서 브라우저가 사이트 진입 전 페이지로 나가버린다.
@@ -408,6 +408,7 @@ onAuthStateChanged(auth, async (user) => {
 
   setAdminUi(isAdmin);
   setInterviewTab(isAdmin, profile.aiInterview !== false);
+  interviewTab?.setAdmin(isAdmin);
   if (isAdmin) {
     setRequireApproval.checked = appConfig.requireApproval === true;
     watchUsers();

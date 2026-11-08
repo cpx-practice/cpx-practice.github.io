@@ -913,6 +913,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
     btn.disabled = true;
     try {
       const payload = { topic: topicSelect.value || undefined };
+      // 관리자 점검용 시나리오 지정 (서버가 관리자일 때만 받는다)
+      if (adminOn && topicSelect.value && scenarioSelect && scenarioSelect.value) payload.scenarioId = scenarioSelect.value;
       const data = isFree()
         ? await callWorker("/interview/ai/start", payload, { withAuth: true })
         : await callWorker("/interview/start", payload);
@@ -1129,4 +1131,36 @@ export function initInterviewTab({ db, auth, endpoint }) {
     if (typeof record.ppi === "number") rec.ppiScore = record.ppi;
     await setDoc(doc(db, "records", docId), rec);
   }
+
+  // ---------------- 관리자 점검용: 시나리오 고르기 ----------------
+  // 서버(/interview/ai/start)가 관리자 토큰일 때만 scenarioId 를 받는다. 여기서 보이게 하는 것은 편의일 뿐이다.
+  const scenarioWrap = $("ivScenarioWrap");
+  const scenarioSelect = $("ivScenario");
+  let adminOn = false;
+  async function loadScenarios() {
+    if (!scenarioWrap || !scenarioSelect) return;
+    scenarioSelect.innerHTML = '<option value="">무작위</option>';
+    const topic = topicSelect.value;
+    scenarioWrap.classList.toggle("hidden", !(adminOn && topic));
+    if (!adminOn || !topic) return;
+    try {
+      const data = await callWorker("/interview/ai/scenarios", { topic }, { withAuth: true });
+      for (const s of data.scenarios || []) {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.dx} (${s.id})`;
+        scenarioSelect.appendChild(opt);
+      }
+    } catch (err) {
+      console.warn("시나리오 목록 실패", err?.data?.error || err?.message);
+      scenarioWrap.classList.add("hidden");
+    }
+  }
+  topicSelect.addEventListener("change", loadScenarios);
+  return {
+    setAdmin(on) {
+      adminOn = !!on;
+      loadScenarios();
+    },
+  };
 }
