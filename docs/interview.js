@@ -917,6 +917,9 @@ export function initInterviewTab({ db, auth, endpoint }) {
       if (adminOn && topicSelect.value && scenarioSelect && scenarioSelect.value) payload.scenarioId = scenarioSelect.value;
       // 지정은 이번 면담 한 번만 쓴다 — 다음 면담은 다시 무작위로 시작한다.
       if (scenarioSelect) scenarioSelect.value = "";
+      // 관리자 점검용 — 카드 내용 점검처럼 모델과 무관한 확인은 Gemini 로 돌려 학생 몫의 Workers AI 한도를 아낀다.
+      // 연기 규칙(프롬프트) 확인은 학생이 쓰는 기본 경로로 해야 하므로 기본값은 그대로 둔다. 이 선택은 바꿀 때까지 유지된다.
+      if (adminOn && backendSelect && backendSelect.value === "gemini") payload.forceGemini = true;
       const data = isFree()
         ? await callWorker("/interview/ai/start", payload, { withAuth: true })
         : await callWorker("/interview/start", payload);
@@ -934,7 +937,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
       ivInput.value = ""; // 이전 면담의 남은 글자가 첫 메시지에 섞이지 않게
       setWalkedOut(false);
       chatLog.innerHTML = "";
-      chatTitle.textContent = "면담";
+      // 관리자에게만 이번 면담이 어느 모델로 도는지 보여 준다 (점검 결과를 어느 경로의 것으로 읽을지 헷갈리지 않게).
+      chatTitle.textContent = adminOn && data.sessionId && data.model ? `면담 · ${data.model}` : "면담";
       addTopicBar();
       ivStatus.textContent = "";
       showChatPanel();
@@ -1138,6 +1142,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
   // 서버(/interview/ai/start)가 관리자 토큰일 때만 scenarioId 를 받는다. 여기서 보이게 하는 것은 편의일 뿐이다.
   const scenarioWrap = $("ivScenarioWrap");
   const scenarioSelect = $("ivScenario");
+  const backendWrap = $("ivBackendWrap");
+  const backendSelect = $("ivBackend");
   let adminOn = false;
   let scenarioReq = 0;
   async function loadScenarios() {
@@ -1165,6 +1171,8 @@ export function initInterviewTab({ db, auth, endpoint }) {
   return {
     setAdmin(on) {
       adminOn = !!on;
+      backendWrap?.classList.toggle("hidden", !adminOn);
+      if (!adminOn && backendSelect) backendSelect.value = "";
       loadScenarios();
     },
   };

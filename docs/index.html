@@ -274,6 +274,13 @@
             시나리오 <span class="hint">(관리자 점검용)</span>
             <select id="ivScenario"><option value="">무작위</option></select>
           </label>
+          <label class="ivfield hidden" id="ivBackendWrap">
+            AI <span class="hint">(관리자 점검용)</span>
+            <select id="ivBackend">
+              <option value="">기본 (Workers AI — 학생과 같은 경로)</option>
+              <option value="gemini">Gemini (학생 무료 한도를 쓰지 않음)</option>
+            </select>
+          </label>
           <button class="btn primary" id="btnStartInterview">시작</button>
           <p class="err hidden" id="ivStartErr"></p>
           <div class="hidden" id="ivStartAlt" style="margin-top:8px"></div>
