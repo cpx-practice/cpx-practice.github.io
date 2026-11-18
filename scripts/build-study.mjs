@@ -27,7 +27,7 @@ function personaSlots(c) {
   return {
     olderBro: "형(오빠)",
     olderSis: "누나(언니)",
-    spouse: "배우자",
+    spouse: "남편(아내)",
     inlaws: "처가(시댁)",
     alcoholSay: ALCOHOL[c?.alcohol] || "(음주량은 환자마다 다름)",
     alcoholSayHon: ALCOHOL[c?.alcohol] || "(음주량은 환자마다 다름)",
