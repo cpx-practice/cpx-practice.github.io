@@ -1698,6 +1698,9 @@ html { scrollbar-gutter: stable; }
 .script-qs li { padding: 6px 0; border-bottom: 1px solid var(--border); }
 .script-qs li:last-child { border-bottom: 0; }
 .script-q { font-weight: 600; }
+.script-q + .script-q { margin-top: 2px; }
+.one-by-one { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 0 6px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); background: var(--panel); vertical-align: 1px; white-space: nowrap; }
+.guide-callout { margin: 0 0 8px; padding: 8px 10px; border-left: 3px solid var(--accent, var(--border)); background: var(--panel); border-radius: 6px; font-size: 0.88rem; }
 .script-hint { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
 .script-ext { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 0.8rem; }
 .script-ext-label { color: var(--danger-text); font-weight: 700; margin-right: 2px; }

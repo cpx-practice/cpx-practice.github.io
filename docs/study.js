@@ -77,6 +77,19 @@ function guideHtml(g) {
   // 면담 순서 — 실제로 물을 순서대로 A(도입)→G(마무리) 카테고리별 질문 목록. 번호는 카테고리를 넘어 이어진다.
   // ext 는 카드에 없어도 이 질문으로 배제해야 하는 질환이다.
   let qn = 0;
+  // 가이드 질문은 한 줄에 여러 질문이 묶여 있는 경우가 많다. 실제 면담에서는 하나씩 묻도록
+  // 물음표마다 줄을 나누고, 여러 항목을 쉼표·"~이나"로 나열한 문장에는 "하나씩" 표시를 붙인다.
+  // ("A인가요, B인가요?" 같은 양자택일 질문과 안내 문장은 표시하지 않는다.)
+  const qLines = (q) =>
+    (String(q).match(/[^?？]+[?？]?/g) || [])
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => {
+        const list = /[?？]$/.test(s) && !/^\(|안녕|입니다\./.test(s) && !/요\s*[,，]|듯\s*[,，]/.test(s) &&
+          /[,，]|[가-힣]이나\s/.test(s);
+        return `<div class="script-q">“${esc(s)}”${list ? ' <span class="one-by-one" title="실제 면담에서는 항목을 하나씩 따로 묻습니다">하나씩</span>' : ""}</div>`;
+      })
+      .join("");
   const script = (g.script || [])
     .map(
       (cat) =>
@@ -88,7 +101,7 @@ function guideHtml(g) {
           .map((x) => {
             qn++;
             return (
-              `<li${x.hint || x.ext?.length ? ' class="has-note"' : ""}><div class="script-q">“${esc(x.q)}”</div>` +
+              `<li${x.hint || x.ext?.length ? ' class="has-note"' : ""}>${qLines(x.q)}` +
               (x.hint ? `<div class="script-hint">${esc(x.hint)}</div>` : "") +
               (x.ext?.length ? `<div class="script-ext"><span class="script-ext-label">배제</span>${x.ext.map((d) => `<span class="tag tag-danger">${esc(d)}</span>`).join("")}</div>` : "") +
               `</li>`
@@ -109,6 +122,7 @@ function guideHtml(g) {
     `<h3 id="st-summary">한눈에 보기</h3>${summary}` +
     (script
       ? `<h3 id="st-script">면담 순서</h3><p class="hint">실제로 물을 순서입니다. 질문 아래 작은 글씨는 답에 따라 생각할 진단, 빨간 <b>배제</b> 표시는 이 주제의 출제 진단이 아니어도 그 질문으로 꼭 지워야 하는 질환입니다.</p>` +
+        `<p class="guide-callout">실제 면담에서는 <b>한 번에 하나씩</b> 묻습니다. 여기 한 번호에 묶인 질문과 <span class="one-by-one">하나씩</span> 표시가 붙은 항목은 확인할 내용을 모아 둔 것이니, 면담 때는 따로따로 물어 보세요. 한 문장에 두세 개를 묶어 물으면 채점에서 감점됩니다.</p>` +
         `<label class="script-toggle"><input type="checkbox" id="stHideToggle"${hideOn() ? " checked" : ""}> 가리기 모드 <span class="hint">— 해설을 가리고, 질문을 눌러 확인합니다</span></label>` +
         `<div class="script${hideOn() ? " hide-hints" : ""}" id="stScript">${script}</div>`
       : "") +
