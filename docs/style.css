@@ -1619,3 +1619,35 @@ html { scrollbar-gutter: stable; }
 /* 환자 답이 한 글자씩 나오는 동안 — 줄바꿈을 유지하고, 눌러서 바로 다 볼 수 있다 */
 .iv-bubble.iv-said { white-space: pre-wrap; }
 .iv-bubble.typing-out { cursor: pointer; }
+
+/* 공부 탭 — 표 */
+.study-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; background: var(--panel); }
+.study-table th, .study-table td { border: 1px solid var(--border); padding: 7px 9px; text-align: left; vertical-align: top; }
+.study-table thead th { background: var(--inset); white-space: nowrap; }
+.study-table .muted { color: var(--muted); }
+/* 면담 흐름 */
+.flow-table { min-width: 680px; table-layout: fixed; }
+.flow-table col.c-step { width: 24%; }
+.flow-table col.c-ask { width: 28%; }
+.flow-table col.c-if { width: 28%; }
+.flow-table col.c-dx { width: 20%; }
+.flow-table th.flow-step { background: var(--inset); }
+.flow-table .flow-step .guide-num { margin-right: 4px; }
+.flow-why { font-weight: normal; color: var(--muted); font-size: 0.8rem; margin-top: 6px; line-height: 1.4; }
+.flow-table td.flow-ask div { margin: 2px 0; padding-left: 8px; border-left: 3px solid var(--accent); }
+.flow-table td.flow-dx { font-weight: 600; }
+.flow-table tr.flow-first > * { border-top: 2px solid var(--border); }
+/* 진단별 비교표 — 첫 열(항목 이름)을 고정해 옆으로 밀어도 무엇의 행인지 보이게 */
+.matrix-table { min-width: calc(110px + var(--cols, 5) * 190px); }
+.matrix-table th, .matrix-table td { min-width: 170px; }
+.matrix-table tbody th { position: sticky; left: 0; z-index: 1; background: var(--inset); min-width: 96px; width: 96px; white-space: nowrap; }
+.matrix-table thead th:first-child { position: sticky; left: 0; z-index: 2; min-width: 96px; width: 96px; }
+.matrix-table thead th { white-space: normal; }
+@media (max-width: 560px) {
+  .flow-table td.flow-dx { white-space: normal; }
+  .matrix-table th, .matrix-table td { min-width: 150px; }
+}
+/* 사이트 공통 th 규칙(줄바꿈 금지·둥근 모서리·작은 글씨)이 공부 표의 왼쪽 칸에 걸리지 않게 */
+.study-table tbody th { white-space: normal; overflow-wrap: anywhere; border-radius: 0; text-transform: none; letter-spacing: 0; font-size: 0.88rem; color: var(--text); }
+.study-table thead th { border-radius: 0; }
+.matrix-table tbody th { white-space: nowrap; }
