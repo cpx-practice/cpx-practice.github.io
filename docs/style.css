@@ -1684,3 +1684,21 @@ html { scrollbar-gutter: stable; }
   100% { background: transparent; }
 }
 @media (prefers-reduced-motion: reduce) { .st-flash { animation: none; } }
+
+/* 면담 순서 (A→G 카테고리별 질문 목록) */
+.script-cat { margin: 0 0 14px; }
+.script-cat h4 { margin: 14px 0 4px; font-size: 0.98rem; display: flex; align-items: center; gap: 8px; }
+.cat-letter {
+  display: inline-grid; place-items: center;
+  width: 1.6em; height: 1.6em; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: 0.85rem; font-weight: 700;
+}
+.script-cat > .hint { margin: 0 0 6px; }
+.script-qs { margin: 0; padding-left: 1.8em; }
+.script-qs li { padding: 6px 0; border-bottom: 1px solid var(--border); }
+.script-qs li:last-child { border-bottom: 0; }
+.script-q { font-weight: 600; }
+.script-hint { font-size: 0.85rem; color: var(--muted); margin-top: 2px; }
+.script-ext { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 0.8rem; }
+.script-ext-label { color: var(--danger-text); font-weight: 700; margin-right: 2px; }
+.script-ext .tag { display: inline-block; font-size: 0.76rem; padding: 0 7px; border-radius: 999px; border: 1px solid var(--danger-border); color: var(--danger-text); background: var(--panel); }

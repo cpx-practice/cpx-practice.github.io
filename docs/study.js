@@ -74,6 +74,30 @@ function guideHtml(g) {
         .join("");
     })
     .join("");
+  // 면담 순서 — 실제로 물을 순서대로 A(도입)→G(마무리) 카테고리별 질문 목록. 번호는 카테고리를 넘어 이어진다.
+  // ext 는 카드에 없어도 이 질문으로 배제해야 하는 질환이다.
+  let qn = 0;
+  const script = (g.script || [])
+    .map(
+      (cat) =>
+        `<section class="script-cat" id="st-cat-${esc(cat.cat)}">` +
+        `<h4><span class="cat-letter">${esc(cat.cat)}</span> ${esc(cat.title)}</h4>` +
+        (cat.note ? `<p class="hint">${esc(cat.note)}</p>` : "") +
+        `<ol class="script-qs" start="${qn + 1}">` +
+        (cat.qs || [])
+          .map((x) => {
+            qn++;
+            return (
+              `<li><div class="script-q">“${esc(x.q)}”</div>` +
+              (x.hint ? `<div class="script-hint">${esc(x.hint)}</div>` : "") +
+              (x.ext?.length ? `<div class="script-ext"><span class="script-ext-label">배제</span>${x.ext.map((d) => `<span class="tag tag-danger">${esc(d)}</span>`).join("")}</div>` : "") +
+              `</li>`
+            );
+          })
+          .join("") +
+        `</ol></section>`
+    )
+    .join("");
   const c = g.compare;
   const compare = c && c.rows?.length
     ? `<div class="table-wrap"><table class="guide-compare"><thead><tr><th>진단</th>${c.cols.map((x) => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>` +
@@ -83,7 +107,11 @@ function guideHtml(g) {
   const pit = (g.pitfalls || []).length ? `<ul class="guide-pitfalls">${g.pitfalls.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
   return (
     `<h3 id="st-summary">한눈에 보기</h3>${summary}` +
-    (flow
+    (script
+      ? `<h3 id="st-script">면담 순서</h3><p class="hint">실제로 물을 순서입니다. 질문 아래 작은 글씨는 답에 따라 생각할 진단, 빨간 <b>배제</b> 표시는 이 주제의 출제 진단이 아니어도 그 질문으로 꼭 지워야 하는 질환입니다.</p>` +
+        `<div class="script">${script}</div>`
+      : "") +
+    (!script && flow
       ? `<h3 id="st-flow">면담 흐름</h3><p class="hint">위에서 아래 순서로 묻습니다. 환자의 답에 따라 오른쪽 진단 쪽으로 좁혀집니다.</p>` +
         `<div class="table-wrap"><table class="study-table flow-table"><colgroup><col class="c-step"><col class="c-ask"><col class="c-if"><col class="c-dx"></colgroup><thead><tr><th>단계</th><th>이렇게 묻는다</th><th>이런 답이면</th><th>생각할 진단</th></tr></thead><tbody>${flow}</tbody></table></div>`
       : "") +
@@ -91,6 +119,14 @@ function guideHtml(g) {
     (pit ? `<h3 id="st-pitfalls">놓치기 쉬운 것</h3>${pit}` : "")
   );
 }
+
+// 결과 창 복습 링크 → 공부 탭 위치. 앞에 있는 것부터 찾아 처음 있는 곳으로 간다.
+const SECTION_TARGETS = {
+  hpi: ["st-cat-B", "st-flow"],
+  redflag: ["st-cat-D", "st-summary"],
+  pmh: ["st-cat-E", "st-flow"],
+  flow: ["st-script", "st-flow"],
+};
 
 export function initStudyTab({ onStartInterview, canInterview } = {}) {
   const select = $("stTopic");
@@ -168,16 +204,19 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
       if (!select.value) show("");
     },
     // 면담 결과 창의 "복습" 링크가 부른다 — 주제 이름(카드의 topic)으로 주제를 고르고, 가이드의 해당 부분으로 내려간다.
-    // section: "summary" | "flow" | "compare" | "pitfalls". 가이드가 없는 주제면 맨 위에 둔다.
+    // section: 채점 항목 쪽 이름(hpi·redflag·pmh) 또는 가이드 부분 이름(summary·compare·pitfalls).
+    // 면담 순서(script) 가이드면 해당 카테고리로, 아직 예전 흐름 표인 주제면 흐름 표·한눈에 보기로 간다. 가이드가 없으면 맨 위.
     async open(topicName, section) {
       await loadIndex();
       const opt = [...select.options].find((o) => o.dataset.name === topicName);
       if (!opt) return;
       select.value = opt.value;
       await show(opt.value);
-      const target = section && $(`st-${section}`);
+      const target = (SECTION_TARGETS[section] || [`st-${section}`]).map((id) => $(id)).find(Boolean);
       if (!target) return;
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      // 부드러운 스크롤은 결과 창을 닫고 탭을 바꾸는 중에 끊겨 제자리에 머무는 일이 있었다 — 한 프레임 뒤 바로 옮긴다.
+      await new Promise((r) => setTimeout(r, 0)); // requestAnimationFrame 은 창이 가려져 있으면 멈춘다
+      target.scrollIntoView({ block: "start" });
       target.classList.add("st-flash");
       setTimeout(() => target.classList.remove("st-flash"), 2000);
     },

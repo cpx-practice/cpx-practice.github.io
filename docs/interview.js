@@ -581,9 +581,9 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
   // 복습 — 점수가 깎인 병력청취 항목을 공부 탭의 같은 주제 가이드로 잇는다.
   // 채점표는 모든 주제가 같은 큰 항목이라 "몇 번째 단계를 놓쳤다"까지는 못 짚고, 그 항목을 익히는 가이드 부분으로 보낸다.
   const REVIEW_LINKS = {
-    "주호소&현병력": ["flow", "면담 흐름"],
-    "Red Flag/감별진단": ["summary", "위험 신호와 감별"],
-    "과거력·약물력·가족력·사회력": ["flow", "면담 흐름의 병력·약 질문"],
+    "주호소&현병력": ["hpi", "현병력 질문"],
+    "Red Flag/감별진단": ["redflag", "위험 신호·배제 질문"],
+    "과거력·약물력·가족력·사회력": ["pmh", "과거력·약 질문"],
     "Safety Netting": ["pitfalls", "놓치기 쉬운 것"],
   };
   function reviewHtml(scored, topic) {
