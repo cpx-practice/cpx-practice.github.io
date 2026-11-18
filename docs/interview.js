@@ -84,7 +84,7 @@ const PROVIDERS = {
 const MAX_TURNS = 80; // 학생 메시지 기준. 버그로 인한 무한루프 등으로부터의 안전장치일 뿐 — 비용은 학생 본인 몫이라 낮게 잡을 이유는 없다.
 const $ = (id) => document.getElementById(id);
 
-export function initInterviewTab({ db, auth, endpoint }) {
+export function initInterviewTab({ db, auth, endpoint, onStudy }) {
   const keyPanel = $("ivKeyPanel");
   const startPanel = $("ivStartPanel");
   const chatPanel = $("ivChatPanel");
@@ -578,6 +578,39 @@ export function initInterviewTab({ db, auth, endpoint }) {
     }
   });
 
+  // 복습 — 점수가 깎인 병력청취 항목을 공부 탭의 같은 주제 가이드로 잇는다.
+  // 채점표는 모든 주제가 같은 큰 항목이라 "몇 번째 단계를 놓쳤다"까지는 못 짚고, 그 항목을 익히는 가이드 부분으로 보낸다.
+  const REVIEW_LINKS = {
+    "주호소&현병력": ["flow", "면담 흐름"],
+    "Red Flag/감별진단": ["summary", "위험 신호와 감별"],
+    "과거력·약물력·가족력·사회력": ["flow", "면담 흐름의 병력·약 질문"],
+    "Safety Netting": ["pitfalls", "놓치기 쉬운 것"],
+  };
+  function reviewHtml(scored, topic) {
+    if (!onStudy || !topic || topic === "무작위") return "";
+    const missed = (scored?.rows || []).filter((r) => !r.subtotal && (r.mark === "X" || r.mark === "△") && REVIEW_LINKS[r.label]);
+    const list = missed
+      .map((r) => {
+        const [sec, name] = REVIEW_LINKS[r.label];
+        return `<li><span class="mk ${MARK_CLASS[r.mark]}">${esc(r.mark)}</span> ${esc(r.label)} → <button type="button" class="linklike" data-study="${sec}">${esc(name)} 보기</button></li>`;
+      })
+      .join("");
+    return (
+      `<div class="iv-review"><div class="iv-review-head">복습하기</div>` +
+      (list
+        ? `<p class="hint">점수가 깎인 항목을 공부 탭의 「${esc(topic)}」 가이드에서 다시 볼 수 있습니다.</p><ul>${list}</ul>`
+        : `<p class="hint">병력청취 항목은 잘 챙겼습니다. 「${esc(topic)}」 가이드로 다른 진단도 훑어보세요.</p>`) +
+      `<button type="button" class="btn small" data-study="">이 주제 공부하기</button></div>`
+    );
+  }
+  $("ivResultBody").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-study]");
+    if (!b || !onStudy) return;
+    const topic = $("ivResultBody").dataset.topic;
+    $("btnIvResultExit").click(); // 결과 창을 닫고 면담을 끝낸 뒤(평가가 끝나 확인창 없음) 공부 탭으로 간다
+    onStudy(topic, b.dataset.study || "");
+  });
+
   function showEvalResult(record, mdText, topic, scored) {
     const total = typeof record.total === "number" ? `${record.total} / 100` : "";
     // 항목별 근거는 점수 표에 합치고, 채점문에는 잘한 점·개선점·조정 항목만 남긴다.
@@ -592,8 +625,10 @@ export function initInterviewTab({ db, auth, endpoint }) {
         </div>
         ${topic ? `<div class="iv-eval-topic">케이스: ${esc(topic)}</div>` : ""}
         ${scoreTableHtml(scored, items)}
+        ${reviewHtml(scored, topic)}
         <div class="iv-eval-body md">${renderMarkdown(narrative)}</div>
       </div>`;
+    $("ivResultBody").dataset.topic = topic || "";
     $("ivResultBody").scrollTop = 0;
     evalDone = true;
     resultReopen.classList.remove("hidden");

@@ -163,7 +163,16 @@ function setInterviewTab(isAdmin, granted = false) {
   // 관리자로 면담 탭을 보던 중 다른 계정으로 바뀌면 숨은 탭에 머물지 않게 한다.
   if (!on && tabInterview?.classList.contains("active")) activateView("records", { push: false });
 }
-const interviewTab = initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
+const interviewTab = initInterviewTab({
+  db,
+  auth,
+  endpoint: INTERVIEW_ENDPOINT,
+  // 채점 결과 창의 "복습" 링크 — 공부 탭에서 같은 주제의 가이드 해당 부분을 연다. studyTab 은 아래에서 만들어지지만 클릭 때에만 쓴다.
+  onStudy(topicName, section) {
+    activateView("study");
+    studyTab.open(topicName, section);
+  },
+});
 
 // 공부 탭 — "이 주제로 면담 시작"은 면담 탭이 보이는 계정에서만 보인다.
 const studyTab = initStudyTab({

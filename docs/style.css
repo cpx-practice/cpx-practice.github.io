@@ -1651,3 +1651,36 @@ html { scrollbar-gutter: stable; }
 .study-table tbody th { white-space: normal; overflow-wrap: anywhere; border-radius: 0; text-transform: none; letter-spacing: 0; font-size: 0.88rem; color: var(--text); }
 .study-table thead th { border-radius: 0; }
 .matrix-table tbody th { white-space: nowrap; }
+
+/* 채점 결과 → 공부 탭 복습 링크 */
+.iv-review {
+  margin: 0 16px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.iv-review-head { font-weight: 700; margin-bottom: 4px; }
+.iv-review .hint { margin: 0 0 6px; }
+.iv-review ul { margin: 0 0 8px; padding-left: 0; list-style: none; }
+.iv-review li { padding: 3px 0; }
+.iv-review .mk { display: inline-block; min-width: 1.4em; font-weight: 700; text-align: center; }
+.iv-review .mk-p { color: var(--warn-text); }
+.iv-review .mk-x { color: var(--danger-text); }
+.linklike {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.linklike:hover { color: var(--accent-hover); }
+/* 복습 링크로 들어온 가이드 부분을 잠깐 표시 */
+.st-flash { animation: st-flash 2s ease-out; border-radius: 4px; }
+@keyframes st-flash {
+  0%, 40% { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+  100% { background: transparent; }
+}
+@media (prefers-reduced-motion: reduce) { .st-flash { animation: none; } }

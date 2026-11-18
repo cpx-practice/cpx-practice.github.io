@@ -82,13 +82,13 @@ function guideHtml(g) {
     : "";
   const pit = (g.pitfalls || []).length ? `<ul class="guide-pitfalls">${g.pitfalls.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
   return (
-    `<h3>한눈에 보기</h3>${summary}` +
+    `<h3 id="st-summary">한눈에 보기</h3>${summary}` +
     (flow
-      ? `<h3>면담 흐름</h3><p class="hint">위에서 아래 순서로 묻습니다. 환자의 답에 따라 오른쪽 진단 쪽으로 좁혀집니다.</p>` +
+      ? `<h3 id="st-flow">면담 흐름</h3><p class="hint">위에서 아래 순서로 묻습니다. 환자의 답에 따라 오른쪽 진단 쪽으로 좁혀집니다.</p>` +
         `<div class="table-wrap"><table class="study-table flow-table"><colgroup><col class="c-step"><col class="c-ask"><col class="c-if"><col class="c-dx"></colgroup><thead><tr><th>단계</th><th>이렇게 묻는다</th><th>이런 답이면</th><th>생각할 진단</th></tr></thead><tbody>${flow}</tbody></table></div>`
       : "") +
-    (compare ? `<h3>감별 비교표</h3>${compare}` : "") +
-    (pit ? `<h3>놓치기 쉬운 것</h3>${pit}` : "")
+    (compare ? `<h3 id="st-compare">감별 비교표</h3>${compare}` : "") +
+    (pit ? `<h3 id="st-pitfalls">놓치기 쉬운 것</h3>${pit}` : "")
   );
 }
 
@@ -97,12 +97,14 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
   const body = $("stBody");
   const startBtn = $("stStart");
   if (!select || !body) return { refresh() {} };
-  let loaded = false;
+  let indexReady = null; // 목록은 한 번만 받는다. 결과 창에서 바로 열 때도 목록이 다 찬 뒤에 고르도록 promise 를 나눠 쓴다.
   let current = null;
 
-  async function loadIndex() {
-    if (loaded) return;
-    loaded = true;
+  function loadIndex() {
+    indexReady ||= fetchIndex();
+    return indexReady;
+  }
+  async function fetchIndex() {
     try {
       const res = await fetch("study/index.json", { cache: "no-cache" });
       const data = await res.json();
@@ -114,7 +116,7 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
         select.appendChild(opt);
       }
     } catch (err) {
-      loaded = false;
+      indexReady = null;
       body.innerHTML = `<p class="err">공부 자료를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</p>`;
       console.warn("공부 자료 목록 실패", err);
     }
@@ -164,6 +166,20 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
     refresh() {
       loadIndex();
       if (!select.value) show("");
+    },
+    // 면담 결과 창의 "복습" 링크가 부른다 — 주제 이름(카드의 topic)으로 주제를 고르고, 가이드의 해당 부분으로 내려간다.
+    // section: "summary" | "flow" | "compare" | "pitfalls". 가이드가 없는 주제면 맨 위에 둔다.
+    async open(topicName, section) {
+      await loadIndex();
+      const opt = [...select.options].find((o) => o.dataset.name === topicName);
+      if (!opt) return;
+      select.value = opt.value;
+      await show(opt.value);
+      const target = section && $(`st-${section}`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      target.classList.add("st-flash");
+      setTimeout(() => target.classList.remove("st-flash"), 2000);
     },
   };
 }
