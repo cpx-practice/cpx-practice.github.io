@@ -88,7 +88,7 @@ function guideHtml(g) {
           .map((x) => {
             qn++;
             return (
-              `<li><div class="script-q">“${esc(x.q)}”</div>` +
+              `<li${x.hint || x.ext?.length ? ' class="has-note"' : ""}><div class="script-q">“${esc(x.q)}”</div>` +
               (x.hint ? `<div class="script-hint">${esc(x.hint)}</div>` : "") +
               (x.ext?.length ? `<div class="script-ext"><span class="script-ext-label">배제</span>${x.ext.map((d) => `<span class="tag tag-danger">${esc(d)}</span>`).join("")}</div>` : "") +
               `</li>`
@@ -109,7 +109,8 @@ function guideHtml(g) {
     `<h3 id="st-summary">한눈에 보기</h3>${summary}` +
     (script
       ? `<h3 id="st-script">면담 순서</h3><p class="hint">실제로 물을 순서입니다. 질문 아래 작은 글씨는 답에 따라 생각할 진단, 빨간 <b>배제</b> 표시는 이 주제의 출제 진단이 아니어도 그 질문으로 꼭 지워야 하는 질환입니다.</p>` +
-        `<div class="script">${script}</div>`
+        `<label class="script-toggle"><input type="checkbox" id="stHideToggle"${hideOn() ? " checked" : ""}> 가리기 모드 <span class="hint">— 해설을 가리고, 질문을 눌러 확인합니다</span></label>` +
+        `<div class="script${hideOn() ? " hide-hints" : ""}" id="stScript">${script}</div>`
       : "") +
     (!script && flow
       ? `<h3 id="st-flow">면담 흐름</h3><p class="hint">위에서 아래 순서로 묻습니다. 환자의 답에 따라 오른쪽 진단 쪽으로 좁혀집니다.</p>` +
@@ -118,6 +119,23 @@ function guideHtml(g) {
     (compare ? `<h3 id="st-compare">감별 비교표</h3>${compare}` : "") +
     (pit ? `<h3 id="st-pitfalls">놓치기 쉬운 것</h3>${pit}` : "")
   );
+}
+
+// 가리기 모드 — 면담 순서의 해설·배제 질환을 가리고 질문을 눌러 하나씩 확인한다. 켜 둔 상태는 이 브라우저에만 기억한다.
+const HIDE_KEY = "cpx.study.hide";
+function hideOn() {
+  try {
+    return localStorage.getItem(HIDE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function setHide(on) {
+  try {
+    localStorage.setItem(HIDE_KEY, on ? "1" : "0");
+  } catch {
+    /* 저장이 막힌 브라우저에서도 이번 화면에서는 동작한다 */
+  }
 }
 
 // 결과 창 복습 링크 → 공부 탭 위치. 앞에 있는 것부터 찾아 처음 있는 곳으로 간다.
@@ -193,6 +211,19 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
   }
 
   select.addEventListener("change", () => show(select.value));
+  // 가리기 모드: 스위치를 바꾸면 펼쳐 둔 것도 다시 가린다. 켜져 있을 때 질문을 누르면 그 질문만 펼치고 접는다.
+  body.addEventListener("change", (e) => {
+    if (e.target.id !== "stHideToggle") return;
+    const on = e.target.checked;
+    setHide(on);
+    const s = $("stScript");
+    s?.classList.toggle("hide-hints", on);
+    s?.querySelectorAll("li.revealed").forEach((li) => li.classList.remove("revealed"));
+  });
+  body.addEventListener("click", (e) => {
+    const li = e.target.closest(".script.hide-hints .script-qs li.has-note");
+    if (li) li.classList.toggle("revealed");
+  });
   startBtn?.addEventListener("click", () => {
     if (current && onStartInterview) onStartInterview(current.name);
   });

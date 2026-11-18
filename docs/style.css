@@ -1702,3 +1702,17 @@ html { scrollbar-gutter: stable; }
 .script-ext { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; font-size: 0.8rem; }
 .script-ext-label { color: var(--danger-text); font-weight: 700; margin-right: 2px; }
 .script-ext .tag { display: inline-block; font-size: 0.76rem; padding: 0 7px; border-radius: 999px; border: 1px solid var(--danger-border); color: var(--danger-text); background: var(--panel); }
+
+/* 가리기 모드 — 해설·배제 질환을 가리고 질문을 눌러 확인 */
+.script-toggle { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+.script-toggle .hint { font-weight: 400; }
+.script.hide-hints .script-hint,
+.script.hide-hints .script-ext { display: none; }
+.script.hide-hints .script-qs li.has-note { cursor: pointer; }
+.script.hide-hints .script-qs li.has-note::after {
+  content: "눌러서 확인"; display: block; margin-top: 2px; font-size: 0.75rem; color: var(--muted);
+}
+.script.hide-hints .script-qs li.revealed::after { content: none; }
+.script.hide-hints .script-qs li.revealed .script-hint,
+.script.hide-hints .script-qs li.revealed .script-ext { display: block; }
+.script.hide-hints .script-qs li.revealed .script-ext { display: flex; }
