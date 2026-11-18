@@ -1582,3 +1582,30 @@ html { scrollbar-gutter: stable; }
   .study-dl { grid-template-columns: 1fr; gap: 0; }
   .study-dl dt { margin-top: 6px; }
 }
+
+/* 공부 탭 — 면담 가이드 */
+.guide-summary { background: var(--inset); border-radius: 8px; padding: 10px 14px; }
+.guide-summary p { margin: 4px 0; }
+.guide-summary .tag { display: inline-block; font-size: 0.78rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); margin-right: 4px; }
+.guide-summary .tag-danger { border-color: var(--danger-border); color: var(--danger-text); }
+.guide-strategy { margin-top: 8px !important; }
+.guide-flow { list-style: none; margin: 0; padding: 0; }
+.guide-step { border: 1px solid var(--border); border-radius: 8px; background: var(--panel); padding: 10px 14px; margin: 8px 0; }
+.guide-step-head { display: flex; align-items: center; gap: 8px; }
+.guide-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-size: 0.8rem; flex: none; }
+.guide-ask { margin: 8px 0 2px; padding-left: 10px; border-left: 3px solid var(--accent); }
+.guide-step .hint { margin: 6px 0 4px; }
+.guide-sorts { list-style: none; margin: 4px 0 0; padding: 0; }
+.guide-sorts li { display: grid; grid-template-columns: 1fr auto minmax(0, 1fr); gap: 8px; padding: 4px 0; border-top: 1px dashed var(--border); align-items: baseline; }
+.guide-sorts .arrow { color: var(--muted); }
+.guide-compare { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.guide-compare th, .guide-compare td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+.guide-compare thead th { background: var(--inset); }
+.guide-compare tbody th { white-space: nowrap; }
+.guide-pitfalls li { margin: 4px 0; }
+.study-rubric { margin-top: 18px; }
+@media (max-width: 560px) {
+  .guide-sorts li { grid-template-columns: 1fr; gap: 0; }
+  .guide-sorts .arrow { display: none; }
+  .guide-sorts b::before { content: "→ "; color: var(--muted); font-weight: normal; }
+}

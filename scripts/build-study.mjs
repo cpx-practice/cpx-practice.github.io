@@ -11,6 +11,8 @@ import { dirname, join } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const REFS = join(here, "..", "..", "cpx-plugin", "cpx", "skills", "start", "refs");
 const OUT = join(here, "..", "docs", "study");
+// 사람이 쓴 면담 가이드(질문 흐름·감별 비교표). 카드에서 자동으로 못 만드는 부분이라 따로 둔다. 있는 주제만 붙는다.
+const GUIDES = join(here, "..", "study-guides");
 
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
 const index = read(join(REFS, "cases", "index.json"));
@@ -155,8 +157,16 @@ for (const [name, t] of topics) {
   const own = existsSync(mdPath);
   const checklist = readFileSync(own ? mdPath : join(REFS, "checklist.md"), "utf8");
   const scenarios = (data.scenarios || []).map(scenarioClues);
-  writeFileSync(join(OUT, key + ".json"), JSON.stringify({ name, key, scenarios, checklist, commonChecklist: !own }, null, 1));
-  list.push({ name, key, count: scenarios.length, dx: scenarios.map((s) => s.dx) });
+  const guidePath = join(GUIDES, key + ".json");
+  const guide = existsSync(guidePath) ? read(guidePath) : null;
+  if (guide) {
+    // 가이드의 비교표 진단명이 카드와 어긋나면(카드를 고친 뒤 가이드를 안 고친 경우) 알린다.
+    const dxs = new Set(scenarios.map((s) => s.dx));
+    const stale = (guide.compare?.rows || []).filter((r) => !dxs.has(r.dx)).map((r) => r.dx);
+    if (stale.length) console.log(`!! ${key}: 가이드 비교표의 진단이 카드에 없음 — ${stale.join(", ")}`);
+  }
+  writeFileSync(join(OUT, key + ".json"), JSON.stringify({ name, key, scenarios, checklist, commonChecklist: !own, guide }, null, 1));
+  list.push({ name, key, count: scenarios.length, dx: scenarios.map((s) => s.dx), guide: !!guide });
 }
 writeFileSync(join(OUT, "index.json"), JSON.stringify({ topics: list }, null, 1));
 console.log(`공부 자료 ${list.length}개 주제, 시나리오 ${list.reduce((a, b) => a + b.count, 0)}개 → ${OUT}`);
