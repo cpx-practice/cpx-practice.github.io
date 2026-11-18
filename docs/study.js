@@ -5,12 +5,8 @@ import { escapeHtml, renderMarkdown } from "./markdown.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => escapeHtml(String(s ?? ""));
 
-// 채점표는 채점자를 위한 설명(공통 배점표와 바꿔 쓰는 칸 등)으로 시작한다. 학생이 볼 것은 첫 "## " 제목부터다.
-function studentChecklist(md) {
-  const text = String(md || "").replace(/\r\n?/g, "\n");
-  const start = text.search(/^## /m);
-  return (start >= 0 ? text.slice(start) : text).replace(/^(\s*)- \[[ xX]\] /gm, "$1- ");
-}
+// 채점표는 scripts/build-study.mjs 가 학생용으로 손질해 둔 것이다(채점자용 설명·시나리오 ID 제거).
+const studentChecklist = (md) => String(md || "");
 
 function list(items, cls = "") {
   if (!items || !items.length) return "";

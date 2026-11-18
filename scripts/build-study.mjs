@@ -143,6 +143,35 @@ function scenarioClues(s) {
   };
 }
 
+// ---------------------------------------------------------------- 채점표를 학생용으로
+
+// 채점표 원본은 채점에 그대로 쓰이므로 건드리지 않고, 공부 화면에 보일 사본만 손질한다.
+// 채점자를 위한 설명(공통 배점표의 어느 칸을 대신하는지, SKILL.md 규칙 이름, 시나리오 ID)은 학생에게 뜻이 없다.
+function studentChecklist(md, scenarios) {
+  const names = Object.fromEntries(scenarios.map((s) => [s.id, s.dx]));
+  let t = String(md || "").replace(/\r\n?/g, "\n");
+  const start = t.search(/^## /m);
+  if (start > 0) t = t.slice(start); // 맨 앞의 채점자용 안내문
+  return t
+    .replace(/^## 치명적 오류.*$/m, "## 이렇게 하면 점수와 관계없이 '미흡'")
+    .replace(/^이번 시나리오에서 아래 중 하나라도[^\n]*\n/m, "")
+    .replace(/^(\s*-\s*)치명:\s*/gm, "$1")
+    .replace(/\s*—\s*판정은 SKILL\.md[^\n]*/g, "") // 채점 세부 규칙 안내
+    .replace(/\s*—\s*topics\.md[^\n(]*/g, " ") // "— topics.md PE 초점 참고"
+    .replace(/\s*\(topics\.md 기준\)/g, "")
+    .replace(/\(케이스에 따라[^)\n]*배점\)/g, "")
+    // 채점 방법을 설명하는 문단(목록·제목이 아닌 줄)에 내부 파일·신호어가 나오면 통째로 뺀다.
+    .split("\n")
+    .filter((line) => /^\s*(#|-|\||\d+\.)/.test(line) || !/SKILL\.md|topics\.md|checklist\.md|채점한다|신호/.test(line))
+    .join("\n")
+    .replace(/\s*\((?:I|II)-?\d*\s*대체[^)]*\)/g, "") // "(I-6 대체, 병력청취 소계에 합산)"
+    .replace(/\s*—?\s*공통 I-\d+\s*의[^.\n]*칸을 대신한다\.?/g, "")
+    .replace(/\(([a-z]{2,}-[a-z0-9-]+(?:,\s*[a-z]{2,}-[a-z0-9-]+)*)\)/g, (m, ids) =>
+      "(" + ids.split(/,\s*/).map((id) => names[id] || id).join(", ") + ")")
+    .replace(/\b([a-z]{2,}-[a-z0-9-]+)\b/g, (m) => names[m] || m)
+    .replace(/^(\s*)- \[[ xX]\] /gm, "$1- ");
+}
+
 // ---------------------------------------------------------------- 만들기
 
 mkdirSync(OUT, { recursive: true });
@@ -155,8 +184,9 @@ for (const [name, t] of topics) {
   const mdPath = join(REFS, "checklists", key + ".md");
   // 주제 전용 채점표가 없으면(예방접종·상담 주제 등) 공통 채점표를 보여 준다. 실제 평가도 그 표로 한다.
   const own = existsSync(mdPath);
-  const checklist = readFileSync(own ? mdPath : join(REFS, "checklist.md"), "utf8");
+  const rawChecklist = readFileSync(own ? mdPath : join(REFS, "checklist.md"), "utf8");
   const scenarios = (data.scenarios || []).map(scenarioClues);
+  const checklist = studentChecklist(rawChecklist, scenarios);
   const guidePath = join(GUIDES, key + ".json");
   const guide = existsSync(guidePath) ? read(guidePath) : null;
   if (guide) {
