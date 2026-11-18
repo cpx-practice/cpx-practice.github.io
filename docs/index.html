@@ -315,9 +315,11 @@
           <div class="iv-quick">
             <button type="button" class="btn small ghost" id="btnCuePE">진찰</button>
             <button type="button" class="btn small ghost" id="btnCueEval">평가</button>
+            <label class="iv-tts hidden" id="ivTtsWrap"><input type="checkbox" id="ivTts" /> 환자 목소리</label>
           </div>
           <form class="iv-input" id="ivForm">
             <input type="text" id="ivInput" placeholder="메시지를 입력하세요" autocomplete="off" />
+            <button type="button" class="btn ghost iv-mic" id="btnIvMic" title="말로 입력하기" aria-pressed="false" aria-label="말로 입력하기">🎤</button>
             <button type="submit" class="btn primary" id="btnIvSend">보내기</button>
           </form>
           <p class="hint" id="ivStatus"></p>

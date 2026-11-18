@@ -22,6 +22,7 @@ import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
 import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal } from "./scoring.js";
 import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges } from "./export.js";
 import { claimConfig, mergeCloud, cloudPayload } from "./aikeys.js";
+import { initVoice } from "./voice.js";
 
 const CONFIG_STORAGE = "cpx-ai-config"; // { provider, keys: {id: key}, models: {id: model}, ownerUid, cloud }
 const LEGACY_GEMINI_KEY = "cpx-gemini-key"; // 예전 Gemini 전용 시절 저장 위치 — 처음 한 번 옮겨온다
@@ -94,6 +95,16 @@ export function initInterviewTab({ db, auth, endpoint }) {
   const ivForm = $("ivForm");
   const ivInput = $("ivInput");
   const ivStatus = $("ivStatus");
+  // 말로 묻기(마이크)와 환자 답 읽어 주기 — 브라우저 내장 음성 기능만 쓴다 (voice.js).
+  const voice = initVoice({
+    input: $("ivInput"),
+    micButton: $("btnIvMic"),
+    ttsToggle: $("ivTts"),
+    ttsWrap: $("ivTtsWrap"),
+    onStatus: (msg) => {
+      ivStatus.textContent = msg;
+    },
+  });
   const startErr = $("ivStartErr");
   const startAlt = $("ivStartAlt"); // 무료 한도가 소진됐을 때 "내 키로 계속하기" 버튼을 담는 자리
 
@@ -969,6 +980,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
     }
     sending = true;
     $("btnIvSend").disabled = true;
+    voice.stop(); // 읽던 환자 답·듣던 마이크를 멈춘다
     addBubble("의사", text);
     history.push({ role: "user", text: text.slice(0, 4000) });
     ivInput.value = "";
@@ -1032,6 +1044,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
         setWalkedOut(true);
       } else {
         addBubble("환자", shown);
+        voice.speak(shown);
       }
     } catch (err) {
       hideTyping();
@@ -1059,6 +1072,7 @@ export function initInterviewTab({ db, auth, endpoint }) {
   $("btnCuePE").addEventListener("click", () => sendMessage("진찰"));
   $("btnCueEval").addEventListener("click", () => sendMessage("평가"));
   $("btnEndInterview").addEventListener("click", () => {
+    voice.stop();
     // 면담 중에는 화면이 면담 창으로 가득 차 있어서 이 버튼이 유일한 출구다. 진행 중이던 면담은 저장되지 않는다.
     const inProgress = systemPrompt && history.some((h) => h.role === "user");
     if (inProgress && !confirm("면담을 나갈까요?\n평가를 받기 전에 나가면 이 면담은 저장되지 않습니다.")) return;

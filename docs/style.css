@@ -1609,3 +1609,10 @@ html { scrollbar-gutter: stable; }
   .guide-sorts .arrow { display: none; }
   .guide-sorts b::before { content: "→ "; color: var(--muted); font-weight: normal; }
 }
+
+/* 면담 음성 */
+.iv-mic { flex: none; min-width: 44px; padding-left: 10px; padding-right: 10px; }
+.iv-mic.listening { border-color: var(--danger-text); color: var(--danger-text); animation: iv-mic-pulse 1.2s ease-in-out infinite; }
+@keyframes iv-mic-pulse { 50% { box-shadow: 0 0 0 4px var(--danger-border); } }
+@media (prefers-reduced-motion: reduce) { .iv-mic.listening { animation: none; } }
+.iv-tts { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
