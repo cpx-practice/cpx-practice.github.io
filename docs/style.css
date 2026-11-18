@@ -1707,7 +1707,8 @@ html { scrollbar-gutter: stable; }
 .script-ext .tag { display: inline-block; font-size: 0.76rem; padding: 0 7px; border-radius: 999px; border: 1px solid var(--danger-border); color: var(--danger-text); background: var(--panel); }
 
 /* 가리기 모드 — 해설·배제 질환을 가리고 질문을 눌러 확인 */
-.script-toggle { display: inline-flex; align-items: center; gap: 6px; margin: 2px 0 8px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+.script-toggle { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 2px 0 8px; font-size: 0.88rem; font-weight: 600; color: var(--text); cursor: pointer; }
+.script-toggle input { margin: 0; }
 .script-toggle .hint { font-weight: 400; }
 .script.hide-hints .script-hint,
 .script.hide-hints .script-ext { display: none; }
