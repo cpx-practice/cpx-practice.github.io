@@ -378,7 +378,45 @@ export function initInterviewTab({ db, auth, endpoint }) {
     chatLog.appendChild(bar);
   }
 
+  // 환자 답을 앞에서부터 한 글자씩 보여 준다 (말하는 느낌). 응답은 이미 다 받아 둔 상태라 서버와는 무관하다.
+  // 길어도 2초 안에 끝나게 속도를 맞추고, 말풍선을 누르거나 다음 말을 보내면 바로 다 보여 준다.
+  // 움직임 줄이기를 켠 기기에서는 하지 않는다.
+  let finishTyping = null;
+  const REDUCED_MOTION = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  function typeOut(el, text) {
+    finishTyping?.();
+    const chars = [...text];
+    if (REDUCED_MOTION || chars.length < 2) {
+      el.textContent = text;
+      return;
+    }
+    const perChar = Math.max(8, Math.min(35, Math.floor(2000 / chars.length)));
+    let i = 0;
+    let timer = null;
+    const done = () => {
+      clearTimeout(timer);
+      el.textContent = text;
+      el.classList.remove("typing-out");
+      el.removeEventListener("click", done);
+      if (finishTyping === done) finishTyping = null;
+      scrollToBottom();
+    };
+    finishTyping = done;
+    el.classList.add("typing-out");
+    el.addEventListener("click", done);
+    el.textContent = "";
+    const step = () => {
+      i = Math.min(chars.length, i + 1);
+      el.textContent = chars.slice(0, i).join("");
+      if (i % 8 === 0) scrollToBottom();
+      if (i >= chars.length) return done();
+      timer = setTimeout(step, perChar);
+    };
+    step();
+  }
+
   function addBubble(role, text) {
+    finishTyping?.(); // 앞 말풍선이 아직 나오는 중이면 마저 다 보여 준다
     const row = document.createElement("div");
     if (role === "__walkout") {
       row.className = "iv-msg iv-note iv-walkout";
@@ -392,6 +430,14 @@ export function initInterviewTab({ db, auth, endpoint }) {
       const avatar = isMe ? "" : `<span class="iv-avatar" aria-hidden="true">🧑‍🦱</span>`;
       const bubble = `<span class="iv-bubble">${esc(text).replace(/\n/g, "<br>")}</span>`;
       row.innerHTML = isMe ? bubble : avatar + bubble;
+      if (role === "환자") {
+        const el = row.querySelector(".iv-bubble");
+        el.classList.add("iv-said"); // 줄바꿈을 글자로 보여 주므로 pre-wrap (style.css)
+        chatLog.appendChild(row);
+        typeOut(el, String(text));
+        scrollToBottom();
+        return row;
+      }
     }
     chatLog.appendChild(row);
     scrollToBottom();

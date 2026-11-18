@@ -1616,3 +1616,6 @@ html { scrollbar-gutter: stable; }
 @keyframes iv-mic-pulse { 50% { box-shadow: 0 0 0 4px var(--danger-border); } }
 @media (prefers-reduced-motion: reduce) { .iv-mic.listening { animation: none; } }
 .iv-tts { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 0.85rem; color: var(--muted); cursor: pointer; }
+/* 환자 답이 한 글자씩 나오는 동안 — 줄바꿈을 유지하고, 눌러서 바로 다 볼 수 있다 */
+.iv-bubble.iv-said { white-space: pre-wrap; }
+.iv-bubble.typing-out { cursor: pointer; }
