@@ -46,6 +46,7 @@ import {
 
 import { renderAnalytics } from "./analytics.js";
 import { initInterviewTab } from "./interview.js";
+import { initStudyTab } from "./study.js";
 import { escapeHtml, renderMarkdown } from "./markdown.js";
 import { TOPICS, matchTopic } from "./topics.js";
 import { downscaleImage, chunkText, joinChunks as joinImageChunks } from "./image.js";
@@ -145,6 +146,7 @@ tabRegister.addEventListener("click", () => {
 const views = {
   records: $("viewRecords"),
   analysis: $("viewAnalysis"),
+  study: $("viewStudy"),
   interview: $("viewInterview"),
   report: $("viewReport"),
   pair: $("viewPair"), // 화면 이름은 "이용 방법"
@@ -163,6 +165,19 @@ function setInterviewTab(isAdmin, granted = false) {
 }
 const interviewTab = initInterviewTab({ db, auth, endpoint: INTERVIEW_ENDPOINT });
 
+// 공부 탭 — "이 주제로 면담 시작"은 면담 탭이 보이는 계정에서만 보인다.
+const studyTab = initStudyTab({
+  canInterview: () => tabInterview && !tabInterview.classList.contains("hidden"),
+  onStartInterview(topicName) {
+    const sel = $("ivTopic");
+    if (sel && [...sel.options].some((o) => o.value === topicName)) {
+      sel.value = topicName;
+      sel.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    activateView("interview");
+  },
+});
+
 // 탭 전환마다 히스토리를 쌓아둔다. 안 쌓으면 "오류 제보"처럼 설정에서 들어간 화면에서
 // 뒤로가기를 눌렀을 때 돌아갈 앱 내 기록이 없어서 브라우저가 사이트 진입 전 페이지로 나가버린다.
 function activateView(viewName, { push = true } = {}) {
@@ -174,6 +189,7 @@ function activateView(viewName, { push = true } = {}) {
     el.classList.toggle("hidden", name !== viewName);
   }
   if (viewName === "analysis") drawAnalytics();
+  if (viewName === "study") studyTab.refresh();
   if (push) history.pushState({ view: viewName }, "", `#${viewName}`);
 }
 

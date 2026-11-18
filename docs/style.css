@@ -1548,3 +1548,37 @@ html { scrollbar-gutter: stable; }
 .sub-h { margin: 14px 0 6px; font-size: 0.88rem; color: var(--muted); font-weight: 600; }
 .btn.danger-btn { color: var(--danger-text); border-color: var(--danger-border); }
 .btn.danger-btn:hover { background: color-mix(in srgb, var(--danger-text) 10%, transparent); }
+
+/* ---------- 공부 탭 ---------- */
+#stBody h3 { margin: 20px 0 8px; }
+.study-dx { margin: 0 0 6px 1.2em; padding: 0; }
+.study-dx li { margin: 2px 0; }
+.study-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  margin: 8px 0;
+  padding: 0 14px;
+}
+.study-card > summary {
+  cursor: pointer;
+  padding: 12px 0;
+  list-style-position: outside;
+}
+.study-card[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.study-card h4 { margin: 14px 0 6px; font-size: 0.92rem; color: var(--muted); }
+.study-card ul { margin: 0 0 4px 1.2em; padding: 0; }
+.study-card li { margin: 3px 0; }
+.study-card .hint { margin: 4px 0 0; }
+.study-card > :last-child { margin-bottom: 14px; }
+.study-pos li::marker { content: "＋ "; color: var(--ok); }
+.study-neg li::marker { content: "－ "; color: var(--muted); }
+.study-flags .q { color: var(--muted); }
+.study-dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; }
+.study-dl dt { color: var(--muted); white-space: nowrap; }
+.study-dl dd { margin: 0; }
+.study-checklist { background: var(--inset); border-radius: 8px; padding: 4px 14px 10px; }
+@media (max-width: 560px) {
+  .study-dl { grid-template-columns: 1fr; gap: 0; }
+  .study-dl dt { margin-top: 6px; }
+}
