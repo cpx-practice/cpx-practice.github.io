@@ -115,7 +115,11 @@ function guideHtml(g) {
   const compare = c && c.rows?.length
     ? `<div class="table-wrap"><table class="guide-compare"><thead><tr><th>진단</th>${c.cols.map((x) => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>` +
       c.rows.map((r) => `<tr><th>${esc(r.dx)}</th>${r.cells.map((x) => `<td>${esc(x)}</td>`).join("")}</tr>`).join("") +
-      `</tbody></table></div>`
+      `</tbody></table></div>` +
+      // 카드에서 확률로 나오는 소견(면담마다 있을 수도 없을 수도)은 표에 ± 를 붙여 두었다.
+      (c.rows.some((r) => r.cells.some((x) => String(x).includes("±")))
+        ? `<p class="hint">± 표시 소견은 환자에 따라 있을 수도, 없을 수도 있습니다. 없다고 진단을 버리지 마세요.</p>`
+        : "")
     : "";
   const pit = (g.pitfalls || []).length ? `<ul class="guide-pitfalls">${g.pitfalls.map((p) => `<li>${esc(p)}</li>`).join("")}</ul>` : "";
   return (
