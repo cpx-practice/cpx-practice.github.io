@@ -219,7 +219,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     try {
       const st = await callWorker("/interview/ai/status");
       if (!el()) return;
-      if (!st.enabled) el().textContent = "지금은 이 방식을 쓸 수 없습니다 (운영자 설정 전).";
+      if (!st.enabled) el().textContent = "지금은 이 방식을 쓸 수 없습니다. 다른 AI를 고르거나 잠시 후 다시 확인해 주세요.";
       else if (!st.canStart) el().textContent = "오늘 무료 면담이 모두 소진됐습니다. 오전 9시에 다시 열립니다.";
       else el().textContent = `오늘 무료 면담 가능 · 1인당 하루 ${st.perUserDaily}회`;
     } catch {
@@ -683,7 +683,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     const code = err?.data?.error;
     if (code === "unknown_topic") return "그 주제를 찾지 못했습니다.";
     if (code === "topic_not_supported") return "이 케이스는 아직 웹 면담에서 지원하지 않습니다.";
-    if (code === "case_not_bundled") return "케이스 데이터를 찾지 못했습니다 (운영자에게 알려주세요).";
+    if (code === "case_not_bundled") return "케이스를 불러오지 못했습니다. 다른 주제로 시작하거나 \"오류 제보\" 탭으로 알려 주세요.";
     const freeMsg = freeLimitMessage(err?.data);
     if (freeMsg) return freeMsg;
     return "케이스를 준비하지 못했습니다. 다시 시도해주세요.";
@@ -700,7 +700,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     if (code === "not_approved") return "관리자 승인 후에 쓸 수 있습니다.";
     if (code === "session_expired") return "면담 세션이 만료됐습니다. \"나가기\"를 눌러 새로 시작해주세요.";
     if (code === "ai_busy") return "AI 서버가 잠시 혼잡합니다. 방금 보낸 말을 입력창에 다시 넣어 두었으니, 잠시 후 다시 보내주세요.";
-    if (code === "ai_not_configured") return "지금은 키 없이 면담을 쓸 수 없습니다 (운영자 설정 전).";
+    if (code === "ai_not_configured") return "지금은 키 없이 면담을 쓸 수 없습니다. \"AI 변경\"에서 Gemini(무료 키) 등을 골라 주세요.";
     return null;
   }
 
@@ -1241,6 +1241,17 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
   const backendSelect = $("ivBackend");
   let adminOn = false;
   let scenarioReq = 0;
+  // 관리자 점검용 칸은 숨기는 데 그치지 않고 학생 계정에서는 문서에서 떼낸다 (관리자 탭과 같은 방식).
+  // 다시 붙일 수 있게 원래 자리(다음 형제)를 기억해 둔다.
+  const adminFields = [scenarioWrap, backendWrap].filter(Boolean).map((el) => ({ el, parent: el.parentElement, next: el.nextSibling }));
+  function placeAdminFields(on) {
+    // 뒤의 칸부터 붙인다 — 앞 칸의 기준(다음 형제)이 뒤 칸이라, 그 칸이 먼저 문서에 있어야 한다.
+    for (const f of [...adminFields].reverse()) {
+      if (on && !f.el.isConnected) f.parent.insertBefore(f.el, f.next);
+      else if (!on && f.el.isConnected) f.el.remove();
+    }
+  }
+  placeAdminFields(false);
   async function loadScenarios() {
     if (!scenarioWrap || !scenarioSelect) return;
     const myReq = ++scenarioReq; // 주제를 빠르게 바꾸면 늦게 온 이전 응답이 새 목록에 섞이지 않게 한다
@@ -1266,6 +1277,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
   return {
     setAdmin(on) {
       adminOn = !!on;
+      placeAdminFields(adminOn);
       backendWrap?.classList.toggle("hidden", !adminOn);
       if (!adminOn && backendSelect) backendSelect.value = "";
       loadScenarios();
