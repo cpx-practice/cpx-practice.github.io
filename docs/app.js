@@ -1306,6 +1306,11 @@ function renderAiUsage(status, usage) {
   const localTurns = sum("localTurns");
   $("aiUsageSummary").innerHTML =
     `뉴런 <b>${nf(used)}</b> / ${nf(cap)} (${pct}%) · 남은 양 ${nf(Math.max(0, cap - used))}<br>` +
+    // Cloudflare 가 한도 비슷한 오류를 내면 워커가 그날 뉴런을 상한으로 고정한다 — 그때의 오류 원문(진짜 하루 한도였는지 판단용).
+    (usage.capPin
+      ? `<b>Cloudflare 오류로 한도 고정</b> (${escapeHtml(new Date(usage.capPin.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }))}, ` +
+        `그때 집계 ${nf(usage.capPin.countedBefore || 0)}) · 오류: <code>${escapeHtml(usage.capPin.detail || "")}</code><br>`
+      : "") +
     `면담 ${sessions.length}회 · AI가 답한 ${nf(modelTurns)}턴 · AI 없이 서버가 답한 ${nf(localTurns)}턴 (첫 대사·진찰·퇴실 등, 뉴런 0)<br>` +
     (usage.gemini?.configured
       ? `Gemini 폴백 면담 ${nf(usage.gemini.sessions)}회 · 호출 ${nf(usage.gemini.requests)}회 (뉴런이 모자랄 때만 사용)${usage.gemini.exhausted ? " · <b>오늘 한도 도달</b>" : ""} · 연결 ` +
