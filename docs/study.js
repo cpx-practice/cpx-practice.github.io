@@ -262,6 +262,8 @@ export function initStudyTab({ onStartInterview, canInterview, getRecords } = {}
 
   async function show(key) {
     current = null;
+    // 주제 카드 화면에서는 드롭다운이 카드와 겹치므로 숨기고, 주제를 연 뒤에만 "다른 주제"로 보인다.
+    $("stTopicWrap")?.classList.toggle("hidden", !key);
     startBtn?.classList.add("hidden");
     if (!key) {
       await loadIndex();

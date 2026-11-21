@@ -174,3 +174,59 @@
   color: var(--on-accent);
 }
 [data-skin="a"] .iv-bubble { border-radius: var(--radius); }
+
+/* ===== 공부 주제 상세: 둥근 상자 대신 선 구획 ===== */
+[data-skin="a"] .guide-summary {
+  background: transparent;
+  border-radius: 0;
+  border-left: 3px solid var(--accent);
+  padding: 4px 0 4px 14px;
+}
+[data-skin="a"] .guide-summary .tag,
+[data-skin="a"] .script-ext .tag,
+[data-skin="a"] .one-by-one {
+  border-radius: 2px;
+  background: transparent;
+  font-weight: 600;
+}
+[data-skin="a"] .guide-callout { border-radius: 0; background: var(--inset); }
+[data-skin="a"] .guide-step { border-radius: var(--radius); }
+[data-skin="a"] .guide-num { border-radius: 2px; }
+[data-skin="a"] .study-card {
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  margin: 0;
+  padding: 0 2px;
+  background: transparent;
+}
+[data-skin="a"] .study-card:last-of-type { border-bottom: 1px solid var(--border); }
+[data-skin="a"] .study-card > summary { font-weight: 600; }
+[data-skin="a"] .study-card[open] > summary { border-bottom: none; color: var(--accent); }
+[data-skin="a"] .study-checklist { border-radius: 0; }
+[data-skin="a"] .study-rubric { margin-top: 18px; }
+
+/* ===== 기록 상세 창·결과 창: 각진 모서리 ===== */
+[data-skin="a"] .modal { border-radius: var(--radius); }
+[data-skin="a"] .detail-tabs { gap: 0; border-bottom: 1px solid var(--border); }
+[data-skin="a"] .dtab {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 8px 14px 7px;
+  margin-bottom: -1px;
+}
+[data-skin="a"] .dtab.active { background: transparent; color: var(--text); border-bottom-color: var(--accent); }
+
+/* ===== 설정: 한 구획 안의 목록 ===== */
+[data-skin="a"] .settings-list { list-style: none; margin: 0; padding: 0; }
+[data-skin="a"] .settings-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
+}
+[data-skin="a"] .settings-list li:first-child { border-top: 1px solid var(--border); }
+[data-skin="a"] .settings-list .sl-title { font-weight: 600; }
+[data-skin="a"] .settings-list .sl-desc { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }

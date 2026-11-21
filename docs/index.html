@@ -241,8 +241,8 @@
             <h2>케이스 공부</h2>
             <button class="btn primary small hidden" id="stStart">이 주제로 면담 시작</button>
           </div>
-          <label class="ivfield">
-            주제
+          <label class="ivfield hidden" id="stTopicWrap">
+            다른 주제
             <select id="stTopic"><option value="">주제를 고르세요</option></select>
           </label>
           <div id="stBody"></div>
@@ -408,7 +408,7 @@
             <li><b>면담 탭 열기</b> — 위쪽 탭에서 <b>면담</b>을 누르고 주제를 고릅니다. <b>무작위</b>를 두면 실제 시험처럼 무슨 케이스인지 모른 채 시작합니다.</li>
             <li><b>문진</b> — 환자에게 말을 거는 것처럼 입력창에 질문을 적고 보냅니다.</li>
             <li><b>진찰</b> — 문진이 끝나면 입력창 위의 <b>진찰</b> 버튼을 누르고, 하려는 진찰을 말로 합니다 (예: "복부를 촉진하겠습니다").</li>
-            <li><b>평가</b> — 마무리 인사까지 한 뒤 <b>평가</b> 버튼을 누르면 별도 창에 점수표와 근거, 개선점이 나옵니다. 결과는 자동으로 <b>내 기록</b>에 저장됩니다.</li>
+            <li><b>평가</b> — 마무리 인사까지 한 뒤 <b>평가</b> 버튼을 누르면 별도 창에 점수표와 근거, 개선점이 나옵니다. 결과는 자동으로 <b>기록</b> 탭에 저장됩니다.</li>
           </ol>
           <p class="hint">
             면담 도중 이상한 점이 있으면 면담 화면의 <b>오류 제보</b>로 바로 알려 주세요.
@@ -447,23 +447,30 @@
       <!-- ===== 설정 ===== -->
       <div id="viewSettings" class="hidden">
         <div class="panel">
-          <h2>도움말</h2>
-          <div class="settings-links">
-            <button class="btn ghost" id="btnGoPair" data-goto="pair">이용 방법 보기</button>
-            <button class="btn ghost" id="btnGoReport" data-goto="report">오류 제보하기</button>
-          </div>
-        </div>
-
-        <div class="panel">
-          <h2>저장 설정</h2>
-          <label class="check big">
-            <input type="checkbox" id="setConsent" />
-            <span>문진 대화 전문도 저장하기</span>
-          </label>
-          <p class="hint">
-            끄면 이후 면담부터 대화 내용은 저장하지 않고 점수와 총평만 저장합니다.
-            이미 저장된 전사는 그대로 남으니, 지우려면 "내 기록" 탭에서 해당 기록을 삭제하세요.
-          </p>
+          <h2>설정</h2>
+          <ul class="settings-list">
+            <li>
+              <div>
+                <div class="sl-title">문진 대화 저장</div>
+                <div class="sl-desc">끄면 이후 면담부터 점수와 총평만 저장합니다. 이미 저장된 대화는 기록 탭에서 그 기록을 지우면 함께 지워집니다.</div>
+              </div>
+              <label class="check"><input type="checkbox" id="setConsent" /><span>저장</span></label>
+            </li>
+            <li>
+              <div>
+                <div class="sl-title">이용 방법</div>
+                <div class="sl-desc">면담·진찰·평가 순서와 하루 한도 안내</div>
+              </div>
+              <button class="btn ghost small" id="btnGoPair" data-goto="pair">보기</button>
+            </li>
+            <li>
+              <div>
+                <div class="sl-title">오류 제보</div>
+                <div class="sl-desc">면담이나 화면에서 이상한 점을 알려 주세요</div>
+              </div>
+              <button class="btn ghost small" id="btnGoReport" data-goto="report">제보하기</button>
+            </li>
+          </ul>
           <p class="ok hidden" id="settingsSaved">저장되었습니다</p>
         </div>
 

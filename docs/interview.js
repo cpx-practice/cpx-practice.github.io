@@ -1181,7 +1181,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
         showEvalResult(record, shown, record.topic || topicLabel, scored);
         addBubble("__note", "채점이 끝났습니다. 결과는 별도 창에서 볼 수 있고, 위의 \"결과 보기\"로 다시 열 수 있습니다.");
         await saveRecord(record, shown);
-        addBubble("__note", "채점 결과가 \"내 기록\" 탭에 저장되었습니다.");
+        addBubble("__note", "채점 결과가 \"기록\" 탭에 저장되었습니다.");
         systemPrompt = null; // 이 면담은 끝 — 새로 시작해야 다음 메시지가 된다
       } else if (WALKOUT_REPLY.test(shown.trim())) {
         addBubble("__walkout", shown.trim().replace(/^\(|\)$/g, ""));
