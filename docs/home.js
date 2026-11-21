@@ -76,7 +76,7 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     let statusText = "";
     if (status && status.enabled) {
       statusText = status.canStart
-        ? `오늘 무료 면담 가능${status.perUserDaily ? ` · 계정당 하루 ${status.perUserDaily}회` : ""}`
+        ? "오늘 무료 면담 가능"
         : "오늘 무료 한도 소진 · 오전 9시 초기화 (내 Gemini 키로는 가능)";
     }
     const hero =
