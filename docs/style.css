@@ -30,6 +30,12 @@
   --viz-2: #3f80be;
   --viz-3: #1d5c9a;
   --viz-4: #0e3f6e;
+
+  /* 점수 등급(우수·양호·보통·미흡) 색. 점수 칩에만 쓴다 — 크기 비교 그래프는 위 --viz 램프를 쓴다. */
+  --grade-4: #1f8a4c;
+  --grade-3: #5c9a2e;
+  --grade-2: #c28a00;
+  --grade-1: #c2453a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -59,6 +65,11 @@
     --viz-2: #4688c6;
     --viz-3: #72a9dc;
     --viz-4: #b0d0ee;
+
+    --grade-4: #4cc27f;
+    --grade-3: #9acb5c;
+    --grade-2: #e6b440;
+    --grade-1: #ec7a6f;
   }
 }
 
@@ -88,6 +99,11 @@
   --viz-2: #4688c6;
   --viz-3: #72a9dc;
   --viz-4: #b0d0ee;
+
+  --grade-4: #4cc27f;
+  --grade-3: #9acb5c;
+  --grade-2: #e6b440;
+  --grade-1: #ec7a6f;
 }
 
 * { box-sizing: border-box; }
@@ -1412,10 +1428,39 @@ td.note { max-width: 380px; line-height: 1.5; }
   background: color-mix(in srgb, var(--chip, var(--viz-1)) 22%, transparent);
   border: 1px solid color-mix(in srgb, var(--chip, var(--viz-1)) 55%, transparent);
 }
-.score-chip.b1 { --chip: var(--viz-1); }
-.score-chip.b2 { --chip: var(--viz-2); }
-.score-chip.b3 { --chip: var(--viz-3); }
-.score-chip.b4 { --chip: var(--viz-4); }
+/* 등급 색: 90+ 우수(초록) · 80 양호(연두) · 70 보통(노랑) · 그 아래 미흡(빨강) */
+.score-chip.b1 { --chip: var(--grade-1); }
+.score-chip.b2 { --chip: var(--grade-2); }
+.score-chip.b3 { --chip: var(--grade-3); }
+.score-chip.b4 { --chip: var(--grade-4); }
+
+/* 퇴실·빈 면담(20점 미만) 기록은 흐리게 */
+#recordTable tr.rec-faint td { opacity: 0.55; }
+#recordTable tr.rec-faint:hover td { opacity: 1; }
+
+/* 총평은 한 줄로 자르고, 누르면 펼친다 */
+.note-clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+  overflow: hidden;
+  cursor: pointer;
+}
+.note-clamp.open { -webkit-line-clamp: unset; display: block; }
+
+/* 삭제는 실수로 누르기 어렵게 작고 흐린 글자 버튼 */
+.btn-del {
+  margin-left: 8px;
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.btn-del:hover, .btn-del:focus-visible { color: var(--danger-text); }
 
 /* 영역별 성취율: 이름이 세로로 깨지지 않게 칸을 넓히고 줄바꿈을 막는다. */
 .sbar { grid-template-columns: 132px 1fr auto; gap: 12px; }
@@ -1720,3 +1765,103 @@ html { scrollbar-gutter: stable; }
 .script.hide-hints .script-qs li.revealed .script-hint,
 .script.hide-hints .script-qs li.revealed .script-ext { display: block; }
 .script.hide-hints .script-qs li.revealed .script-ext { display: flex; }
+
+/* ===== 공부 탭 첫 화면: 계통별 주제 카드 ===== */
+.tg-progress { margin: 4px 0 18px; }
+.tg-progress-text { font-size: 0.92rem; margin-bottom: 6px; }
+.tg-bar { height: 8px; border-radius: 999px; background: var(--inset); overflow: hidden; }
+.tg-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.tg-group h3 { font-size: 0.95rem; margin: 18px 0 8px; color: var(--muted); }
+.tg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.tg-card {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 10px 12px; text-align: left; cursor: pointer;
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--border); border-radius: 10px; font: inherit;
+}
+.tg-card:hover, .tg-card:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--panel)); }
+.tg-name { font-weight: 700; font-size: 0.95rem; word-break: keep-all; }
+.tg-sub { font-size: 0.78rem; color: var(--muted); }
+.tg-meta { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; margin-top: 2px; }
+.tg-count { color: var(--muted); }
+.tg-new { color: var(--accent); font-weight: 600; }
+.tg-card.is-new { border-style: dashed; }
+.st-back { margin-bottom: 12px; }
+
+/* ===== 위쪽 오른편의 설정·관리자 (탭 전환 로직은 .subtab 그대로) ===== */
+.topbar nav .subtab.toplink {
+  padding: 2px 4px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--accent);
+  font-size: inherit;
+  border-bottom: 2px solid transparent;
+}
+.topbar nav .subtab.toplink:hover { color: var(--accent-hover); }
+.topbar nav .subtab.toplink.active { color: var(--text); border-bottom-color: var(--accent); background: none; }
+
+/* ===== 기록 화면의 "목록 | 분석" 전환 ===== */
+.rec-switch {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.rec-switch .seg-btn { padding: 6px 16px; font-size: 0.88rem; }
+
+/* ===== 홈 ===== */
+#viewHome { display: flex; flex-direction: column; gap: 18px; }
+.home-hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; flex-wrap: wrap; }
+.home-hero h2 { margin: 0 0 12px; }
+.home-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.home-actions .btn.primary { font-size: 1rem; padding: 10px 18px; }
+.home-status { margin: 10px 0 0; }
+.home-dday { text-align: right; min-width: 150px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.dday-num { font-size: 2rem; font-weight: 800; color: var(--accent); line-height: 1.1; }
+.dday-edit { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.dday-edit input { font: inherit; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel); color: var(--text); }
+.btn-link {
+  border: none; background: none; padding: 0; font: inherit; font-size: 0.85rem;
+  color: var(--accent); cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.btn-link:hover { color: var(--accent-hover); }
+.home-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.home-card h3 { margin: 0 0 10px; font-size: 1rem; }
+.home-card .panel-header h3 { margin: 0; }
+.home-wide { grid-column: 1 / -1; }
+.home-big { font-size: 1.8rem; font-weight: 800; margin-bottom: 6px; }
+.home-of { font-size: 0.9rem; font-weight: 500; color: var(--muted); }
+.home-delta.up { color: var(--ok); }
+.home-delta.down { color: var(--danger-text); }
+.spark { display: flex; align-items: flex-end; gap: 4px; height: 64px; margin-top: 8px; }
+.spark-bar { flex: 1 1 0; min-width: 6px; border-radius: 3px 3px 0 0; background: var(--grade-1); }
+.spark-bar.b2 { background: var(--grade-2); }
+.spark-bar.b3 { background: var(--grade-3); }
+.spark-bar.b4 { background: var(--grade-4); }
+.home-todo { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; line-height: 1.6; }
+.home-recent { list-style: none; margin: 0; padding: 0; }
+.home-recent li { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.home-recent li:last-child { border-bottom: none; }
+.home-when { color: var(--muted); font-size: 0.82rem; min-width: 110px; }
+.home-topic { flex: 1 1 auto; font-weight: 600; }
+@media (max-width: 640px) {
+  .home-grid { grid-template-columns: 1fr; }
+  .home-dday { align-items: flex-start; text-align: left; }
+  .topbar .who { display: none; }
+}
+
+/* ===== 면담 타이머 ===== */
+.iv-timer {
+  margin-left: auto; margin-right: 10px;
+  font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.9rem;
+  padding: 3px 10px; border-radius: 999px;
+  background: var(--inset); color: var(--text);
+}
+.iv-timer.warn { background: color-mix(in srgb, var(--grade-2) 25%, transparent); }
+.iv-timer.over { background: color-mix(in srgb, var(--grade-1) 25%, transparent); color: var(--danger-text); }
+
+/* ===== 결과 창: 다음 행동 ===== */
+.iv-next { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }

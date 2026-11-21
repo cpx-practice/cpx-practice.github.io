@@ -1,6 +1,7 @@
 // 공부 탭 — 주제별 감별 진단, 진단마다 핵심 단서, 채점표를 보여 준다.
 // 자료는 scripts/build-study.mjs 가 cpx-worker 의 카드와 채점표에서 미리 만든 docs/study/*.json 이다(면담 서버를 쓰지 않는다).
 import { escapeHtml, renderMarkdown } from "./markdown.js";
+import { matchTopic } from "./topics.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => escapeHtml(String(s ?? ""));
@@ -156,6 +157,69 @@ function setHide(on) {
   }
 }
 
+// 주제 목록 화면의 계통 묶음. 공부 자료의 주제 이름(topics.js 의 이름)으로 묶는다.
+// 여기에 없는 주제는 맨 끝 "기타"로 간다 — 주제가 늘어도 화면에서 빠지지 않게.
+const TOPIC_GROUPS = [
+  ["심장·혈관", ["가슴통증", "고혈압", "두근거림", "실신", "이상지질혈증"]],
+  ["호흡", ["객혈", "기침", "호흡곤란", "콧물/코막힘"]],
+  ["소화기", ["구토", "복통", "소화불량", "배변 이상(변비)", "배변 이상(설사)", "토혈", "혈변", "황달"]],
+  ["신경", ["경련", "근력/감각 이상", "기억력 저하", "두통", "떨림/운동이상", "어지럼", "의식장애"]],
+  ["근골격·피부", ["관절통증/부기", "목통증/허리통증", "피부 발진"]],
+  ["신장·비뇨", ["배뇨 이상", "붉은색 소변", "소변량변화(다뇨증)", "소변량변화(핍뇨)"]],
+  ["전신·내분비", ["발열", "체중 감소", "체중 증가/비만", "피로", "쉽게 멍이 듦"]],
+  ["여성·임신", ["월경이상", "월경통", "질 분비물/질 출혈", "유방통", "유방덩이", "산전 진찰"]],
+  ["소아", ["성장 지연", "발달 지연", "예방접종"]],
+  ["정신·상담", ["기분 변화", "불안", "수면장애", "자살", "물질오남용", "음주 상담", "금연 상담", "가정폭력", "성폭력"]],
+];
+
+// 기록을 주제별로 모은다 — {횟수, 최고 점수}. 기록의 topic 은 모델이 적은 값이라 matchTopic 으로 맞춘다.
+function practiceByTopic(rows) {
+  const by = new Map();
+  for (const r of rows || []) {
+    const t = matchTopic(r.topic);
+    if (!t) continue;
+    const cur = by.get(t.name) || { count: 0, best: null };
+    cur.count++;
+    if (typeof r.totalScore === "number" && (cur.best === null || r.totalScore > cur.best)) cur.best = r.totalScore;
+    by.set(t.name, cur);
+  }
+  return by;
+}
+
+const band = (v) => (v >= 90 ? 4 : v >= 80 ? 3 : v >= 70 ? 2 : 1);
+
+// 주제를 고르기 전 첫 화면 — 계통별 카드와 진도.
+function gridHtml(topics, rows) {
+  const stats = practiceByTopic(rows);
+  const byName = new Map(topics.map((t) => [t.name, t]));
+  const used = new Set();
+  const groups = TOPIC_GROUPS.map(([g, names]) => [g, names.map((n) => byName.get(n)).filter(Boolean)]);
+  for (const [, list] of groups) list.forEach((t) => used.add(t.name));
+  const rest = topics.filter((t) => !used.has(t.name));
+  if (rest.length) groups.push(["기타", rest]);
+
+  const done = topics.filter((t) => stats.get(t.name)?.count).length;
+  const pct = topics.length ? Math.round((done / topics.length) * 100) : 0;
+  const card = (t) => {
+    const st = stats.get(t.name);
+    const meta = st
+      ? `<span class="tg-count">${st.count}회</span>${st.best !== null ? `<span class="score-chip b${band(st.best)}">${st.best}</span>` : ""}`
+      : `<span class="tg-new">아직 안 해 봄</span>`;
+    return `<button type="button" class="tg-card${st ? "" : " is-new"}" data-key="${esc(t.key)}">` +
+      `<span class="tg-name">${esc(t.name)}</span>` +
+      `<span class="tg-sub">감별 ${t.count}가지</span>` +
+      `<span class="tg-meta">${meta}</span></button>`;
+  };
+  return (
+    `<div class="tg-progress"><div class="tg-progress-text"><b>${topics.length}개 주제 중 ${done}개 연습</b> · ${pct}%</div>` +
+    `<div class="tg-bar"><span style="width:${pct}%"></span></div></div>` +
+    groups
+      .filter(([, list]) => list.length)
+      .map(([g, list]) => `<section class="tg-group"><h3>${esc(g)}</h3><div class="tg-grid">${list.map(card).join("")}</div></section>`)
+      .join("")
+  );
+}
+
 // 결과 창 복습 링크 → 공부 탭 위치. 앞에 있는 것부터 찾아 처음 있는 곳으로 간다.
 const SECTION_TARGETS = {
   hpi: ["st-cat-B", "st-flow"],
@@ -164,13 +228,14 @@ const SECTION_TARGETS = {
   flow: ["st-script", "st-flow"],
 };
 
-export function initStudyTab({ onStartInterview, canInterview } = {}) {
+export function initStudyTab({ onStartInterview, canInterview, getRecords } = {}) {
   const select = $("stTopic");
   const body = $("stBody");
   const startBtn = $("stStart");
   if (!select || !body) return { refresh() {} };
   let indexReady = null; // 목록은 한 번만 받는다. 결과 창에서 바로 열 때도 목록이 다 찬 뒤에 고르도록 promise 를 나눠 쓴다.
   let current = null;
+  let topics = []; // study/index.json 의 주제 목록
 
   function loadIndex() {
     indexReady ||= fetchIndex();
@@ -180,7 +245,8 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
     try {
       const res = await fetch("study/index.json", { cache: "no-cache" });
       const data = await res.json();
-      for (const t of data.topics || []) {
+      topics = data.topics || [];
+      for (const t of topics) {
         const opt = document.createElement("option");
         opt.value = t.key;
         opt.textContent = `${t.name} (${t.count})`;
@@ -198,7 +264,11 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
     current = null;
     startBtn?.classList.add("hidden");
     if (!key) {
-      body.innerHTML = `<p class="hint">주제를 고르면 감별 진단과 진단마다 핵심 단서, 채점표가 나옵니다.</p>`;
+      await loadIndex();
+      if (select.value) return; // 그새 주제를 골랐다
+      body.innerHTML = topics.length
+        ? gridHtml(topics, getRecords ? getRecords() : [])
+        : `<p class="hint">주제를 고르면 감별 진단과 진단마다 핵심 단서, 채점표가 나옵니다.</p>`;
       return;
     }
     body.innerHTML = `<p class="hint">불러오는 중…</p>`;
@@ -211,6 +281,7 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
       // 가이드가 아직 없는 주제는 감별 목록과 진단별 카드가 중심이다.
       const dxList = `<ol class="study-dx">${d.scenarios.map((s) => `<li>${esc(s.dx)}</li>`).join("")}</ol>`;
       body.innerHTML =
+        `<button type="button" class="btn ghost small st-back" id="stBack">← 주제 목록</button>` +
         (d.guide
           ? guideHtml(d.guide)
           : `<h3>감별 진단 ${d.scenarios.length}가지</h3>${dxList}<p class="hint">면담에서는 이 가운데 하나가 무작위로 나옵니다. 이 주제의 면담 흐름 가이드는 준비 중입니다.</p>`) +
@@ -241,6 +312,17 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
   body.addEventListener("click", (e) => {
     const li = e.target.closest(".script.hide-hints .script-qs li.has-note");
     if (li) li.classList.toggle("revealed");
+    // 주제 카드 → 그 주제 열기, "← 주제 목록" → 카드 화면으로
+    const card = e.target.closest(".tg-card");
+    if (card) {
+      select.value = card.dataset.key;
+      show(card.dataset.key);
+      window.scrollTo({ top: 0 });
+    }
+    if (e.target.closest("#stBack")) {
+      select.value = "";
+      show("");
+    }
   });
   startBtn?.addEventListener("click", () => {
     if (current && onStartInterview) onStartInterview(current.name);
@@ -251,6 +333,10 @@ export function initStudyTab({ onStartInterview, canInterview } = {}) {
     refresh() {
       loadIndex();
       if (!select.value) show("");
+    },
+    // 기록이 바뀌면(처음 불러올 때 포함) 주제 카드의 연습 횟수·점수를 다시 그린다. 주제를 열어 둔 중이면 건드리지 않는다.
+    recordsChanged() {
+      if (!select.value && topics.length) show("");
     },
     // 면담 결과 창의 "복습" 링크가 부른다 — 주제 이름(카드의 topic)으로 주제를 고르고, 가이드의 해당 부분으로 내려간다.
     // section: 채점 항목 쪽 이름(hpi·redflag·pmh) 또는 가이드 부분 이름(summary·compare·pitfalls).

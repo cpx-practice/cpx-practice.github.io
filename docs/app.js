@@ -44,6 +44,7 @@ import {
 import { renderAnalytics } from "./analytics.js";
 import { initInterviewTab } from "./interview.js";
 import { initStudyTab } from "./study.js";
+import { initHomeTab } from "./home.js";
 import { escapeHtml, renderMarkdown } from "./markdown.js";
 import { TOPICS, matchTopic } from "./topics.js";
 import { downscaleImage, chunkText, joinChunks as joinImageChunks } from "./image.js";
@@ -123,6 +124,7 @@ tabRegister.addEventListener("click", () => {
 
 // ---------- 대시보드 탭 ----------
 const views = {
+  home: $("viewHome"),
   records: $("viewRecords"),
   analysis: $("viewAnalysis"),
   study: $("viewStudy"),
@@ -140,7 +142,7 @@ function setInterviewTab(isAdmin, granted = false) {
   const on = IS_DEV_HOST || isAdmin || granted;
   tabInterview?.classList.toggle("hidden", !on);
   // 관리자로 면담 탭을 보던 중 다른 계정으로 바뀌면 숨은 탭에 머물지 않게 한다.
-  if (!on && tabInterview?.classList.contains("active")) activateView("records", { push: false });
+  if (!on && tabInterview?.classList.contains("active")) activateView("home", { push: false });
 }
 const interviewTab = initInterviewTab({
   db,
@@ -156,14 +158,37 @@ const interviewTab = initInterviewTab({
 // 공부 탭 — "이 주제로 면담 시작"은 면담 탭이 보이는 계정에서만 보인다.
 const studyTab = initStudyTab({
   canInterview: () => tabInterview && !tabInterview.classList.contains("hidden"),
-  onStartInterview(topicName) {
-    const sel = $("ivTopic");
-    if (sel && [...sel.options].some((o) => o.value === topicName)) {
-      sel.value = topicName;
-      sel.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-    activateView("interview");
+  // 주제 카드에 내 연습 횟수·최고 점수를 붙인다.
+  getRecords: () => currentRows,
+  onStartInterview: startInterviewOn,
+});
+
+// 면담 탭으로 가서 주제를 골라 둔다. topicName 이 "" 이면 무작위.
+function startInterviewOn(topicName) {
+  const sel = $("ivTopic");
+  if (sel && [...sel.options].some((o) => o.value === topicName)) {
+    sel.value = topicName;
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  activateView("interview");
+}
+
+// 홈 — 사이트를 열면 처음 보는 요약 화면 (home.js).
+const homeTab = initHomeTab({
+  getRecords: () => currentRows,
+  canInterview: () => tabInterview && !tabInterview.classList.contains("hidden"),
+  onStartInterview: startInterviewOn,
+  onStudy(topicName) {
+    activateView("study");
+    studyTab.open(topicName);
   },
+  goto: (view) => activateView(view),
+  endpoint: INTERVIEW_ENDPOINT,
+});
+
+// 기록 화면의 "목록 | 분석" 전환
+document.querySelectorAll(".rec-switch [data-goto-view]").forEach((b) => {
+  b.addEventListener("click", () => activateView(b.dataset.gotoView));
 });
 
 // 탭 전환마다 히스토리를 쌓아둔다. 안 쌓으면 "오류 제보"처럼 설정에서 들어간 화면에서
@@ -172,17 +197,20 @@ function activateView(viewName, { push = true } = {}) {
   const btn = document.querySelector(`.subtab[data-view="${viewName}"]`);
   if (!btn) return;
   document.querySelectorAll(".subtab").forEach((b) => b.classList.remove("active"));
-  btn.classList.add("active");
+  // 분석은 기록 화면 안의 전환이라 위 탭에서는 "기록"을 켜 둔다.
+  const tabFor = viewName === "analysis" ? document.querySelector('.subtab[data-view="records"]') : btn;
+  tabFor.classList.add("active");
   for (const [name, el] of Object.entries(views)) {
     el.classList.toggle("hidden", name !== viewName);
   }
   if (viewName === "analysis") drawAnalytics();
+  if (viewName === "home") homeTab.refresh();
   if (viewName === "study") studyTab.refresh();
   if (push) history.pushState({ view: viewName }, "", `#${viewName}`);
 }
 
 window.addEventListener("popstate", (e) => {
-  activateView(e.state?.view || "records", { push: false });
+  activateView(e.state?.view || "home", { push: false });
 });
 
 document.querySelectorAll(".subtab").forEach((btn) => {
@@ -191,7 +219,7 @@ document.querySelectorAll(".subtab").forEach((btn) => {
 
 // ---------- 좌상단 로고 — 기본 화면(내 기록)으로 이동 ----------
 $("btnHome").addEventListener("click", () => {
-  if (!dashboardSection.classList.contains("hidden")) activateView("records");
+  if (!dashboardSection.classList.contains("hidden")) activateView("home");
 });
 
 // ---------- 설정 화면의 바로가기 ----------
@@ -493,6 +521,8 @@ function refreshViews() {
   syncTopicFilter();
   renderRecords(applyFilters(currentRows));
   if (!views.analysis.classList.contains("hidden")) drawAnalytics();
+  if (!views.study.classList.contains("hidden")) studyTab.recordsChanged();
+  if (!views.home.classList.contains("hidden")) homeTab.refresh();
 }
 
 // 분석 탭은 필터를 타지 않는다 — 전체 기록으로 그린다.
@@ -660,7 +690,10 @@ function renderRecords(rows, { resetPaging = false } = {}) {
     // 본문이 따로 있으면 기록에 표시만 남는다. 구버전 기록은 본문이 문서 안에 있다.
     const hasDetail = Boolean(r.hasEvaluation || r.hasTranscript) || hasInlineBody(r);
     const tr = document.createElement("tr");
+    // 퇴실·빈 면담처럼 사실상 연습이 안 된 기록(20점 미만)은 흐리게 둬서 실제 연습 기록이 눈에 먼저 들어오게 한다.
+    if (typeof r.totalScore === "number" && r.totalScore < 20) tr.classList.add("rec-faint");
     // data-label 은 좁은 화면에서 표가 카드로 접힐 때 각 칸의 이름표로 쓰인다.
+    // 총평은 한 줄로 자르고 누르면 펼친다. 삭제는 실수로 누르지 않게 작고 흐린 글자 버튼으로 뒤에 둔다.
     tr.innerHTML = `
       <td data-label="날짜">${fmtDateTime(r.createdAt)}</td>
       <td data-label="주제">${escapeHtml(r.topic || "")}${r.source === "plugin" ? '<span class="pill">자동</span>' : ""}${r.source === "manual" ? '<span class="pill">링크</span>' : ""}</td>
@@ -668,11 +701,12 @@ function renderRecords(rows, { resetPaging = false } = {}) {
       <td data-label="병력 /60">${dash(r.historyScore)}</td>
       <td data-label="진찰 /20">${dash(r.peScore)}</td>
       <td data-label="PPI /20">${dash(r.ppiScore)}</td>
-      <td data-label="총평" class="note">${escapeHtml(r.note || "")}</td>
-      <td class="actions">${hasDetail ? '<button class="btn ghost small js-detail">보기</button>' : ""}<button class="btn ghost small js-del">삭제</button></td>
+      <td data-label="총평" class="note"><span class="note-clamp" title="눌러서 펼치기">${escapeHtml(r.note || "")}</span></td>
+      <td class="actions">${hasDetail ? '<button class="btn ghost small js-detail">보기</button>' : ""}<button class="btn-del js-del" aria-label="이 기록 삭제">삭제</button></td>
     `;
     const detailBtn = tr.querySelector(".js-detail");
     if (detailBtn) detailBtn.addEventListener("click", () => openDetail(r));
+    tr.querySelector(".note-clamp").addEventListener("click", (e) => e.currentTarget.classList.toggle("open"));
     tr.querySelector(".js-del").addEventListener("click", () => deleteRecord(r.id));
     recordBody.appendChild(tr);
   }

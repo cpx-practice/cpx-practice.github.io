@@ -31,6 +31,9 @@
     </div>
     <nav id="navAuthed" class="hidden">
       <span class="who" id="whoName"></span>
+      <!-- 설정·관리자는 자주 쓰지 않아 위쪽 오른편으로 뺐다. 탭 전환 로직(.subtab[data-view])은 그대로 쓴다. -->
+      <button class="subtab toplink" data-view="settings">설정</button>
+      <button class="subtab toplink hidden" data-view="admin" id="tabAdmin">관리자</button>
       <a href="#" id="btnLogout">로그아웃</a>
     </nav>
     <button id="btnTheme" class="theme-toggle" type="button" aria-label="화면 밝기 전환"></button>
@@ -96,21 +99,30 @@
       <p id="uploadToast" class="toast-ok hidden"></p>
 
       <nav class="subnav">
-        <button class="subtab active" data-view="records">내 기록</button>
-        <button class="subtab" data-view="analysis">분석</button>
-        <button class="subtab" data-view="study">공부</button>
+        <button class="subtab active" data-view="home">홈</button>
         <!-- 면담 탭은 승인된 계정에 기본으로 보인다. 관리자가 계정 목록에서 끈 계정만 숨긴다 (app.js 의 setInterviewTab). -->
         <button class="subtab hidden" data-view="interview">면담</button>
+        <button class="subtab" data-view="study">공부</button>
+        <button class="subtab" data-view="records">기록</button>
+        <!-- 분석은 기록 화면 안의 "목록 | 분석" 전환으로 들어간다. 탭 버튼은 숨겨 두고 전환 로직만 쓴다. -->
+        <button class="subtab hidden" data-view="analysis">분석</button>
         <!-- 오류 제보 · 이용 방법은 상단 탭에서 뺐다 — 설정 화면의 "도움말" 바로가기 버튼으로만 연다.
              view 전환 로직은 그대로 재사용하므로 hidden 만 지우면 상단 탭으로도 복원된다. -->
         <button class="subtab hidden" data-view="report">오류 제보</button>
         <button class="subtab hidden" data-view="pair">이용 방법</button>
-        <button class="subtab" data-view="settings">설정</button>
-        <button class="subtab hidden" data-view="admin" id="tabAdmin">관리자</button>
       </nav>
 
+      <!-- ===== 홈 ===== -->
+      <div id="viewHome">
+        <div id="homeBody"></div>
+      </div>
+
       <!-- ===== 기록 ===== -->
-      <div id="viewRecords">
+      <div id="viewRecords" class="hidden">
+        <div class="rec-switch" role="group" aria-label="기록 보기 방식">
+          <button type="button" class="seg-btn" data-goto-view="records" aria-pressed="true">목록</button>
+          <button type="button" class="seg-btn" data-goto-view="analysis" aria-pressed="false">분석</button>
+        </div>
         <div class="panel">
           <div class="panel-header">
             <h2>내 기록 (<span id="recordCount">0</span>건)</h2>
@@ -135,7 +147,7 @@
             <button type="button" class="btn ghost small hidden" id="fltReset">초기화</button>
           </div>
 
-          <p class="empty hidden" id="emptyMsg">아직 기록이 없습니다. <b>이용 방법</b> 탭에서 연결해두면 연습이 끝날 때마다 자동으로 쌓입니다.</p>
+          <p class="empty hidden" id="emptyMsg">아직 기록이 없습니다. <b>면담</b> 탭에서 한 케이스를 끝내고 <b>평가</b>까지 받으면 여기에 쌓입니다.</p>
           <p class="empty hidden" id="noMatchMsg">조건에 맞는 기록이 없습니다.</p>
           <div class="table-wrap">
             <table id="recordTable" class="hidden">
@@ -165,6 +177,10 @@
 
       <!-- ===== 분석 ===== -->
       <div id="viewAnalysis" class="hidden">
+        <div class="rec-switch" role="group" aria-label="기록 보기 방식">
+          <button type="button" class="seg-btn" data-goto-view="records" aria-pressed="false">목록</button>
+          <button type="button" class="seg-btn" data-goto-view="analysis" aria-pressed="true">분석</button>
+        </div>
         <p class="empty panel hidden" id="analysisEmpty">
           채점된 기록이 아직 없습니다. <b>면담</b> 탭에서 한 케이스를 끝내고 <b>평가</b>까지 받으면 여기에 쌓입니다.
         </p>
@@ -285,6 +301,15 @@
             주제
             <select id="ivTopic"><option value="">무작위</option></select>
           </label>
+          <label class="ivfield">
+            시간 제한
+            <select id="ivTimer">
+              <option value="0">없음</option>
+              <option value="10">10분</option>
+              <option value="12">12분</option>
+              <option value="15">15분</option>
+            </select>
+          </label>
           <label class="ivfield hidden" id="ivScenarioWrap">
             시나리오 <span class="hint">(관리자 점검용)</span>
             <select id="ivScenario"><option value="">무작위</option></select>
@@ -304,6 +329,7 @@
         <div class="panel hidden" id="ivChatPanel">
           <div class="panel-header">
             <h2 id="ivChatTitle">면담 중</h2>
+            <span class="iv-timer hidden" id="ivTimerShow" role="timer" aria-live="off"></span>
             <div class="iv-head-actions">
               <button class="btn ghost small hidden" id="btnIvResultReopen">결과 보기</button>
               <button class="btn ghost small" id="btnIvReport">오류 제보</button>

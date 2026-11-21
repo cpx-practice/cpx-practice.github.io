@@ -232,7 +232,52 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     startPanel.classList.add("hidden");
     chatPanel.classList.add("hidden");
   }
+  // ---------------- 면담 타이머 ----------------
+  // 실제 시험처럼 남은 시간을 보여 준다. 시간이 다 돼도 면담을 끊지는 않고 안내만 한다.
+  const TIMER_KEY = "cpx-iv-timer";
+  const timerSelect = $("ivTimer");
+  const timerShow = $("ivTimerShow");
+  let timerId = null;
+  try {
+    const saved = localStorage.getItem(TIMER_KEY);
+    if (saved && timerSelect && [...timerSelect.options].some((o) => o.value === saved)) timerSelect.value = saved;
+  } catch {}
+  timerSelect?.addEventListener("change", () => {
+    try {
+      localStorage.setItem(TIMER_KEY, timerSelect.value);
+    } catch {}
+  });
+  function stopTimer() {
+    if (timerId) clearInterval(timerId);
+    timerId = null;
+    timerShow?.classList.add("hidden");
+    timerShow?.classList.remove("warn", "over");
+  }
+  function startTimer() {
+    stopTimer();
+    const min = Number(timerSelect?.value || 0);
+    if (!min || !timerShow) return;
+    const end = Date.now() + min * 60 * 1000;
+    let noted = false;
+    const tick = () => {
+      const left = Math.round((end - Date.now()) / 1000);
+      const a = Math.abs(left);
+      const mmss = `${Math.floor(a / 60)}:${String(a % 60).padStart(2, "0")}`;
+      timerShow.textContent = left >= 0 ? `남은 시간 ${mmss}` : `시간 초과 +${mmss}`;
+      timerShow.classList.toggle("warn", left <= 60 && left >= 0);
+      timerShow.classList.toggle("over", left < 0);
+      if (left < 0 && !noted) {
+        noted = true;
+        addBubble("__note", "정해 둔 시간이 지났습니다. 마무리하고 평가를 받아 보세요.");
+      }
+    };
+    timerShow.classList.remove("hidden");
+    tick();
+    timerId = setInterval(tick, 1000);
+  }
+
   function showStartPanel() {
+    stopTimer();
     clearResult();
     keyPanel.classList.add("hidden");
     startPanel.classList.remove("hidden");
@@ -245,6 +290,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     keyPanel.classList.add("hidden");
     startPanel.classList.add("hidden");
     chatPanel.classList.remove("hidden");
+    startTimer();
   }
 
   if (isReady()) showStartPanel();
@@ -603,6 +649,16 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
       `<button type="button" class="btn small" data-study="">이 주제 공부하기</button></div>`
     );
   }
+  // 결과 창의 "같은 주제로 다시" · "무작위로 새 면담" — 이 면담을 끝내고 그 주제로 곧바로 새 면담을 시작한다.
+  // 같은 주제여도 시나리오는 다시 무작위로 뽑힌다.
+  $("ivResultBody").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-again]");
+    if (!b) return;
+    $("btnIvResultExit").click(); // 평가가 끝난 면담이라 확인창 없이 시작 화면으로 돌아간다
+    topicSelect.value = b.dataset.again;
+    topicSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    $("btnStartInterview").click();
+  });
   $("ivResultBody").addEventListener("click", (e) => {
     const b = e.target.closest("[data-study]");
     if (!b || !onStudy) return;
@@ -624,6 +680,12 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
           <span class="score">${esc(total)}</span>
         </div>
         ${topic ? `<div class="iv-eval-topic">케이스: ${esc(topic)}</div>` : ""}
+        <div class="iv-next">
+          ${topic && topic !== "무작위" && [...topicSelect.options].some((o) => o.value === topic)
+            ? `<button type="button" class="btn small primary" data-again="${esc(topic)}">같은 주제로 다시</button>`
+            : ""}
+          <button type="button" class="btn small" data-again="">무작위로 새 면담</button>
+        </div>
         ${scoreTableHtml(scored, items)}
         ${reviewHtml(scored, topic)}
         <div class="iv-eval-body md">${renderMarkdown(narrative)}</div>
@@ -631,6 +693,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     $("ivResultBody").dataset.topic = topic || "";
     $("ivResultBody").scrollTop = 0;
     evalDone = true;
+    stopTimer();
     resultReopen.classList.remove("hidden");
     openResult();
   }
