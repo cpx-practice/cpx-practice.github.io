@@ -1,5 +1,5 @@
 // 공부 탭 — 주제별 감별 진단, 진단마다 핵심 단서, 채점표를 보여 준다.
-// 자료는 scripts/build-study.mjs 가 플러그인 카드와 채점표에서 미리 만든 docs/study/*.json 이다(면담 서버를 쓰지 않는다).
+// 자료는 scripts/build-study.mjs 가 cpx-worker 의 카드와 채점표에서 미리 만든 docs/study/*.json 이다(면담 서버를 쓰지 않는다).
 import { escapeHtml, renderMarkdown } from "./markdown.js";
 
 const $ = (id) => document.getElementById(id);

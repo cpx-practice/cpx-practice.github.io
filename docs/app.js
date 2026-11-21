@@ -1,7 +1,6 @@
 // ============================================================
-// 설정 — 배포 전에 아래 두 곳을 본인 값으로 교체하세요.
-//   1) firebaseConfig : Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)
-//   2) MARKETPLACE    : 플러그인을 올린 GitHub 레포 (owner/repo)
+// 설정 — 배포 전에 아래 값을 본인 값으로 교체하세요.
+//   firebaseConfig : Firebase 콘솔 > 프로젝트 설정 > 내 앱(웹)
 // firebaseConfig 는 비밀값이 아닙니다. 접근 통제는 firestore.rules 가 합니다.
 // ============================================================
 const firebaseConfig = {
@@ -12,8 +11,6 @@ const firebaseConfig = {
   messagingSenderId: "454560324678",
   appId: "1:454560324678:web:84f872ad8d63c62d37fe47",
 };
-
-const MARKETPLACE = "raphael4040-ash/cpx-marketplace";
 
 // 면담 탭이 호출하는 cpx-worker 주소. cpx-worker/wrangler.toml 의 배포 주소와 같아야 한다.
 const INTERVIEW_ENDPOINT = "https://cpx-upload.raphael40402652.workers.dev";
@@ -100,24 +97,6 @@ const adminNavHost = tabAdmin.parentElement;
 const adminViewHost = viewAdmin.parentElement;
 const setRequireApproval = $("setRequireApproval");
 const adminSaved = $("adminSaved");
-
-// ---------- 마켓플레이스 최신 버전 표시 ----------
-// plugin.json 을 로컬에 따로 적어두면 배포할 때마다 잊고 안 맞춰서 어긋난다
-// (1.3.60 배포 때 실제로 그랬다). 대신 저장소에서 매번 직접 읽는다.
-(async () => {
-  const el = $("latestVersion");
-  if (!el) return;
-  try {
-    const res = await fetch(
-      `https://raw.githubusercontent.com/${MARKETPLACE}/main/.claude-plugin/marketplace.json`
-    );
-    if (!res.ok) throw new Error(String(res.status));
-    const data = await res.json();
-    el.textContent = data.plugins?.[0]?.version || "확인 실패";
-  } catch {
-    el.textContent = "확인 실패 (네트워크)";
-  }
-})();
 
 let unsubscribeRecords = null;
 let currentRows = [];
@@ -428,7 +407,6 @@ onAuthStateChanged(auth, async (user) => {
   dashboardSection.classList.remove("hidden");
   bootMsg?.classList.add("hidden");
 
-  $("installCmd").textContent = `claude plugin marketplace add ${MARKETPLACE}`;
   setConsent.checked = profile.consentTranscript === true;
 
   setAdminUi(isAdmin);
@@ -447,7 +425,24 @@ onAuthStateChanged(auth, async (user) => {
   watchRecords(user.uid);
 
   handlePendingUpload(user);
+  openViewFromHash();
 });
+
+// 새로고침하거나 "…/#study" 같은 주소로 들어오면 그 탭을 연다. 예전에는 늘 내 기록으로 돌아가
+// 화면과 주소창(#settings 등)이 서로 달랐다. 숨겨진 탭(권한 없음)은 열지 않는다 — 이용 방법(pair)과
+// 오류 제보(report)는 원래 숨겨 둔 채 설정의 바로가기로 들어가는 탭이라 예외로 연다.
+function openViewFromHash() {
+  const name = location.hash.replace(/^#/, "");
+  if (!name || !views[name]) return;
+  const btn = document.querySelector(`.subtab[data-view="${name}"]`);
+  const viaSettings = name === "pair" || name === "report"; // 설정 화면의 바로가기로만 들어가는 탭
+  if (!btn || !btn.isConnected || (btn.classList.contains("hidden") && !viaSettings)) {
+    history.replaceState(null, "", location.pathname);
+    return;
+  }
+  activateView(name, { push: false });
+  history.replaceState({ view: name }, "", `#${name}`);
+}
 
 // users 문서가 없는 계정(구버전 가입자 등)은 기본값으로 만들어 준다.
 async function loadProfile(user) {
@@ -484,52 +479,12 @@ setConsent.addEventListener("change", async () => {
 $("btnRevoke").addEventListener("click", async () => {
   const user = auth.currentUser;
   if (!user) return;
-  if (!confirm("발급한 연결 코드로 올라오는 자동 업로드를 모두 멈출까요?")) return;
+  if (!confirm("예전 플러그인용 연결 코드로 올라오는 업로드를 모두 막을까요?")) return;
   const next = (profile?.tokenVersion || 1) + 1;
   await setDoc(doc(db, "users", user.uid), { tokenVersion: next }, { merge: true });
   if (profile) profile.tokenVersion = next;
-  $("pairToken").value = "";
-  $("pairActions").classList.add("hidden");
-  alert("업로드를 멈췄습니다. 이용 방법 탭에서 코드를 새로 발급하면 다시 연결됩니다.");
+  alert("예전 연결 코드를 모두 무효화했습니다.");
 });
-
-// ---------- 페어링 코드 ----------
-$("btnMakeToken").addEventListener("click", () => {
-  const user = auth.currentUser;
-  if (!user) return;
-  if (!user.refreshToken) {
-    alert("연결 코드를 만들 수 없습니다. 로그아웃 후 다시 로그인해주세요.");
-    return;
-  }
-  const payload = {
-    v: 1,
-    uid: user.uid,
-    rt: user.refreshToken,
-    tv: profile.tokenVersion || 1,
-  };
-  $("pairToken").value = b64url(JSON.stringify(payload));
-  $("pairActions").classList.remove("hidden");
-});
-
-$("btnCopyToken").addEventListener("click", async () => {
-  const el = $("pairToken");
-  if (!el.value) return;
-  try {
-    await navigator.clipboard.writeText(el.value);
-  } catch {
-    el.select(); // 클립보드 권한이 없는 브라우저 대비
-    document.execCommand("copy");
-  }
-  $("copiedMsg").classList.remove("hidden");
-  setTimeout(() => $("copiedMsg").classList.add("hidden"), 1500);
-});
-
-function b64url(str) {
-  const bytes = new TextEncoder().encode(str);
-  let bin = "";
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_");
-}
 
 // ---------- 기록 구독 ----------
 function watchRecords(uid) {
@@ -1138,38 +1093,6 @@ function renderAdminReports() {
 }
 
 $("reportFilter").addEventListener("change", renderAdminReports);
-
-// ---------- 이용 방법: 운영체제 전환 ----------
-// 설치 명령이 Windows 와 Mac 이 달라 한쪽만 남긴다.
-// 처음엔 브라우저가 알려주는 값으로 맞추고, 이후엔 누른 대로 기억한다.
-const osWin = $("osWin");
-const osMac = $("osMac");
-
-function applyOs(os) {
-  document.documentElement.dataset.os = os;
-  osWin.setAttribute("aria-pressed", String(os === "win"));
-  osMac.setAttribute("aria-pressed", String(os === "mac"));
-  try {
-    localStorage.setItem("cpx-os", os);
-  } catch {}
-}
-
-function guessOs() {
-  const s =
-    navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
-  return /mac|iphone|ipad|ipod/i.test(s) ? "mac" : "win";
-}
-
-osWin.addEventListener("click", () => applyOs("win"));
-osMac.addEventListener("click", () => applyOs("mac"));
-
-(() => {
-  let saved = null;
-  try {
-    saved = localStorage.getItem("cpx-os");
-  } catch {}
-  applyOs(saved === "mac" || saved === "win" ? saved : guessOs());
-})();
 
 // ---------- 관리자: 가입 승인제 ----------
 
