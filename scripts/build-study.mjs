@@ -1,4 +1,4 @@
-// 공부 탭 자료 만들기 — 플러그인의 카드(refs/cases)와 주제별 채점표(refs/checklists)에서
+// 공부 탭 자료 만들기 — cpx-worker 의 카드(src/cases)와 주제별 채점표(refs/checklists)에서
 // docs/study/index.json 과 docs/study/<카드>.json 을 만든다. 면담 서버를 거치지 않는 정적 파일이다.
 //
 //   node scripts/build-study.mjs            (cpx-tracker 폴더에서)
@@ -9,13 +9,16 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const REFS = join(here, "..", "..", "cpx-plugin", "cpx", "skills", "start", "refs");
+// 카드와 채점표는 cpx-worker 저장소에 있다 (예전에는 cpx-plugin).
+const WORKER = join(here, "..", "..", "cpx-worker");
+const CASES = join(WORKER, "src", "cases");
+const REFS = join(WORKER, "refs");
 const OUT = join(here, "..", "docs", "study");
 // 사람이 쓴 면담 가이드(질문 흐름·감별 비교표). 카드에서 자동으로 못 만드는 부분이라 따로 둔다. 있는 주제만 붙는다.
 const GUIDES = join(here, "..", "study-guides");
 
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
-const index = read(join(REFS, "cases", "index.json"));
+const index = read(join(CASES, "index.json"));
 
 // ---------------------------------------------------------------- 문장 손질
 
@@ -179,7 +182,7 @@ const list = [];
 const topics = Object.entries(index.topics).sort((a, b) => a[1].file.localeCompare(b[1].file, "en", { numeric: true }));
 for (const [name, t] of topics) {
   if (t._procedureCase || t._noPhysicalExam) continue; // 웹 면담이 다루지 않는 술기·나쁜 소식 전하기
-  const data = read(join(REFS, "cases", t.file));
+  const data = read(join(CASES, t.file));
   const key = t.file.replace(/\.json$/, "");
   const mdPath = join(REFS, "checklists", key + ".md");
   // 주제 전용 채점표가 없으면(예방접종·상담 주제 등) 공통 채점표를 보여 준다. 실제 평가도 그 표로 한다.
