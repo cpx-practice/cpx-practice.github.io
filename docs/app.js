@@ -474,18 +474,6 @@ setConsent.addEventListener("change", async () => {
   setTimeout(() => settingsSaved.classList.add("hidden"), 2000);
 });
 
-// tokenVersion 은 워커만 확인한다. 즉 이 버튼이 막는 것은 업로드 경로뿐이고
-// 코드 안의 로그인 자격은 그대로 살아 있다 — 문구에서 그렇게 단정하지 않는다.
-$("btnRevoke").addEventListener("click", async () => {
-  const user = auth.currentUser;
-  if (!user) return;
-  if (!confirm("예전 플러그인용 연결 코드로 올라오는 업로드를 모두 막을까요?")) return;
-  const next = (profile?.tokenVersion || 1) + 1;
-  await setDoc(doc(db, "users", user.uid), { tokenVersion: next }, { merge: true });
-  if (profile) profile.tokenVersion = next;
-  alert("예전 연결 코드를 모두 무효화했습니다.");
-});
-
 // ---------- 기록 구독 ----------
 function watchRecords(uid) {
   const q = query(
