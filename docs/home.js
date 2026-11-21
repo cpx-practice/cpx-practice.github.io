@@ -76,23 +76,23 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     let statusText = "";
     if (status && status.enabled) {
       statusText = status.canStart
-        ? `오늘 무료 면담을 할 수 있습니다${status.perUserDaily ? ` · 계정당 하루 ${status.perUserDaily}회` : ""}`
-        : "오늘 무료 면담 한도가 찼습니다 · 오전 9시에 다시 열립니다 (내 Gemini 키로는 계속 가능)";
+        ? `오늘 무료 면담 가능${status.perUserDaily ? ` · 계정당 하루 ${status.perUserDaily}회` : ""}`
+        : "오늘 무료 한도 소진 · 오전 9시 초기화 (내 Gemini 키로는 가능)";
     }
     const hero =
       `<div class="panel home-hero">` +
       `<div class="home-hero-main">` +
-      `<h2>오늘도 한 케이스</h2>` +
+      `<h2>연습</h2>` +
       (canIv
         ? `<div class="home-actions"><button type="button" class="btn primary" data-act="start-random">무작위로 면담 시작</button>` +
-          `<button type="button" class="btn ghost" data-act="goto" data-view="study">주제 골라 공부하기</button></div>`
-        : `<p class="hint">면담 탭이 꺼져 있습니다. 관리자에게 문의해 주세요.</p>`) +
+          `<button type="button" class="btn ghost" data-act="goto" data-view="study">주제 보기</button></div>`
+        : `<p class="hint">면담 탭이 꺼진 계정입니다. 관리자에게 문의하세요.</p>`) +
       (statusText ? `<p class="hint home-status">${esc(statusText)}</p>` : "") +
       `</div>` +
       `<div class="home-dday">` +
       (ddText
         ? `<div class="dday-num">${ddText}</div><div class="hint">시험일 ${esc(exam)}</div><button type="button" class="btn-link" data-act="edit-exam">바꾸기</button>`
-        : `<div class="hint">시험일을 정하면 D-day 를 보여 드려요</div><button type="button" class="btn ghost small" data-act="edit-exam">시험일 정하기</button>`) +
+        : `<div class="hint">시험일 미설정</div><button type="button" class="btn ghost small" data-act="edit-exam">시험일 입력</button>`) +
       `<div class="dday-edit hidden"><input type="date" id="homeExamDate" value="${esc(exam)}" aria-label="시험일" />` +
       `<button type="button" class="btn small primary" data-act="save-exam">저장</button>` +
       (exam ? `<button type="button" class="btn-link" data-act="clear-exam">지우기</button>` : "") +
@@ -116,12 +116,12 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     const pct = total ? Math.round((done / total) * 100) : 0;
     const progress =
       `<div class="panel home-card">` +
-      `<h3>주제 진도</h3>` +
+      `<h3>진도</h3>` +
       (total
         ? `<div class="home-big">${done}<span class="home-of"> / ${total}</span></div>` +
           `<div class="tg-bar"><span style="width:${pct}%"></span></div>` +
-          `<p class="hint">${total - done ? `아직 안 해 본 주제 ${total - done}개` : "모든 주제를 한 번 이상 연습했습니다"}</p>` +
-          `<button type="button" class="btn-link" data-act="goto" data-view="study">주제 목록 보기 →</button>`
+          `<p class="hint">${total - done ? `미연습 ${total - done}개` : "전 주제 1회 이상 연습"}</p>` +
+          `<button type="button" class="btn-link" data-act="goto" data-view="study">주제 목록</button>`
         : `<p class="hint">불러오는 중…</p>`) +
       `</div>`;
 
@@ -133,18 +133,18 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     const delta = last5 !== null && prev5 !== null ? last5 - prev5 : null;
     const trend =
       `<div class="panel home-card">` +
-      `<h3>최근 점수</h3>` +
+      `<h3>점수 추이</h3>` +
       (recent.length
         ? `<div class="home-big">${last5.toFixed(0)}<span class="home-of">점 · 최근 5회 평균</span></div>` +
           (delta !== null
-            ? `<p class="hint home-delta ${delta >= 0 ? "up" : "down"}">그 전 5회보다 ${delta >= 0 ? "+" : ""}${delta.toFixed(1)}점</p>`
+            ? `<p class="hint home-delta ${delta >= 0 ? "up" : "down"}">직전 5회 대비 ${delta >= 0 ? "+" : ""}${delta.toFixed(1)}</p>`
             : "") +
           `<div class="spark" role="img" aria-label="최근 ${recent.length}회 총점">` +
           recent
             .map((r) => `<span class="spark-bar b${band(r.totalScore)}" style="height:${Math.max(4, r.totalScore)}%" title="${esc(r.topic || "")} ${r.totalScore}점"></span>`)
             .join("") +
           `</div>`
-        : `<p class="hint">채점된 기록이 쌓이면 여기에 추이가 보입니다.</p>`) +
+        : `<p class="hint">채점 기록 없음</p>`) +
       `</div>`;
 
     // --- 다음에 할 일 ---
@@ -163,13 +163,13 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     if (parts.length) {
       const [label, v] = parts.sort((a, b) => a[1] - b[1])[0];
       const name = label.slice(0, -1);
-      todo.push(`<li><b>${esc(name)}</b>${label.slice(-1)} 최근 10회에서 가장 약합니다 (${Math.round(v * 100)}%). 공부 탭의 면담 순서를 다시 보세요.</li>`);
+      todo.push(`<li>최약 영역 <b>${esc(name)}</b> ${Math.round(v * 100)}% <span class="hint">(최근 10회)</span></li>`);
     }
     // 최근 점수가 가장 낮은 주제(2회 이상이 아니어도 마지막 점수 기준)
     const weak = [...stats.entries()].filter(([, s]) => s.last !== null).sort((a, b) => a[1].last - b[1].last)[0];
     if (weak && weak[1].last < 80) {
       todo.push(
-        `<li>최근 점수가 가장 낮은 주제: <b>${esc(weak[0])}</b> ${chip(weak[1].last)} ` +
+        `<li>최저 점수 주제 <b>${esc(weak[0])}</b> ${chip(weak[1].last)} ` +
           `<button type="button" class="btn-link" data-act="study" data-topic="${esc(weak[0])}">공부</button>` +
           (canIv ? ` · <button type="button" class="btn-link" data-act="start" data-topic="${esc(weak[0])}">다시 면담</button>` : "") +
           `</li>`
@@ -181,7 +181,7 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
       const day = new Date().getDate();
       const pick = fresh[day % fresh.length];
       todo.push(
-        `<li>아직 안 해 본 주제: <b>${esc(pick.name)}</b> ` +
+        `<li>미연습 주제 <b>${esc(pick.name)}</b> ` +
           `<button type="button" class="btn-link" data-act="study" data-topic="${esc(pick.name)}">공부</button>` +
           (canIv ? ` · <button type="button" class="btn-link" data-act="start" data-topic="${esc(pick.name)}">면담</button>` : "") +
           `</li>`
@@ -189,20 +189,20 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     }
     const next =
       `<div class="panel home-card home-wide">` +
-      `<h3>다음에 할 일</h3>` +
-      (todo.length ? `<ul class="home-todo">${todo.join("")}</ul>` : `<p class="hint">면담을 몇 번 하면 여기에 맞춤 추천이 나옵니다.</p>`) +
+      `<h3>추천</h3>` +
+      (todo.length ? `<ul class="home-todo">${todo.join("")}</ul>` : `<p class="hint">면담 기록이 쌓이면 표시됩니다.</p>`) +
       `</div>`;
 
     // --- 최근 기록 ---
     const latest = rows.slice(0, 3);
     const recentList =
       `<div class="panel home-card home-wide">` +
-      `<div class="panel-header"><h3>최근 기록</h3><button type="button" class="btn-link" data-act="goto" data-view="records">전체 기록 →</button></div>` +
+      `<div class="panel-header"><h3>최근 기록</h3><button type="button" class="btn-link" data-act="goto" data-view="records">전체 기록</button></div>` +
       (latest.length
         ? `<ul class="home-recent">${latest
             .map((r) => `<li><span class="home-when">${esc(fmtDateTime(r.createdAt))}</span><span class="home-topic">${esc(r.topic || "무작위")}</span>${chip(r.totalScore)}</li>`)
             .join("")}</ul>`
-        : `<p class="hint">아직 기록이 없습니다. 면담 탭에서 한 케이스를 끝내고 평가까지 받으면 여기에 쌓입니다.</p>`) +
+        : `<p class="hint">기록 없음</p>`) +
       `</div>`;
 
     body.innerHTML = hero + `<div class="home-grid">${progress}${trend}${next}${recentList}</div>`;

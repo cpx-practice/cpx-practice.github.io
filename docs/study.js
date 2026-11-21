@@ -204,14 +204,14 @@ function gridHtml(topics, rows) {
     const st = stats.get(t.name);
     const meta = st
       ? `<span class="tg-count">${st.count}회</span>${st.best !== null ? `<span class="score-chip b${band(st.best)}">${st.best}</span>` : ""}`
-      : `<span class="tg-new">아직 안 해 봄</span>`;
+      : `<span class="tg-new">미연습</span>`;
     return `<button type="button" class="tg-card${st ? "" : " is-new"}" data-key="${esc(t.key)}">` +
       `<span class="tg-name">${esc(t.name)}</span>` +
-      `<span class="tg-sub">감별 ${t.count}가지</span>` +
+      `<span class="tg-sub">감별 ${t.count}</span>` +
       `<span class="tg-meta">${meta}</span></button>`;
   };
   return (
-    `<div class="tg-progress"><div class="tg-progress-text"><b>${topics.length}개 주제 중 ${done}개 연습</b> · ${pct}%</div>` +
+    `<div class="tg-progress"><div class="tg-progress-text"><b>${done} / ${topics.length}</b> 주제 연습 · ${pct}%</div>` +
     `<div class="tg-bar"><span style="width:${pct}%"></span></div></div>` +
     groups
       .filter(([, list]) => list.length)

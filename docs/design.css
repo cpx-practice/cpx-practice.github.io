@@ -1,0 +1,176 @@
+/* 디자인 A — 시험 도구처럼 단단하게 (2026-11-21 확정).
+   둥근 카드·그림자를 걷어내고 선으로 구획한다. 글꼴은 Pretendard. 강조색은 의료 기관 느낌의 청록 하나로
+   기본 버튼·선택된 탭·진도 막대에만 쓰고, 면담 화면만 시험장 상황 카드처럼 위쪽 띠와 머리말을 단다.
+   index.html 의 <html data-skin="a"> 에 입힌다. style.css 다음에 읽어서 덮어쓴다. */
+
+:root[data-skin="a"] {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --inset: #f4f5f7;
+  --border: #dcdfe4;
+  --text: #111418;
+  --muted: #5b6470;
+  --accent: #0b7c86;
+  --accent-hover: #086570;
+  --on-accent: #ffffff;
+  --radius: 4px;
+  --shadow: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-skin="a"]:not([data-theme="light"]) {
+    --bg: #111317;
+    --panel: #111317;
+    --inset: #1a1d23;
+    --border: #2b3038;
+    --text: #e8eaee;
+    --muted: #9aa3ae;
+    --accent: #4cc3cc;
+    --accent-hover: #74d4db;
+    --on-accent: #062227;
+  }
+}
+:root[data-skin="a"][data-theme="dark"] {
+  --bg: #111317;
+  --panel: #111317;
+  --inset: #1a1d23;
+  --border: #2b3038;
+  --text: #e8eaee;
+  --muted: #9aa3ae;
+  --accent: #4cc3cc;
+  --accent-hover: #74d4db;
+  --on-accent: #062227;
+}
+
+:root[data-skin="a"] body,
+:root[data-skin="a"] button,
+:root[data-skin="a"] input,
+:root[data-skin="a"] select,
+:root[data-skin="a"] textarea {
+  font-family: "Pretendard Variable", Pretendard, -apple-system, "Malgun Gothic", sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* 머리줄: 굵은 아랫선 하나 */
+[data-skin="a"] .topbar { border-bottom: 2px solid var(--text); padding: 12px 20px; }
+[data-skin="a"] .brand { font-weight: 800; letter-spacing: -0.03em; }
+[data-skin="a"] .brand-mark { color: var(--text); }
+
+/* 탭: 굵은 글씨 + 검은 밑줄 */
+[data-skin="a"] .subnav { border-bottom: 1px solid var(--border); }
+[data-skin="a"] .subtab { font-weight: 600; color: var(--muted); padding: 10px 16px 9px; }
+[data-skin="a"] .subtab.active { color: var(--text); border-bottom: 2px solid var(--accent); }
+
+/* 패널: 카드 대신 위쪽 선으로 나눈 구획 */
+[data-skin="a"] .container { gap: 0; }
+[data-skin="a"] .panel {
+  border: none;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 22px 0;
+  background: transparent;
+}
+[data-skin="a"] .subnav + div .panel:first-child,
+[data-skin="a"] .rec-switch + .panel { border-top: none; }
+[data-skin="a"] .panel h2,
+[data-skin="a"] .home-card h3 {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+[data-skin="a"] .hint { font-size: 0.8rem; }
+
+/* 버튼: 각진 모서리, 검은 기본 버튼 */
+[data-skin="a"] .btn { border-radius: var(--radius); }
+[data-skin="a"] .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+[data-skin="a"] .btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+[data-skin="a"] input, [data-skin="a"] select, [data-skin="a"] textarea { border-radius: var(--radius); }
+
+/* 점수: 알약 대신 숫자 + 왼쪽 색 막대 */
+[data-skin="a"] .score-chip {
+  border: none;
+  border-left: 3px solid var(--chip);
+  border-radius: 0;
+  background: transparent;
+  padding: 0 0 0 6px;
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 표: 촘촘하게, 숫자는 고정폭 */
+[data-skin="a"] table { font-size: 0.84rem; }
+[data-skin="a"] th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; }
+[data-skin="a"] td { font-variant-numeric: tabular-nums; }
+
+/* 홈: 카드 격자 대신 구획 */
+[data-skin="a"] .home-grid { gap: 0 32px; }
+[data-skin="a"] .home-hero h2 { font-size: 1.5rem; text-transform: none; letter-spacing: -0.03em; color: var(--text); }
+[data-skin="a"] .home-big { font-weight: 800; letter-spacing: -0.03em; }
+[data-skin="a"] .dday-num { color: var(--text); font-weight: 900; letter-spacing: -0.04em; }
+[data-skin="a"] .tg-bar, [data-skin="a"] .tg-bar > span { border-radius: 0; height: 4px; }
+[data-skin="a"] .tg-bar > span { background: var(--accent); }
+[data-skin="a"] .spark-bar { border-radius: 0; }
+
+/* 공부 주제 카드: 테두리 없는 목록형 칸 */
+[data-skin="a"] .tg-grid { gap: 0; border-top: 1px solid var(--border); border-left: 1px solid var(--border); }
+[data-skin="a"] .tg-card {
+  border: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+[data-skin="a"] .tg-card.is-new { border-style: solid; }
+[data-skin="a"] .tg-card.is-new .tg-name { color: var(--muted); }
+[data-skin="a"] .tg-new { color: var(--muted); font-weight: 500; }
+[data-skin="a"] .tg-card:hover { background: var(--inset); }
+
+/* ===== 면담 화면: 시험장 상황 카드 =====
+   선으로만 나눈 다른 화면과 달리, 면담 시작·면담 중 패널은 위쪽 청록 띠와 작은 머리말을 단 카드로 둔다. */
+[data-skin="a"] #ivStartPanel,
+[data-skin="a"] #ivChatPanel,
+[data-skin="a"] #ivKeyPanel {
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  margin-top: 18px;
+}
+[data-skin="a"] #ivStartPanel h2,
+[data-skin="a"] #ivChatPanel h2 {
+  font-size: 1.05rem;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: 0;
+}
+[data-skin="a"] #ivStartPanel h2::before,
+[data-skin="a"] #ivChatPanel h2::before {
+  content: "CPX STATION";
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+/* 환자 이모지 대신 '환자'라고 적힌 청록 원 */
+[data-skin="a"] .iv-avatar {
+  font-size: 0;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+  position: relative;
+}
+[data-skin="a"] .iv-avatar::after {
+  content: "환자";
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-size: 0.6rem; font-weight: 700;
+  color: var(--on-accent);
+}
+[data-skin="a"] .iv-bubble { border-radius: var(--radius); }
