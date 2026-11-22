@@ -84,6 +84,26 @@ const PROVIDERS = {
 const MAX_TURNS = 80; // 학생 메시지 기준. 버그로 인한 무한루프 등으로부터의 안전장치일 뿐 — 비용은 학생 본인 몫이라 낮게 잡을 이유는 없다.
 const $ = (id) => document.getElementById(id);
 
+// 전사용 — 환자 답 가운데 괄호로만 된 줄은 진찰 소견(서술자)이라 "진찰:"로, 나머지는 "환자:"로 붙인다.
+export function transcriptReply(text) {
+  const out = [];
+  let said = [];
+  const flush = () => {
+    while (said.length && !said[said.length - 1].trim()) said.pop();
+    if (said.length) out.push(`환자: ${said.join("\n")}`);
+    said = [];
+  };
+  for (const line of String(text || "").split("\n")) {
+    const m = line.trim().match(/^[(（]([^()（）]*)[)）]$/);
+    if (m) {
+      flush();
+      out.push(`진찰: ${m[1].trim()}`);
+    } else if (line.trim() || said.length) said.push(line);
+  }
+  flush();
+  return out.join("\n") || "환자: ";
+}
+
 export function initInterviewTab({ db, auth, endpoint, onStudy }) {
   const keyPanel = $("ivKeyPanel");
   const startPanel = $("ivStartPanel");
@@ -1277,7 +1297,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     // 전사는 학생이 "평가"를 입력하기 전까지의 문진·진찰만이다. "평가"와 그 뒤의 채점문은 "채점 결과"에 따로 저장된다.
     const cut = history.findIndex((h) => h.role === "user" && /^\s*평가\s*$/.test(h.text));
     const script = (cut >= 0 ? history.slice(0, cut) : history)
-      .map((h) => `${h.role === "user" ? "의사" : "환자"}: ${h.text}`)
+      .map((h) => (h.role === "user" ? `의사: ${h.text}` : transcriptReply(h.text)))
       .join("\n\n");
     const docId = doc(collection(db, "records")).id;
 
