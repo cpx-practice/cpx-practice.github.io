@@ -739,8 +739,6 @@ function renderRecords(rows, { resetPaging = false } = {}) {
     // 본문이 따로 있으면 기록에 표시만 남는다. 구버전 기록은 본문이 문서 안에 있다.
     const hasDetail = Boolean(r.hasEvaluation || r.hasTranscript) || hasInlineBody(r);
     const tr = document.createElement("tr");
-    // 퇴실·빈 면담처럼 사실상 연습이 안 된 기록(20점 미만)은 흐리게 둬서 실제 연습 기록이 눈에 먼저 들어오게 한다.
-    if (typeof r.totalScore === "number" && r.totalScore < 20) tr.classList.add("rec-faint");
     // data-label 은 좁은 화면에서 표가 카드로 접힐 때 각 칸의 이름표로 쓰인다.
     // 총평은 한 줄로 자르고 누르면 펼친다. 삭제는 실수로 누르지 않게 작고 흐린 글자 버튼으로 뒤에 둔다.
     tr.innerHTML = `

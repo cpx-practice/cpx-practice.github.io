@@ -1439,8 +1439,6 @@ td.note { max-width: 380px; line-height: 1.5; }
 .score-chip.b4 { --chip: var(--grade-4); }
 
 /* 퇴실·빈 면담(20점 미만) 기록은 흐리게 */
-#recordTable tr.rec-faint td { opacity: 0.55; }
-#recordTable tr.rec-faint:hover td { opacity: 1; }
 
 /* 총평은 한 줄로 자르고, 누르면 펼친다 */
 .note-clamp {
