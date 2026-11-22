@@ -114,6 +114,8 @@ const PAREN_EXAM = /\([^)]*(촉진|청진|타진|시진|혈압|진찰|눌러|두
 const CHECKS = {
   selfIntro: /(저는|제\s*이름은|담당|의사|학생|인턴|실습|레지던트|전공의).{0,20}(입니다|이에요|예요|라고\s*합니다)/,
   idCheck: /(성함|이름|나이|연세|생년월일|관계|본인|환자분\s*(맞|이시|되시)|맞으시(죠|나요|지요))/,
+  // 열린 질문으로 문진을 시작했는가 — "어디가 불편해서 오셨어요?", "어떻게 오셨어요?", "오늘 무슨 일로 오셨어요?"
+  openQ: /(어디가|어디\s*가)\s*(불편|아프)|어떻게\s*오셨|무슨\s*일로\s*오셨|어떤\s*(일|문제|증상|이유)로\s*오셨|불편하신\s*(게|점|곳|데)|오늘\s*(어떻게|무슨|어떤)/,
   iceIdea: /(원인|생각하세요|생각하시|생각이\s*(드|있)|짚이는|때문인\s*것\s*같|뭐\s*때문|왜\s*그런|이유가\s*(있|짐작)|짐작)/,
   iceConcern: /(걱정|불안|염려|우려|두려)/,
   iceExpect: /(바라|원하시|원하세요|기대|도움을\s*받|어떤\s*도움|해\s*드렸으면)/,
@@ -157,12 +159,26 @@ export function auditMarks(record, history) {
     const label = SECTIONS.flatMap((s) => s.items).find(([k]) => k === key)?.[1] || key;
     changes.push({ label, from, to, reason });
   };
+  // 낮추기만 하는 cap 과 반대로, 대화에서 확실히 확인된 항목을 그 아래로 매긴 경우만 올린다 (지금은 도입만).
+  const floor = (key, to, reason) => {
+    const from = normMark(marks[key]);
+    if (!from || from === "N" || ORDER[from] >= ORDER[to]) return;
+    marks[key] = to;
+    const label = SECTIONS.flatMap((s) => s.items).find(([k]) => k === key)?.[1] || key;
+    changes.push({ label, from, to, reason });
+  };
 
   const early = said.slice(0, 4);
   const intro = [any(CHECKS.selfIntro, early), any(CHECKS.idCheck, said.slice(0, 6))];
   if (!intro[0] || !intro[1]) {
     cap("intro", "△", [!intro[0] && "자기소개", !intro[1] && "환자 확인(성함·나이)"].filter(Boolean).join("·") + " 발화 없음");
   }
+  // 도입은 대화에서 확실히 가려낼 수 있다 — 모델이 한 것을 안 했다고 낮춘 경우는 올린다
+  // (2026-11-22 Gemini 채점이 "저는 의사 김민수입니다"·"어디가 불편해서 오셨어요?"를 하고도 자기소개·개방형 질문 누락으로 X 를 줬다).
+  const openQ = any(CHECKS.openQ, early);
+  const introDone = [intro[0], intro[1], openQ].filter(Boolean).length;
+  if (introDone === 3) floor("intro", "O", "자기소개·환자 확인·개방형 질문 모두 대화에 있음");
+  else if (introDone === 2) floor("intro", "△", [intro[0] && "자기소개", intro[1] && "환자 확인", openQ && "개방형 질문"].filter(Boolean).join("·") + " 대화에 있음");
 
   const ice = [["생각(원인)", CHECKS.iceIdea], ["걱정", CHECKS.iceConcern], ["기대", CHECKS.iceExpect]];
   const missingIce = ice.filter(([, re]) => !any(re)).map(([n]) => n);

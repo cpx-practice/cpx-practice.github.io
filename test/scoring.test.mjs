@@ -147,3 +147,20 @@ test("숫자 없이 등급만 적힌 총점 줄도 계산값으로 바꾼다 (�
   // 문장 속의 '총점'은 그대로
   assert.equal(reconcileTotal("총점을 높이려면 안전망 안내를 넣으세요.", scored), "총점을 높이려면 안전망 안내를 넣으세요.");
 });
+
+test("도입: 대화에 세 요소가 다 있으면 모델이 낮춘 판정을 올리고, 두 개면 △, 하나뿐이면 손대지 않는다", () => {
+  const run = (turns, mark) => {
+    const record = { topic: "두통", marks: { ...allO(), intro: mark } };
+    const changes = auditMarks(record, turns.map(u)).filter((c) => c.label === "도입");
+    return { mark: record.marks.intro, changes };
+  };
+  const all3 = ["안녕하세요, 저는 의사 김민수입니다.", "성함이랑 나이 말씀해 주시겠어요?", "어디가 불편해서 오셨어요?"];
+  assert.equal(run(all3, "X").mark, "O");
+  assert.equal(run(all3, "△").mark, "O");
+  // 환자 확인만 빠짐 — X 를 △ 로 올리고, O 는 △ 로 낮춘다
+  const noId = ["안녕하세요, 저는 의사 김민수입니다.", "어디가 불편해서 오셨어요?"];
+  assert.equal(run(noId, "X").mark, "△");
+  assert.equal(run(noId, "O").mark, "△");
+  // 자기소개만 — 모델의 X 를 그대로 둔다
+  assert.equal(run(["안녕하세요, 저는 의사 김민수입니다.", "언제부터 아프셨어요?"], "X").mark, "X");
+});
