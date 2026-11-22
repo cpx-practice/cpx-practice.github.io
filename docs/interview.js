@@ -1093,7 +1093,16 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
       setWalkedOut(false);
       chatLog.innerHTML = "";
       // 관리자에게만 이번 면담이 어느 모델로 도는지 보여 준다 (점검 결과를 어느 경로의 것으로 읽을지 헷갈리지 않게).
-      chatTitle.textContent = adminOn && data.sessionId && data.model ? `면담 · ${data.model}` : "면담";
+      // 모델 원래 이름(@cf/google/gemma-4-26b-a4b-it 등)은 길어서 짧은 이름으로 작게 붙인다.
+      const shortModel = (m) => {
+        const t = String(m || "");
+        if (/gemma-?4/i.test(t)) return "Gemma 4";
+        if (/gemma/i.test(t)) return "Gemma";
+        if (/gemini/i.test(t)) return t.replace(/^models\//, "").replace(/^gemini-/i, "Gemini ").replace(/-/g, " ");
+        return t.split("/").pop();
+      };
+      chatTitle.innerHTML =
+        "면담 중" + (adminOn && data.sessionId && data.model ? ` <span class="iv-model">${esc(shortModel(data.model))}</span>` : "");
       addTopicBar();
       ivStatus.textContent = "";
       showChatPanel();

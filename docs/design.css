@@ -230,3 +230,6 @@
 [data-skin="a"] .settings-list li:first-child { border-top: 1px solid var(--border); }
 [data-skin="a"] .settings-list .sl-title { font-weight: 600; }
 [data-skin="a"] .settings-list .sl-desc { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
+
+/* 면담 제목 옆 모델 이름 (관리자에게만 보인다) */
+.iv-model { font-size: 0.72rem; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
