@@ -387,7 +387,11 @@ td.score { font-weight: 700; }
   border-bottom: 1px solid var(--border);
 }
 .modal-head h3 { margin: 0; font-size: 0.98rem; min-width: 0; overflow-wrap: anywhere; }
-.modal-body { padding: 14px 18px 18px; overflow-y: auto; }
+.modal-body { padding: 14px 18px 18px; overflow-y: auto; overscroll-behavior: contain; }
+/* 창 안 스크롤이 끝에 닿으면 남은 스크롤이 뒤 페이지로 넘어가 바깥이 오르락내리락했다 —
+   창이 열려 있는 동안 뒤 페이지를 잠그고, 배경을 문질러도 넘어가지 않게 한다. */
+.backdrop { overscroll-behavior: contain; }
+html:has(.backdrop:not(.hidden)), body:has(.backdrop:not(.hidden)) { overflow: hidden; }
 
 .detail-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
 .dtab {
