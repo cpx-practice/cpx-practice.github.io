@@ -22,6 +22,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import {
   getAuth,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
@@ -277,10 +278,44 @@ loginForm.addEventListener("submit", async (e) => {
       $("loginEmail").value.trim(),
       $("loginPassword").value
     );
-  } catch {
-    loginErr.textContent = "로그인 실패: 이메일 또는 비밀번호를 확인하세요.";
+  } catch (err) {
+    loginErr.textContent =
+      err?.code === "auth/too-many-requests"
+        ? "로그인 시도가 너무 많습니다. 잠시 후 다시 시도하세요."
+        : "로그인 실패: 이메일 또는 비밀번호를 확인하세요.";
   }
 });
+
+// 비밀번호를 잊었을 때 — 입력한 이메일로 Firebase 재설정 메일을 보낸다.
+// 가입 여부를 알려주지 않도록 결과 문구는 늘 같다.
+$("btnResetPw").addEventListener("click", async () => {
+  const email = $("loginEmail").value.trim();
+  if (!email) {
+    loginErr.textContent = "비밀번호를 재설정할 이메일을 위 칸에 입력하세요.";
+    return;
+  }
+  try {
+    await sendPasswordResetEmail(auth, email);
+  } catch (err) {
+    if (err?.code === "auth/invalid-email") {
+      loginErr.textContent = "이메일 형식을 확인하세요.";
+      return;
+    }
+  }
+  loginErr.textContent = `${email} 로 가입된 계정이 있으면 재설정 메일을 보냈습니다. 받은편지함과 스팸함을 확인하세요.`;
+});
+
+const REGISTER_ERRORS = {
+  "auth/email-already-in-use": "이미 가입된 이메일입니다. 로그인 탭에서 로그인하세요.",
+  "auth/invalid-email": "이메일 형식을 확인하세요.",
+  "auth/weak-password": "비밀번호는 6자 이상으로 정하세요.",
+  "auth/too-many-requests": "요청이 너무 많습니다. 잠시 후 다시 시도하세요.",
+  "auth/network-request-failed": "인터넷 연결을 확인하고 다시 시도하세요.",
+};
+
+// 가입 중인 정보 — 계정이 만들어지자마자 onAuthStateChanged → loadProfile 이 먼저 돌아
+// 프로필 문서를 만들 수 있다. 그때 닉네임·동의가 빠지지 않게 여기 값을 쓴다.
+let pendingRegistration = null;
 
 registerForm.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -290,23 +325,35 @@ registerForm.addEventListener("submit", async (e) => {
     registerErr.textContent = "닉네임을 입력해주세요.";
     return;
   }
+  const consent = $("registerConsent").checked;
+  pendingRegistration = { nickname, consent };
+  let cred;
   try {
-    const cred = await createUserWithEmailAndPassword(
+    cred = await createUserWithEmailAndPassword(
       auth,
       $("registerEmail").value.trim(),
       $("registerPassword").value
     );
-    await updateProfile(cred.user, { displayName: nickname });
-    await setDoc(doc(db, "users", cred.user.uid), {
-      nickname,
-      email: cred.user.email,
-      consentTranscript: $("registerConsent").checked,
-      consentAt: serverTimestamp(),
-      tokenVersion: 1,
-      createdAt: serverTimestamp(),
-    });
   } catch (err) {
-    registerErr.textContent = `가입 실패: ${err.code || err.message}`;
+    pendingRegistration = null;
+    registerErr.textContent = REGISTER_ERRORS[err?.code] || `가입 실패: ${err?.code || err?.message}`;
+    return;
+  }
+  try {
+    await updateProfile(cred.user, { displayName: nickname });
+    whoName.textContent = nickname;
+    // merge — loadProfile 이 먼저 문서를 만들었어도 본인이 고칠 수 있는 칸만 덮어쓴다 (firestore.rules).
+    await setDoc(
+      doc(db, "users", cred.user.uid),
+      { nickname, email: cred.user.email, consentTranscript: consent, consentAt: serverTimestamp() },
+      { merge: true }
+    );
+    if (profile) Object.assign(profile, { nickname, consentTranscript: consent });
+    setConsent.checked = consent;
+  } catch {
+    /* 계정은 만들어졌다 — 닉네임·동의는 설정 탭에서 다시 정할 수 있다 */
+  } finally {
+    pendingRegistration = null;
   }
 });
 
@@ -477,13 +524,15 @@ async function loadProfile(user) {
   const ref = doc(db, "users", user.uid);
   const snap = await getDoc(ref);
   if (snap.exists()) return snap.data();
+  const reg = pendingRegistration; // 방금 가입 폼에서 만든 계정이면 그 닉네임·동의를 쓴다
   const fresh = {
-    nickname: user.displayName || "",
+    nickname: reg?.nickname || user.displayName || "",
     email: user.email,
-    consentTranscript: false, // 명시적 동의가 없으면 전사를 저장하지 않는다
+    consentTranscript: reg ? reg.consent : false, // 명시적 동의가 없으면 전사를 저장하지 않는다
     tokenVersion: 1,
     createdAt: serverTimestamp(),
   };
+  if (reg) fresh.consentAt = serverTimestamp();
   await setDoc(ref, fresh);
   return fresh;
 }
