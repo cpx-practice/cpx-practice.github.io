@@ -11,6 +11,16 @@ const band = (v) => (v >= 90 ? 4 : v >= 80 ? 3 : v >= 70 ? 2 : 1);
 const chip = (v) => (typeof v === "number" ? `<span class="score-chip b${band(v)}">${v}</span>` : "");
 const EXAM_KEY = "cpx-exam-date";
 
+// 면담 탭의 AI 설정(interview.js CONFIG_STORAGE). 무료(키 없이)가 아니면 본인 키를 쓰는 중이다.
+function usesOwnKey() {
+  try {
+    const c = JSON.parse(localStorage.getItem("cpx-ai-config") || "null");
+    return !!(c && c.provider && c.provider !== "free");
+  } catch {
+    return false;
+  }
+}
+
 function readExamDate() {
   try {
     return localStorage.getItem(EXAM_KEY) || "";
@@ -88,6 +98,11 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
           `<button type="button" class="btn ghost" data-act="goto" data-view="study">주제 보기</button></div>`
         : `<p class="hint">면담 탭이 꺼진 계정입니다. 관리자에게 문의하세요.</p>`) +
       (statusText ? `<p class="hint home-status">${esc(statusText)}</p>` : "") +
+      // 무료 면담은 하루 전체 양이 정해져 있다 — 본인 키를 넣으면 그 몫과 상관없이 연습할 수 있다는 것을 늘 보이게 둔다.
+      (canIv && !usesOwnKey()
+        ? `<p class="hint home-ownkey">무료 면담은 하루 횟수가 정해져 있습니다. 내 Gemini 무료 키를 넣으면 횟수 걱정 없이 연습할 수 있습니다. ` +
+          `<button type="button" class="btn-link" data-act="own-key">키 넣기</button></p>`
+        : "") +
       `</div>` +
       `<div class="home-dday">` +
       (ddText
@@ -216,6 +231,11 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     else if (act === "start") onStartInterview && onStartInterview(el.dataset.topic);
     else if (act === "study") onStudy && onStudy(el.dataset.topic);
     else if (act === "goto") goto && goto(el.dataset.view);
+    else if (act === "own-key") {
+      // 면담 탭의 "AI 변경"(키 입력 화면)을 연다.
+      goto && goto("interview");
+      setTimeout(() => document.getElementById("btnChangeKey")?.click(), 0);
+    }
     else if (act === "edit-exam") {
       body.querySelector(".dday-edit")?.classList.remove("hidden");
       $("homeExamDate")?.focus();
