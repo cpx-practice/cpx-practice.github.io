@@ -157,7 +157,7 @@ export function auditMarks(record, history) {
     if (!from || from === "N" || ORDER[from] <= ORDER[to]) return;
     marks[key] = to;
     const label = SECTIONS.flatMap((s) => s.items).find(([k]) => k === key)?.[1] || key;
-    changes.push({ label, from, to, reason });
+    changes.push({ key, label, from, to, reason });
   };
   // 낮추기만 하는 cap 과 반대로, 대화에서 확실히 확인된 항목을 그 아래로 매긴 경우만 올린다 (지금은 도입만).
   const floor = (key, to, reason) => {
@@ -165,7 +165,7 @@ export function auditMarks(record, history) {
     if (!from || from === "N" || ORDER[from] >= ORDER[to]) return;
     marks[key] = to;
     const label = SECTIONS.flatMap((s) => s.items).find(([k]) => k === key)?.[1] || key;
-    changes.push({ label, from, to, reason });
+    changes.push({ key, label, from, to, reason });
   };
 
   const early = said.slice(0, 4);
@@ -269,6 +269,23 @@ export function reconcileNarrative(shown, record, history, changes = []) {
     const name = String(c.label).split(" (")[0];
     text = text.replace(new RegExp(`^(${LEAD}${esc(name)}${TAIL}\\s*[:：]\\s*(?:\\*\\*)?\\s*)(O|△|X|N)`, "m"), `$1${c.to}`);
   }
+  // 대화 확인으로 판정을 올린 항목은, 그 항목을 "안 했다·해야 한다"고 쓴 개선점 줄도 뺀다 — 판정은 O 로 바로잡혔는데
+  // 개선점에 "도입부에서 자기소개와 환자 확인을 정확히 시행해야 합니다"가 남아 있었다 (2026-11-23).
+  const RAISED_TOPIC = { intro: /자기소개|환자\s*확인|본인\s*확인|신분|성함/ };
+  const raisedKeys = changes.filter((c) => c.key && RAISED_TOPIC[c.key] && ORDER[c.to] > ORDER[c.from]).map((c) => c.key);
+  if (raisedKeys.length) {
+    const at = text.search(/^[ \t>#*]*(?:\*\*)?\s*개선점/m);
+    if (at >= 0) {
+      const head = text.slice(0, at);
+      const tail = text.slice(at).split("\n");
+      // 첫 줄(개선점 제목)은 두고, 그 아래 목록·문장 가운데 올린 항목을 다룬 줄만 뺀다. 다음 제목(대화 확인으로 조정…)에서 멈춘다.
+      let stop = tail.findIndex((l, i) => i > 0 && /^[ \t>#*]*(?:\*\*)?\s*(대화 확인으로 조정|잘한 점|복습)/.test(l));
+      if (stop < 0) stop = tail.length;
+      const kept = tail.filter((l, i) => i === 0 || i >= stop || !raisedKeys.some((k) => RAISED_TOPIC[k].test(l)));
+      text = head + kept.join("\n");
+    }
+  }
+
   const marks = record && record.marks;
   if (marks && normMark(marks.ice) === "O" && Array.isArray(history)) {
     const said = history

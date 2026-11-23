@@ -182,3 +182,25 @@ test("도입: 자기소개도 환자 확인도 없으면 X", () => {
   auditMarks(record, ["안녕하세요.", "어디가 불편해서 오셨어요?", "언제부터요?"].map(u));
   assert.equal(record.marks.intro, "X");
 });
+
+test("도입을 대화 확인으로 올렸으면 '자기소개·환자 확인을 해야 한다'는 개선점 줄을 뺀다", () => {
+  const record = { topic: "복통", marks: { ...allO(), intro: "X" } };
+  const turns = ["안녕하세요, 저는 의사 김민수입니다.", "환자분 성함과 나이 확인 부탁드립니다.", "어디가 불편해서 오셨어요?"].map(u);
+  const changes = auditMarks(record, turns);
+  const shown = [
+    "도입: X — 자기소개 누락",
+    "",
+    "개선점:",
+    "- \"통증이 오른쪽 아래로 옮겨갔나요?\"처럼 Red flag 를 더 물어야 합니다.",
+    "- \"처음 뵙겠습니다, 의사 김민수입니다. 성함을 말씀해 주세요\" 하며 자기소개와 환자 확인을 정확히 시행해야 합니다.",
+    "",
+    "대화 확인으로 조정한 항목",
+    "- 도입: X → O (자기소개·환자 확인·개방형 질문 모두 대화에 있음)",
+  ].join("\n");
+  const out = reconcileNarrative(shown, record, turns, changes);
+  assert.match(out, /^도입: O/m);
+  assert.match(out, /Red flag 를 더 물어야/);
+  assert.doesNotMatch(out, /자기소개와 환자 확인을 정확히 시행해야/);
+  // 조정 내역 줄(자기소개 낱말 포함)은 그대로 남는다
+  assert.match(out, /도입: X → O/);
+});
