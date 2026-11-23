@@ -114,16 +114,6 @@ const PAREN_EXAM = /\([^)]*(촉진|청진|타진|시진|혈압|진찰|눌러|두
 const CHECKS = {
   selfIntro: /(저는|제\s*이름은|담당|의사|학생|인턴|실습|레지던트|전공의).{0,20}(입니다|이에요|예요|라고\s*합니다)/,
   idCheck: /(성함|이름|나이|연세|생년월일|관계|본인|환자분\s*(맞|이시|되시)|맞으시(죠|나요|지요))/,
-  // 현병력 하위 요소 — 학생이 실제로 물었는가 (환자가 스스로 말한 것은 세지 않는다).
-  hpiOnset: /언제부터|언제\s*처음|며칠\s*(?:전|째|됐)|얼마나\s*(?:됐|되셨|오래)|시작(?:됐|되셨|하셨)/,
-  hpiCharacter: /어떻게\s*(?:아프|불편)|어떤\s*(?:느낌|식으로|양상)|양상/,
-  hpiLocation: /정확히\s*어디|어디가\s*(?:제일|가장)|어느\s*(?:쪽|부위|부분)|위치/,
-  hpiRadiation: /퍼지|뻗치|뻗어|방사|다른\s*(?:곳|데)으로/,
-  hpiModify: /심해지|악화|더\s*(?:아프|불편)|나아지|완화|좋아지|덜\s*(?:아프|불편)|편해지/,
-  hpiSeverity: /몇\s*점|10점|십\s*점|얼마나\s*(?:아프|심하|불편)|정도로\s*(?:아프|불편)/,
-  hpiCourse: /점점|계속\s*(?:그러|아프|있)|변화|경과|지속|좋아졌다|나빠지/,
-  hpiAssoc: /다른\s*증상|같이\s*(?:나타|있|생기)|동반/,
-  hpiPast: /예전에도|전에도|이런\s*적|처음이세요|처음인가/,
   // 열린 질문으로 문진을 시작했는가 — "어디가 불편해서 오셨어요?", "어떻게 오셨어요?", "오늘 무슨 일로 오셨어요?"
   openQ: /(어디가|어디\s*가)\s*(불편|아프)|어떻게\s*오셨|무슨\s*일로\s*오셨|어떤\s*(일|문제|증상|이유)로\s*오셨|불편하신\s*(게|점|곳|데)|오늘\s*(어떻게|무슨|어떤)/,
   iceIdea: /(원인|생각하세요|생각하시|생각이\s*(드|있)|짚이는|때문인\s*것\s*같|뭐\s*때문|왜\s*그런|이유가\s*(있|짐작)|짐작)/,
@@ -192,11 +182,15 @@ export function auditMarks(record, history) {
   if (introDone === 3) floor("intro", "O", "자기소개·환자 확인·개방형 질문 모두 대화에 있음");
   else if (introDone === 2) floor("intro", "△", [intro[0] && "자기소개", intro[1] && "환자 확인", openQ && "개방형 질문"].filter(Boolean).join("·") + " 대화에 있음");
 
-  // 현병력 — 학생이 물은 하위 요소가 너무 적으면 낮춘다 ("언제부터요?" 하나에 20/20 이 나왔다).
-  // 표현이 다양해 다 못 잡을 수 있으므로 기준은 넉넉하게 둔다: 2개 이하 X, 5개 이하 △.
-  const hpiAsked = ["hpiOnset", "hpiCharacter", "hpiLocation", "hpiRadiation", "hpiModify", "hpiSeverity", "hpiCourse", "hpiAssoc", "hpiPast"].filter((k) => any(CHECKS[k]));
-  if (hpiAsked.length <= 2) cap("hpi", "X", `현병력 질문이 거의 없음 (${hpiAsked.length}개)`);
-  else if (hpiAsked.length <= 5) cap("hpi", "△", `현병력 하위 요소 일부만 질문 (${hpiAsked.length}/9)`);
+  // 현병력 — 진찰 전 문진 질문이 거의 없으면 낮춘다 ("언제부터요?" 하나에 20/20 이 나왔다).
+  // 하위 요소를 표현으로 맞추는 방식은 주제마다 질문 모양이 달라(월경력·"누우면 더 힘드세요?" 등) 충실한 면담까지 깎았다 —
+  // 기존 기록 121건에 적용해 보니 95건이 낮아졌다(2026-11-23). 그래서 질문 수로만, 사실상 빈 문진만 잡는다.
+  const historyQs = (peStart >= 0 ? turns.slice(0, peStart) : turns)
+    .filter((t) => !CUE.test(t))
+    .filter((t) => /\?|요\s*$|까\s*$|세요|나요|어요|에요/.test(t.trim()))
+    .filter((t) => !/^(안녕하세요|안녕하십니까)[.!,\s]*$/.test(t.trim()));
+  if (historyQs.length <= 3) cap("hpi", "X", `진찰 전 문진 질문이 ${historyQs.length}개뿐`);
+  else if (historyQs.length <= 5) cap("hpi", "△", `진찰 전 문진 질문이 ${historyQs.length}개`);
 
   const ice = [["생각(원인)", CHECKS.iceIdea], ["걱정", CHECKS.iceConcern], ["기대", CHECKS.iceExpect]];
   const missingIce = ice.filter(([, re]) => !any(re)).map(([n]) => n);

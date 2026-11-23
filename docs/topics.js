@@ -23,7 +23,7 @@ export const TOPICS = [
   { num: "13", name: "두근거림" },
   { num: "14", name: "두통" },
   { num: "15", name: "떨림/운동이상" },
-  { num: "16", name: "목통증/허리통증" },
+  { num: "16", name: "목통증/허리통증", aliases: ["허리통증", "목통증", "요통", "경부통"] },
   { num: "17", name: "물질오남용" },
   { num: "18", name: "발열" },
   { num: "19", name: "배뇨 이상" },
