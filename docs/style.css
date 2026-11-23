@@ -1883,3 +1883,29 @@ html { scrollbar-gutter: stable; }
 
 /* ===== 결과 창: 다음 행동 ===== */
 .iv-next { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 4px; }
+
+/* ---------- 공부: 바로가기 메뉴 ---------- */
+.st-jump { position: sticky; top: 0; z-index: 6; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  margin: 8px -4px 4px; padding: 8px 4px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.st-jump::-webkit-scrollbar { display: none; }
+.st-jump a { flex: 0 0 auto; padding: 4px 11px; border: 1px solid var(--border); border-radius: 999px; font-size: 0.85rem;
+  color: var(--text); text-decoration: none; background: var(--inset); white-space: nowrap; }
+.st-jump a:hover { border-color: var(--accent); color: var(--accent); }
+/* 위에 붙은 메뉴에 제목이 가리지 않게 */
+#viewStudy h3[id], #st-rubric { scroll-margin-top: 56px; }
+
+/* ---------- 공부: 진단별 단서 비교 (하나씩 / 전체) ---------- */
+.mx-bar { display: flex; justify-content: flex-start; margin: 4px 0 8px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.seg-btn { border: 0; background: transparent; padding: 5px 14px; font: inherit; font-size: 0.86rem; color: var(--muted); cursor: pointer; }
+.mx[data-mode="one"] .seg-btn[data-mx-mode="one"], .mx[data-mode="all"] .seg-btn[data-mx-mode="all"] { background: var(--accent); color: #fff; }
+.mx-dx { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.mx-dx-btn { border: 1px solid var(--border); background: var(--inset); border-radius: 999px; padding: 4px 11px; font: inherit; font-size: 0.85rem; cursor: pointer; color: var(--text); text-align: left; }
+.mx-dx-btn.on { border-color: var(--accent); background: var(--accent); color: #fff; }
+.mx-one { display: none; margin: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.mx-one.on { display: block; }
+.mx-one dt { padding: 6px 10px 0; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
+.mx-one dd { margin: 0; padding: 2px 10px 8px; border-bottom: 1px solid var(--border); }
+.mx-one dd:last-child { border-bottom: 0; }
+.mx[data-mode="all"] .mx-dx, .mx[data-mode="all"] .mx-ones { display: none; }
+.mx[data-mode="one"] .matrix-wrap { display: none; }

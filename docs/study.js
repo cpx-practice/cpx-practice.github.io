@@ -43,11 +43,60 @@ function matrixHtml(scenarios) {
     if (cells.every((c) => !c)) return ""; // 어느 진단에도 없는 행은 뺀다
     return `<tr><th>${esc(label)}</th>${cells.map((c) => `<td>${esc(c) || '<span class="muted">—</span>'}</td>`).join("")}</tr>`;
   }).join("");
+  // 하나씩 보기 — 휴대폰에서 넓은 표를 옆으로 밀지 않고, 진단을 골라 그 진단의 단서를 위아래로 본다.
+  const rows = R.filter(([, get]) => scenarios.some((s) => get(s)));
+  const one = scenarios
+    .map(
+      (s, i) =>
+        `<dl class="mx-one${i === 0 ? " on" : ""}" data-i="${i}">` +
+        rows.map(([label, get]) => `<dt>${esc(label)}</dt><dd>${esc(get(s)) || '<span class="muted">—</span>'}</dd>`).join("") +
+        `</dl>`
+    )
+    .join("");
   return (
+    `<div class="mx" data-mode="${matrixMode()}">` +
+    `<div class="mx-bar"><span class="seg" role="group" aria-label="보는 방식">` +
+    `<button type="button" class="seg-btn" data-mx-mode="one">하나씩</button><button type="button" class="seg-btn" data-mx-mode="all">전체</button></span></div>` +
+    `<div class="mx-dx" role="tablist">${scenarios.map((s, i) => `<button type="button" class="mx-dx-btn${i === 0 ? " on" : ""}" data-mx-dx="${i}" role="tab">${esc(s.dx)}</button>`).join("")}</div>` +
+    `<div class="mx-ones">${one}</div>` +
     `<div class="table-wrap matrix-wrap"><table class="study-table matrix-table" style="--cols:${scenarios.length}">` +
     `<thead><tr><th></th>${scenarios.map((s) => `<th>${esc(s.dx)}</th>`).join("")}</tr></thead>` +
-    `<tbody>${body}</tbody></table></div>`
+    `<tbody>${body}</tbody></table></div></div>`
   );
+}
+
+// 진단별 단서 비교를 하나씩 볼지 전체 표로 볼지 — 마지막 선택을 기억하고, 처음이면 휴대폰은 하나씩, 넓은 화면은 전체.
+const MX_KEY = "cpx-study-mx";
+function matrixMode() {
+  try {
+    const v = localStorage.getItem(MX_KEY);
+    if (v === "one" || v === "all") return v;
+  } catch {
+    /* 저장소를 못 쓰면 화면 폭으로 정한다 */
+  }
+  return window.matchMedia && window.matchMedia("(max-width: 640px)").matches ? "one" : "all";
+}
+function setMatrixMode(v) {
+  try {
+    localStorage.setItem(MX_KEY, v);
+  } catch {
+    /* 이번 화면에서만 적용 */
+  }
+}
+
+// 주제 화면 위의 바로가기 — 한 페이지가 길어 원하는 부분까지 한참 내려야 했다. 위에 붙어 따라온다(style.css .st-jump).
+function jumpNav(d) {
+  const g = d.guide || {};
+  const items = [
+    g.summary && ["st-summary", "한눈에"],
+    (g.script?.length && ["st-script", "면담 순서"]) || (g.flow?.length && ["st-flow", "면담 흐름"]),
+    g.compare?.rows?.length && ["st-compare", "비교표"],
+    g.pitfalls?.length && ["st-pitfalls", "놓치기 쉬운 것"],
+    ["st-matrix", "단서 비교"],
+    ["st-qa", "문답"],
+    ["st-rubric", "채점 기준"],
+  ].filter(Boolean);
+  return `<nav class="st-jump" aria-label="이 주제 바로가기">${items.map(([id, label]) => `<a href="#" data-jump="${id}">${esc(label)}</a>`).join("")}</nav>`;
 }
 
 // 사람이 쓴 면담 가이드 — 한눈에 보기, 단계별 질문 흐름, 감별 비교표, 놓치기 쉬운 것.
@@ -290,14 +339,15 @@ export function initStudyTab({ onStartInterview, canInterview, getRecords } = {}
       const dxList = `<ol class="study-dx">${d.scenarios.map((s) => `<li>${esc(s.dx)}</li>`).join("")}</ol>`;
       body.innerHTML =
         `<button type="button" class="btn ghost small st-back" id="stBack">← 주제 목록</button>` +
+        jumpNav(d) +
         (d.guide
           ? guideHtml(d.guide)
           : `<h3>감별 진단 ${d.scenarios.length}가지</h3>${dxList}<p class="hint">면담에서는 이 가운데 하나가 무작위로 나옵니다. 이 주제의 면담 흐름 가이드는 준비 중입니다.</p>`) +
-        `<h3>진단별 단서 비교</h3><p class="hint">면담에서 환자가 실제로 말하는 내용과 진찰 소견입니다. 표가 넓으면 옆으로 밀어 보세요.</p>` +
+        `<h3 id="st-matrix">진단별 단서 비교</h3><p class="hint">면담에서 환자가 실제로 말하는 내용과 진찰 소견입니다. 진단을 하나씩 골라 보거나, 전체 표로 견주어 볼 수 있습니다.</p>` +
         matrixHtml(d.scenarios) +
-        `<h3>진단별 문답</h3><p class="hint">진단마다 꼭 물어야 하는 질문과 환자의 답입니다.</p>` +
+        `<h3 id="st-qa">진단별 문답</h3><p class="hint">진단마다 꼭 물어야 하는 질문과 환자의 답입니다.</p>` +
         d.scenarios.map(scenarioCard).join("") +
-        `<details class="study-card study-rubric"><summary>채점 기준 보기${d.commonChecklist ? " (공통)" : ""}</summary>` +
+        `<details class="study-card study-rubric" id="st-rubric"><summary>채점 기준 보기${d.commonChecklist ? " (공통)" : ""}</summary>` +
         `<p class="hint">면담 뒤 평가에 쓰는 표입니다. 위의 흐름을 익힌 뒤 확인용으로 보세요.</p>` +
         `<div class="study-checklist md">${renderMarkdown(studentChecklist(d.checklist))}</div></details>`;
       if (canInterview && canInterview()) startBtn?.classList.remove("hidden");
@@ -326,6 +376,29 @@ export function initStudyTab({ onStartInterview, canInterview, getRecords } = {}
       select.value = card.dataset.key;
       show(card.dataset.key);
       window.scrollTo({ top: 0 });
+    }
+    // 바로가기 — 해시를 바꾸지 않고(#study 라우팅 유지) 그 부분으로 스크롤한다. 채점 기준은 펼쳐서 보여 준다.
+    const jump = e.target.closest("[data-jump]");
+    if (jump) {
+      e.preventDefault();
+      const el = $(jump.dataset.jump);
+      if (el) {
+        if (el.tagName === "DETAILS") el.open = true;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+    // 진단별 단서 비교 — 하나씩/전체 전환, 하나씩일 때 진단 고르기
+    const mode = e.target.closest("[data-mx-mode]");
+    if (mode) {
+      const box = mode.closest(".mx");
+      box.dataset.mode = mode.dataset.mxMode;
+      setMatrixMode(mode.dataset.mxMode);
+    }
+    const dx = e.target.closest("[data-mx-dx]");
+    if (dx) {
+      const box = dx.closest(".mx");
+      box.querySelectorAll(".mx-dx-btn").forEach((b) => b.classList.toggle("on", b === dx));
+      box.querySelectorAll(".mx-one").forEach((dl) => dl.classList.toggle("on", dl.dataset.i === dx.dataset.mxDx));
     }
     if (e.target.closest("#stBack")) {
       select.value = "";
