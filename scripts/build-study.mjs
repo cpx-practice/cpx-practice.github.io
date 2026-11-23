@@ -38,20 +38,29 @@ function personaSlots(c) {
   };
 }
 
-// 슬롯은 첫 번째 변주로 채운다 — 공부 자료는 "이런 환자"의 한 예시를 보여 주면 된다.
+// 슬롯은 면담마다 다르게 뽑힌다. 예전에는 첫 번째 변주로 채워 "12시간 전"처럼 한 값이 확정인 듯 보였다(2026-11-23).
+// 숫자 변주는 범위("12~24"), 짧은 말 변주는 "A / B", 긴 문장 변주는 첫 예시 뒤에 "(환자마다 다름)"을 붙인다.
 // 변주 값 안에 다시 인물 슬롯이 들어 있는 경우가 있어(예: deceased → "{{spouse}}") 남은 것이 없을 때까지 몇 번 채운다.
 function fill(text, vars) {
   let t = String(text ?? "");
   for (let i = 0; i < 3 && /\{\{\w+\}\}/.test(t); i++) t = fillOnce(t, vars);
   return t;
 }
+function slotText(v) {
+  if (v && typeof v === "object" && !Array.isArray(v)) return String(v.text ?? v.label ?? "…");
+  return String(v);
+}
 function fillOnce(text, vars) {
   return String(text ?? "").replace(/\{\{(\w+)\}\}/g, (_, k) => {
     const v = vars?.[k];
-    const first = Array.isArray(v) ? v[0] : v;
-    if (first == null) return "(환자마다 다름)";
-    if (typeof first === "object") return String(first.text ?? first.label ?? "…");
-    return String(first);
+    if (v == null) return "(환자마다 다름)";
+    if (!Array.isArray(v)) return slotText(v);
+    const vals = [...new Set(v.map(slotText))];
+    if (vals.length === 1) return vals[0];
+    const nums = vals.map(Number);
+    if (nums.every((n) => Number.isFinite(n))) return `${Math.min(...nums)}~${Math.max(...nums)}`;
+    if (vals.every((x) => x.length <= 12 && !/\{\{/.test(x))) return vals.join(" / ");
+    return `${vals[0]} (환자마다 다름)`;
   });
 }
 
@@ -72,30 +81,41 @@ const nonEmpty = (s) => s && !EMPTY.test(s.trim());
 // 진찰 소견 가운데 "이상이 있는 것"만 단서로 뽑는다. 정상·음성 소견은 감별에 덜 중요하고 양이 많다.
 const NORMAL = /^(정상|특이\s*소견\s*없|없음|없다|음성|만져지지 않는다|들리지 않는다)|(?:정상|없음|없다|없고|음성|특이소견 없음)\.?$/;
 const SKIP_FINDING = /동의|설명|전신 외관|신체계측/;
+// 확률 소견({p, detected, notDetected})은 환자에 따라 있을 수도 없을 수도 있다 — 있을 때 소견 뒤에 ± 를 붙인다.
 function findingText(v) {
-  if (v && typeof v === "object") return v.detected ?? v.text ?? "";
+  if (v && typeof v === "object") return v.detected != null ? `${v.detected} ±` : v.text ?? "";
   return v;
 }
 
+// 활력징후는 카드에 범위로 있고 면담마다 그 안에서 뽑힌다 — 가운데값 하나("약 109회/분") 대신 범위를 보여 준다.
 function vitalClues(v) {
   if (!v) return [];
   const mid = (r) => (Array.isArray(r) ? (Number(r[0]) + Number(r[1])) / 2 : Number(r));
+  const span = (r, d = 0) => {
+    const f = (n) => (d ? Math.round(Number(n) * 10) / 10 : Math.round(Number(n)));
+    return Array.isArray(r) && Number(r[0]) !== Number(r[1]) ? `${f(r[0])}~${f(r[1])}` : `${f(Array.isArray(r) ? r[0] : r)}`;
+  };
+  // 범위 전체가 기준을 넘으면 "빈맥", 일부만 넘으면(정상에 걸치면) "빈맥 가능"으로 쓴다.
+  const lo = (r) => Number(Array.isArray(r) ? Math.min(...r.map(Number)) : r);
+  const hi = (r) => Number(Array.isArray(r) ? Math.max(...r.map(Number)) : r);
   const out = [];
+  const add = (name, all, text) => out.push(`${name}${all ? "" : " 가능"} (${text})`);
   const t = mid(v.temp), sbp = mid(v.sbp), hr = mid(v.hr), rr = mid(v.rr), spo2 = mid(v.spo2);
-  if (t >= 37.8) out.push(`발열 (체온 약 ${Math.round(t * 10) / 10}℃)`);
-  if (sbp && sbp < 100) out.push(`저혈압 (수축기 약 ${Math.round(sbp)} mmHg)`);
-  if (sbp >= 150) out.push(`혈압 상승 (수축기 약 ${Math.round(sbp)} mmHg)`);
-  if (hr > 100) out.push(`빈맥 (맥박 약 ${Math.round(hr)}회/분)`);
-  if (hr && hr < 55) out.push(`서맥 (맥박 약 ${Math.round(hr)}회/분)`);
-  if (rr > 22) out.push(`빈호흡 (호흡 약 ${Math.round(rr)}회/분)`);
-  if (spo2 && spo2 < 94) out.push(`산소포화도 저하 (약 ${Math.round(spo2)}%)`);
+  if (t >= 37.8) add("발열", lo(v.temp) >= 37.8, `체온 ${span(v.temp, 1)}℃`);
+  if (sbp && sbp < 100) add("저혈압", hi(v.sbp) < 100, `수축기 ${span(v.sbp)} mmHg`);
+  if (sbp >= 150) add("혈압 상승", lo(v.sbp) >= 140, `수축기 ${span(v.sbp)} mmHg`);
+  if (hr > 100) add("빈맥", lo(v.hr) > 100, `맥박 ${span(v.hr)}회/분`);
+  if (hr && hr < 55) add("서맥", hi(v.hr) < 60, `맥박 ${span(v.hr)}회/분`);
+  if (rr > 22) add("빈호흡", lo(v.rr) > 20, `호흡 ${span(v.rr)}회/분`);
+  if (spo2 && spo2 < 94) add("산소포화도 저하", hi(v.spo2) < 95, `${span(v.spo2)}%`);
   return out;
 }
 
 function who(c) {
   const [lo, hi] = c?.ageRange || [];
   const sex = c?.sex === "male" ? "남성" : c?.sex === "female" ? "여성" : "남녀";
-  return lo != null ? `${lo}~${hi}세 ${sex}` : sex;
+  if (lo == null) return sex;
+  return lo === hi ? `${lo}세 ${sex}` : `${lo}~${hi}세 ${sex}`;
 }
 
 const HPI_LABEL = { onset: "발병", character: "양상", location: "위치", radiation: "방사", aggravating: "악화 요인", relieving: "완화 요인", course: "경과", timing: "시간 양상" };
