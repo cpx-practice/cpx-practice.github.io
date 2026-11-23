@@ -11,11 +11,15 @@ const band = (v) => (v >= 90 ? 4 : v >= 80 ? 3 : v >= 70 ? 2 : 1);
 const chip = (v) => (typeof v === "number" ? `<span class="score-chip b${band(v)}">${v}</span>` : "");
 const EXAM_KEY = "cpx-exam-date";
 
-// 면담 탭의 AI 설정(interview.js CONFIG_STORAGE). 무료(키 없이)가 아니면 본인 키를 쓰는 중이다.
+// 면담 탭의 AI 설정(interview.js CONFIG_STORAGE). 무료(키 없이)가 아니거나, 저장해 둔 키가 하나라도 있으면
+// 이미 본인 키가 있는 사람이다 — 키를 넣어 두고 잠시 무료로 돌아간 사람에게도 안내를 띄우지 않는다.
 function usesOwnKey() {
   try {
+    if ((localStorage.getItem("cpx-gemini-key") || "").trim()) return true; // 예전 Gemini 전용 시절 저장 위치
     const c = JSON.parse(localStorage.getItem("cpx-ai-config") || "null");
-    return !!(c && c.provider && c.provider !== "free");
+    if (!c) return false;
+    const hasKey = Object.values(c.keys || {}).some((k) => typeof k === "string" && k.trim().length > 0);
+    return hasKey || !!(c.provider && c.provider !== "free");
   } catch {
     return false;
   }
@@ -234,7 +238,15 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     else if (act === "own-key") {
       // 면담 탭의 "AI 변경"(키 입력 화면)을 연다.
       goto && goto("interview");
-      setTimeout(() => document.getElementById("btnChangeKey")?.click(), 0);
+      setTimeout(() => {
+        document.getElementById("btnChangeKey")?.click();
+        // "키 넣기"로 왔으면 무료(키 없이) 대신 Google Gemini 를 골라 둔다 — 키 입력 칸과 발급 안내가 바로 보이게.
+        const sel = document.getElementById("ivProvider");
+        if (sel && [...sel.options].some((o) => o.value === "gemini")) {
+          sel.value = "gemini";
+          sel.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }, 0);
     }
     else if (act === "edit-exam") {
       body.querySelector(".dday-edit")?.classList.remove("hidden");
