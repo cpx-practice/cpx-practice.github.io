@@ -56,8 +56,13 @@ function guideHtml(g) {
   const sm = g.summary || {};
   const summary =
     `<div class="guide-summary">` +
-    (sm.emergency?.length ? `<p><span class="tag tag-danger">먼저 가릴 응급</span> ${sm.emergency.map(esc).join(" · ")}</p>` : "") +
-    (sm.common?.length ? `<p><span class="tag">흔한 원인</span> ${sm.common.map(esc).join(" · ")}</p>` : "") +
+    // 항목 안에도 "고령·흡연"처럼 가운뎃점이 있어, " · "로 이어 붙이면 어디서 끊기는지 읽기 어려웠다 — 응급은 한 줄씩, 흔한 원인은 칩으로.
+    (sm.emergency?.length
+      ? `<div class="guide-row"><span class="tag tag-danger">먼저 가릴 응급</span><ul class="guide-emergency">${sm.emergency.map((x) => `<li>${esc(x)}</li>`).join("")}</ul></div>`
+      : "") +
+    (sm.common?.length
+      ? `<div class="guide-row"><span class="tag">흔한 원인</span><span class="guide-chips">${sm.common.map((x) => `<span class="guide-chip">${esc(x)}</span>`).join("")}</span></div>`
+      : "") +
     (sm.strategy ? `<p class="guide-strategy">${esc(sm.strategy)}</p>` : "") +
     `</div>`;
   // 면담 흐름 — 한 단계가 여러 줄(답에 따른 갈래)을 차지하는 표. 단계·질문 칸은 rowspan 으로 묶는다.
@@ -115,7 +120,8 @@ function guideHtml(g) {
   const c = g.compare;
   const compare = c && c.rows?.length
     ? `<div class="table-wrap"><table class="guide-compare"><thead><tr><th>진단</th>${c.cols.map((x) => `<th>${esc(x)}</th>`).join("")}</tr></thead><tbody>` +
-      c.rows.map((r) => `<tr><th>${esc(r.dx)}</th>${r.cells.map((x) => `<td>${esc(x)}</td>`).join("")}</tr>`).join("") +
+      // data-label — 좁은 화면에서 표를 진단별 카드로 접을 때 칸 이름으로 쓴다 (style.css .guide-compare).
+      c.rows.map((r) => `<tr><th>${esc(r.dx)}</th>${r.cells.map((x, i) => `<td data-label="${esc(c.cols[i] || "")}">${esc(x)}</td>`).join("")}</tr>`).join("") +
       `</tbody></table></div>` +
       // 카드에서 확률로 나오는 소견(면담마다 있을 수도 없을 수도)은 표에 ± 를 붙여 두었다.
       (c.rows.some((r) => r.cells.some((x) => String(x).includes("±")))

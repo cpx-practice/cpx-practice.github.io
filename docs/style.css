@@ -1648,7 +1648,23 @@ html { scrollbar-gutter: stable; }
 .guide-compare { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .guide-compare th, .guide-compare td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
 .guide-compare thead th { background: var(--inset); }
-.guide-compare tbody th { white-space: nowrap; }
+.guide-compare tbody th { white-space: normal; min-width: 9em; }
+/* 휴대폰: 4~5칸 표가 375px 안에 눌려 "발병" 칸이 한 글자씩 세로로 쌓였다 — 진단별 카드로 접는다. */
+@media (max-width: 640px) {
+  .guide-compare thead { display: none; }
+  .guide-compare, .guide-compare tbody, .guide-compare tr, .guide-compare th, .guide-compare td { display: block; width: auto; }
+  .guide-compare tr { border: 1px solid var(--border); margin-bottom: 10px; }
+  .guide-compare tbody th { background: var(--inset); border: 0; }
+  .guide-compare td { border: 0; border-top: 1px solid var(--border); }
+  .guide-compare td::before { content: attr(data-label); display: block; font-size: 0.76rem; font-weight: 600; color: var(--muted); margin-bottom: 2px; }
+  .guide-row { flex-direction: column; gap: 4px; }
+}
+.guide-row { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+.guide-row > .tag { flex: 0 0 auto; margin-top: 2px; }
+.guide-emergency { margin: 0; padding-left: 1.1em; }
+.guide-emergency li { margin: 2px 0; }
+.guide-chips { display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.guide-chip { border: 1px solid var(--border); border-radius: 999px; padding: 1px 9px; font-size: 0.88rem; background: var(--inset); }
 .guide-pitfalls li { margin: 4px 0; }
 .study-rubric { margin-top: 18px; }
 @media (max-width: 560px) {
