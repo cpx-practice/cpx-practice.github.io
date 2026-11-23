@@ -204,3 +204,41 @@ test("도입을 대화 확인으로 올렸으면 '자기소개·환자 확인을
   // 조정 내역 줄(자기소개 낱말 포함)은 그대로 남는다
   assert.match(out, /도입: X → O/);
 });
+
+import { redFlagHits } from "../docs/scoring.js";
+const ASTHMA = ["말을 이어서 할 수 있나", "흡입기를 얼마나 자주 쓰나", "밤에 깨나", "전에 입원하거나 응급실 간 적", "가래 색", "유발 요인", "가만히 있어도 숨이 찬가, 어느 정도 걸으면 힘든가"];
+const GENERIC = ["안녕하세요, 저는 의사 김민수입니다.", "환자분 성함과 나이 확인 부탁드립니다.", "어디가 불편해서 오셨어요?", "언제부터 그러셨어요?",
+  "어떻게 하면 더 심해지세요?", "같이 나타나는 다른 증상은 없으세요?", "열은 나세요?", "최근에 체중이 줄었나요?", "밤에 땀을 흘리시나요?",
+  "수술받거나 입원하신 적 있으세요?", "지금 드시는 약 있으세요?", "정리해 보면, \"숨이 차고 가슴이 답답해요.\" 하셔서 오셨죠?", "진찰해도 괜찮을까요?"];
+
+test("Red Flag: 일반 문진만 하면 주제 위험 신호 질문 0개 — O 를 △ 로", () => {
+  assert.equal(redFlagHits(ASTHMA, GENERIC), 0); // "입원"·"밤에"는 일반 문진 낱말, 따옴표 안 환자 말은 세지 않는다
+  assert.equal(redFlagHits(ASTHMA, [...GENERIC, "가만히 있어도 숨이 차세요?"]), 1);
+  assert.equal(redFlagHits(ASTHMA, ["흡입기는 하루에 몇 번 쓰세요?", "가래는 무슨 색이에요?"]), 2);
+
+  const record = { topic: "호흡곤란", marks: allO() };
+  const changes = auditMarks(record, [...GENERIC, "진찰"].map(u), { redFlagQs: ASTHMA });
+  assert.equal(record.marks.redflag, "△");
+  assert.ok(changes.some((c) => c.key === "redflag" && /위험 신호 질문/.test(c.reason)));
+
+  const ok = { topic: "호흡곤란", marks: allO() };
+  auditMarks(ok, [...GENERIC, "숨이 차서 말을 이어서 하기 힘드세요?", "최근에 체중 변화는요?", "진찰"].map(u), { redFlagQs: ASTHMA });
+  assert.equal(ok.marks.redflag, "O");
+  const none = { topic: "호흡곤란", marks: allO() };
+  auditMarks(none, [...GENERIC, "진찰"].map(u)); // 목록이 없으면 이 확인은 건너뛴다
+  assert.equal(none.marks.redflag, "O");
+});
+
+test("같은 항목을 두 번 낮추면 조정 내역은 한 줄 (O → X)", () => {
+  const record = { topic: "복통", marks: allO() };
+  const changes = auditMarks(record, ["안녕하세요.", "어디가 불편해서 오셨어요?", "언제부터요?", "진찰"].map(u));
+  const intro = changes.filter((c) => c.key === "intro");
+  assert.equal(intro.length, 1);
+  assert.deepEqual([intro[0].from, intro[0].to], ["O", "X"]);
+});
+
+test("총점/등급 지시문 문구도 계산한 총점으로 바꾼다", () => {
+  const out = reconcileTotal("잘한 점\n\n총점/등급: 70 미만 미흡\n\n개선점", { total: 13, grade: "미흡" });
+  assert.match(out, /^총점: 13점 \(미흡\)$/m);
+  assert.doesNotMatch(out, /70 미만/);
+});

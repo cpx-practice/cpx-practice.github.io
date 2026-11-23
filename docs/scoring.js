@@ -140,11 +140,49 @@ const NO_SYSTEMIC_TOPICS = new Set([
   "성장 지연", "발달 지연", "나쁜 소식 전하기",
 ]);
 
+// 케이스 고유 위험 신호 질문 — 카드의 Red flag 질문(공부 자료 scenarios[].flags[].q)에서 핵심 낱말을 뽑아,
+// 학생이 그중 하나라도 물었는지 본다. 모든 주제에서 묻는 일반 문진(OPQRST·과거력·전신증상)에 들어 있는 낱말은 뺀다 —
+// 그 질문만으로 위험 신호를 물었다고 볼 수 없어서다 (2026-11-23 Gemma 가 천식 악화 환자에게 일반 문진만 한 면담을
+// Red Flag O·100점으로 채점했다. 말을 이어 할 수 있는지·가만히 있어도 숨찬지 같은 질문은 하나도 없었다).
+const GENERIC_QS = [
+  "언제부터 그러셨어요?", "어떤 느낌으로 아프세요?", "정확히 어디가 제일 불편하세요?", "다른 곳으로 퍼지지는 않나요?",
+  "어떻게 하면 더 심해지세요?", "어떻게 하면 좀 나아지세요?", "10점 만점이면 몇 점 정도로 불편하세요?", "처음보다 점점 심해지고 있나요?",
+  "예전에도 이런 적이 있으셨어요?", "같이 나타나는 다른 증상은 없으세요?", "혹시 짚이는 원인이 있으세요?", "열은 나세요?",
+  "최근에 체중이 줄었나요?", "밤에 땀을 흘리시나요?", "예전에 앓으셨던 병이 있으세요?", "수술받거나 입원하신 적 있으세요?",
+  "지금 드시는 약 있으세요?", "약 알레르기 있으세요?", "가족 중에 앓고 계신 병 있으세요?", "술은 얼마나 드세요?", "담배는 피우세요?",
+  "하시는 일이 뭐예요?", "가장 걱정되시는 게 뭐예요?", "오늘 어떤 도움을 받고 싶으세요?", "얼마나 자주 그러세요?", "한 번 그러면 얼마나 가요?",
+  // 저장된 기록 127건에 돌려 보니 아래 말이 위험 신호 질문으로 잘못 잡혔다 (진찰 동의의 "괜찮을까요", "전에도", "때문" 등).
+  "진찰해도 괜찮을까요?", "그 전에는 괜찮으셨어요?", "왜 그런 것 같으세요? 무엇 때문인 것 같아요?", "어떻게 생각하세요?",
+  "같은 증상이 또 있었나요?", "아픈 곳이 어디예요? 통증은 어떠세요?", "지금은 어느 정도예요?",
+];
+const TAIL = /(이나|에서|으로|하거나|거나|하나|한가|찬가|하게|하면|으면|는지|은지|인지|는|은|이|가|을|를|에|도|나|요|고|면|게|의|와|과)$/;
+function stemsOf(text) {
+  const out = new Set();
+  for (const w of String(text || "").replace(/\([^)]*\)/g, " ").split(/[^가-힣]+/)) {
+    const t = w.replace(TAIL, "");
+    if (t.length >= 2) out.add(t.slice(0, 2));
+  }
+  return out;
+}
+const GENERIC_STEMS = new Set(GENERIC_QS.flatMap((q) => [...stemsOf(q)]));
+
+/** 카드 Red flag 질문들 중 학생이 물은 것의 수. 학생 말에서 따옴표로 옮긴 환자 말("…")은 뺀다. */
+export function redFlagHits(flagQs, studentTurns) {
+  const said = studentTurns.map((t) => String(t).replace(/["“”'‘’][^"“”'‘’]*["“”'‘’]/g, " ")).join(" ");
+  let hits = 0;
+  for (const q of new Set(flagQs || [])) {
+    const stems = [...stemsOf(q)].filter((x) => !GENERIC_STEMS.has(x));
+    if (stems.some((x) => said.includes(x))) hits++;
+  }
+  return hits;
+}
+
 /**
  * history: [{role:"user"|"assistant", text}] — 평가 직전까지의 대화.
+ * opts.redFlagQs: 이 주제 카드들의 Red flag 질문 목록 (없으면 이 확인은 건너뛴다).
  * record.marks 를 제자리에서 낮추고, 바꾼 내역 [{label, from, to, reason}] 을 돌려준다.
  */
-export function auditMarks(record, history) {
+export function auditMarks(record, history, opts = {}) {
   const marks = record && record.marks;
   if (!marks || !Array.isArray(history)) return [];
   const turns = history.filter((h) => h.role === "user").map((h) => String(h.text || ""));
@@ -152,20 +190,26 @@ export function auditMarks(record, history) {
   const peStart = turns.findIndex((t) => /^\s*진찰\s*$/.test(t) || PAREN_EXAM.test(t));
   const any = (re, list = said) => list.some((t) => re.test(t));
   const changes = [];
+  // 같은 항목을 두 번 고치면(예: 도입 O→△ 뒤 △→X) 한 줄로 합친다 — "O → X (마지막 이유)".
+  const record_ = (key, from, to, reason) => {
+    const label = SECTIONS.flatMap((s) => s.items).find(([k]) => k === key)?.[1] || key;
+    const prev = changes.find((c) => c.key === key);
+    if (!prev) return changes.push({ key, label, from, to, reason });
+    if (prev.from === to) changes.splice(changes.indexOf(prev), 1);
+    else Object.assign(prev, { to, reason });
+  };
   const cap = (key, to, reason) => {
     const from = normMark(marks[key]);
     if (!from || from === "N" || ORDER[from] <= ORDER[to]) return;
     marks[key] = to;
-    const label = SECTIONS.flatMap((s) => s.items).find(([k]) => k === key)?.[1] || key;
-    changes.push({ key, label, from, to, reason });
+    record_(key, from, to, reason);
   };
   // 낮추기만 하는 cap 과 반대로, 대화에서 확실히 확인된 항목을 그 아래로 매긴 경우만 올린다 (지금은 도입만).
   const floor = (key, to, reason) => {
     const from = normMark(marks[key]);
     if (!from || from === "N" || ORDER[from] >= ORDER[to]) return;
     marks[key] = to;
-    const label = SECTIONS.flatMap((s) => s.items).find(([k]) => k === key)?.[1] || key;
-    changes.push({ key, label, from, to, reason });
+    record_(key, from, to, reason);
   };
 
   const early = said.slice(0, 4);
@@ -200,6 +244,10 @@ export function auditMarks(record, history) {
   // 전신증상(체중감소·발열·야간발한) 중 체중은 거의 모든 케이스에서 물어야 하는데 모델이 묻지 않아도 O 를 줬다.
   if (!NO_SYSTEMIC_TOPICS.has(String(record.topic || "").trim()) && !any(CHECKS.weight)) {
     cap("redflag", "△", "전신증상 중 체중 변화 질문 없음");
+  }
+  if (Array.isArray(opts.redFlagQs) && opts.redFlagQs.length) {
+    const before = peStart >= 0 ? turns.slice(0, peStart) : turns;
+    if (!redFlagHits(opts.redFlagQs, before)) cap("redflag", "△", "이 주제의 위험 신호 질문(일반 문진 외) 없음");
   }
   if (!any(CHECKS.summary)) cap("summary", "X", "환자 말을 정리해 확인하는 발화 없음");
   // 진찰 중의 "아프면 말씀해 주세요"는 안전망 안내가 아니다 — 진찰 신호부터 마지막 진찰 동작까지는 뺀다.
@@ -255,7 +303,8 @@ export function reconcileTotal(shown, scored) {
   if (!scored || typeof scored.total !== "number" || !scored.grade) return String(shown || "");
   // 공백은 같은 줄 안(스페이스·탭)만 — \s 를 쓰면 줄바꿈까지 먹어 앞의 빈 줄이 사라진다.
   // "총점: 85점 (양호)", "총점 85/100", 숫자 없이 "총점: 우수" 만 적힌 줄까지. 콜론이나 숫자가 바로 붙은 줄만 — "총점을 높이려면…" 같은 문장은 건드리지 않는다.
-  const re = /^([ \t>]*(?:[-*•][ \t]+|\d+[.)][ \t]+)?)(?:\*\*)?[ \t]*총점[ \t]*(?:[:：][^\n]*|\d[^\n]*)$/m;
+  // "총점/등급: 70 미만 미흡"처럼 지시문 문구를 그대로 옮긴 줄도 바꾼다 (2026-11-23 Gemma 채점).
+  const re = /^([ \t>]*(?:[-*•][ \t]+|\d+[.)][ \t]+)?)(?:\*\*)?[ \t]*총점(?:[ \t]*\/[ \t]*등급)?[ \t]*(?:[:：][^\n]*|\d[^\n]*)$/m;
   return String(shown || "").replace(re, (_m, lead) => `${lead}총점: ${scored.total}점 (${scored.grade})`);
 }
 

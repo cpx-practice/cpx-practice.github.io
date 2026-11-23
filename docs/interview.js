@@ -104,6 +104,28 @@ export function transcriptReply(text) {
   return out.join("\n") || "환자: ";
 }
 
+// 주제 카드들의 Red flag 질문 — 채점 확인(auditMarks)이 학생이 이 주제의 위험 신호를 하나라도 물었는지 볼 때 쓴다.
+// 공부 자료(study/*.json)에 카드에서 뽑은 질문이 있다. 못 불러오면 그 확인만 건너뛴다.
+const redFlagCache = new Map();
+async function redFlagQuestions(topic) {
+  const name = String(topic || "").trim();
+  if (!name) return [];
+  if (redFlagCache.has(name)) return redFlagCache.get(name);
+  let qs = [];
+  try {
+    const idx = await (await fetch("study/index.json")).json();
+    const t = (idx.topics || []).find((x) => x.name === name);
+    if (t) {
+      const d = await (await fetch(`study/${t.key}.json`)).json();
+      qs = (d.scenarios || []).flatMap((s) => (s.flags || []).map((f) => f.q)).filter(Boolean);
+    }
+  } catch (err) {
+    console.warn("위험 신호 질문 목록을 불러오지 못함", err);
+  }
+  redFlagCache.set(name, qs);
+  return qs;
+}
+
 export function initInterviewTab({ db, auth, endpoint, onStudy }) {
   const keyPanel = $("ivKeyPanel");
   const startPanel = $("ivStartPanel");
@@ -1196,7 +1218,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
       let shown = record ? stripRecordBlock(reply) : reply;
       if (record) {
         // AI 가 준 O 중 대화에 근거가 없는 것은 낮춘다 (scoring.js auditMarks). 바꾼 내역은 카드와 기록에 남긴다.
-        const changes = auditMarks(record, history.slice(0, -1));
+        const changes = auditMarks(record, history.slice(0, -1), { redFlagQs: await redFlagQuestions(topicLabel || record.topic) });
         shown = reconcileNarrative(shown, record, history.slice(0, -1), changes);
         if (changes.length) {
           shown = applyMarkChanges(shown, changes); // 표의 평가도 조정 후 값으로 (아래 목록은 이유 설명으로 남긴다)
