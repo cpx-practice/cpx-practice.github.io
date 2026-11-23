@@ -1107,6 +1107,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
       // 학생이 직접 주제를 골랐어도 화면엔 안 보여준다 — 평가 후 카드에서만 공개해서
       // 무작위로 뽑았을 때와 경험이 갈리지 않게 한다.
       topicLabel = data.topic || "무작위";
+      voice.setSpeaker(data.speaker); // 읽어 주기 목소리를 환자(또는 대신 답하는 보호자)의 성별·나이에 맞춘다
       history = [];
       sessionId = crypto.randomUUID();
       ivInput.value = ""; // 이전 면담의 남은 글자가 첫 메시지에 섞이지 않게
