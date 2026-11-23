@@ -56,3 +56,14 @@ test("chooseVoice: 노인은 조금 낮고 느리게, 정보가 없으면 기본
   assert.deepEqual([none.voice, none.pitch, none.rate], [heami, 1, 1]);
   assert.equal(chooseVoice([], { sex: "male" }), null);
 });
+
+import { pickNeuralVoice, neuralSpeed, NEURAL_VOICES } from "../docs/neuralVoice.js";
+
+test("고품질 목소리: 성별에 맞는 5개 중 하나, 노인은 느리게", () => {
+  assert.equal(pickNeuralVoice({ sex: "male" }, () => 0), "M1");
+  assert.equal(pickNeuralVoice({ sex: "male" }, () => 0.99), "M5");
+  assert.equal(pickNeuralVoice({ sex: "female" }, () => 0.5), "F3");
+  assert.ok([...NEURAL_VOICES.female, ...NEURAL_VOICES.male].includes(pickNeuralVoice(null)));
+  assert.equal(neuralSpeed({ age: 40 }, () => 0.5), 1.05);
+  assert.equal(neuralSpeed({ age: 78 }, () => 0.5), 0.92);
+});

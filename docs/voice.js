@@ -4,7 +4,32 @@
 //   음성 합성: 대부분의 브라우저. 한국어 목소리가 없는 기기에서는 켜기 칸을 숨긴다.
 // 인식 결과는 바로 보내지 않고 입력창에 넣는다 — 의학 용어를 잘못 받아 적을 수 있어 학생이 확인하고 보낸다.
 
+import { neuralState, hasWebGPU, neuralCached, loadNeural, synthNeural, pickNeuralVoice, neuralSpeed, NEURAL_MB } from "./neuralVoice.js";
+
 const TTS_KEY = "cpx.iv.tts";
+const SLOW_KEY = "cpx.iv.tts.slow"; // 이 기기에서 고품질 목소리가 너무 느렸다 — 기기 목소리로 읽는다
+// 아주 짧은 무음 — 아이폰은 사용자가 누른 순간에 한 번 재생해 둬야 나중에 소리를 낼 수 있다.
+const SILENT_WAV = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+
+function readFlag(key) {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeFlag(key, on) {
+  try {
+    localStorage.setItem(key, on ? "1" : "0");
+  } catch {
+    /* 무시 */
+  }
+}
+// 휴대폰 데이터로 연결돼 있거나 데이터 절약을 켰으면 263MB 를 알아서 받지 않는다 (안드로이드 크롬만 알려 준다).
+function metered() {
+  const c = navigator.connection;
+  return !!(c && (c.saveData || c.type === "cellular"));
+}
 
 function loadPref() {
   try {
@@ -77,7 +102,7 @@ export function chooseVoice(voices, speaker, rand = Math.random) {
   return { voice, pitch: clamp(pitch, 0.5, 1.6), rate: clamp(rate, 0.8, 1.15) };
 }
 
-export function initVoice({ input, micButton, ttsToggle, ttsWrap, onStatus }) {
+export function initVoice({ input, micButton, ttsToggle, ttsWrap, ttsNote, onStatus }) {
   const status = (msg) => onStatus && onStatus(msg);
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   const synth = window.speechSynthesis;
@@ -91,8 +116,52 @@ export function initVoice({ input, micButton, ttsToggle, ttsWrap, onStatus }) {
     voices = synth ? synth.getVoices().filter((v) => /^ko(-|_|$)/i.test(v.lang)) : [];
     // 면담 중에 목록이 다시 채워져도 고른 목소리는 그대로 둔다 (중간에 목소리가 바뀌지 않게).
     if (!tone || !voices.includes(tone.voice)) tone = voices.length ? chooseVoice(voices, speaker) : null;
-    if (ttsWrap) ttsWrap.classList.toggle("hidden", !voices.length);
+    showWrap();
   }
+  let gpuOk = false; // 고품질 목소리를 쓸 수 있는 기기인지 (아래에서 비동기로 확인)
+  function showWrap() {
+    if (ttsWrap) ttsWrap.classList.toggle("hidden", !voices.length && !gpuOk);
+  }
+
+  // ---------- 고품질 목소리 (Supertonic, neuralVoice.js) ----------
+  let neuralVoice = null; // 이번 면담의 목소리 id (F1~M5)
+  let neuralRate = 1.05;
+  let slowHits = 0;
+  let audio = null;
+  let unlocked = false;
+  let speakSeq = 0; // 새로 말하거나 멈추면 늘린다 — 늦게 만들어진 소리가 끼어들지 않게
+  function note(text, html) {
+    if (!ttsNote) return;
+    if (html) ttsNote.innerHTML = html;
+    else ttsNote.textContent = text || "";
+    ttsNote.classList.toggle("hidden", !text && !html);
+  }
+  function neuralUsable() {
+    return gpuOk && !readFlag(SLOW_KEY);
+  }
+  function startNeural() {
+    note(`고품질 목소리 받는 중 0%`);
+    loadNeural((f) => note(`고품질 목소리 받는 중 ${Math.round(f * 100)}%`)).then((ok) => {
+      if (ok) note("AI 합성 음성");
+      else note("고품질 목소리를 받지 못해 기본 목소리로 읽습니다");
+    });
+  }
+  async function maybeNeural() {
+    if (!ttsOn || !neuralUsable()) return;
+    const st = neuralState();
+    if (st === "ready") return note("AI 합성 음성");
+    if (st === "loading") return;
+    if (!metered() || (await neuralCached())) return startNeural();
+    note("", `<button type="button" class="link-btn" data-tts-get>고품질 목소리 받기 (${NEURAL_MB}MB)</button>`);
+  }
+  ttsNote?.addEventListener("click", (e) => {
+    if (e.target.closest("[data-tts-get]")) startNeural();
+  });
+  hasWebGPU().then((ok) => {
+    gpuOk = ok;
+    showWrap();
+    maybeNeural();
+  });
   if (synth && ttsToggle) {
     refreshVoices();
     // 크롬은 목소리 목록을 나중에 채운다.
@@ -102,24 +171,78 @@ export function initVoice({ input, micButton, ttsToggle, ttsWrap, onStatus }) {
     ttsToggle.addEventListener("change", () => {
       ttsOn = ttsToggle.checked;
       savePref(ttsOn);
-      if (!ttsOn) stopSpeaking();
+      if (!ttsOn) {
+        stopSpeaking();
+        note("");
+      } else {
+        unlockAudio();
+        maybeNeural();
+      }
     });
   } else if (ttsWrap) {
     ttsWrap.classList.add("hidden");
   }
 
+  function unlockAudio() {
+    if (unlocked || !gpuOk) return;
+    unlocked = true; // 한 번이면 된다
+    try {
+      audio = audio || new Audio();
+      audio.src = SILENT_WAV;
+      audio.play().catch(() => (unlocked = false));
+    } catch {
+      /* 무시 */
+    }
+  }
   function stopSpeaking() {
+    speakSeq++;
     try {
       synth?.cancel();
     } catch {
       /* 무시 */
     }
+    try {
+      audio?.pause();
+    } catch {
+      /* 무시 */
+    }
+  }
+  let synthChain = Promise.resolve(); // 모델은 한 번에 한 문장만 — 겹쳐 돌리면 뒤의 것이 실패한다
+  async function speakNeural(t, seq) {
+    const prev = synthChain;
+    let release;
+    synthChain = new Promise((r) => (release = r));
+    try {
+      await prev;
+      if (seq !== speakSeq) return; // 기다리는 사이 다음 말이 왔다 — 만들 필요 없음
+      const r = await synthNeural(t, neuralVoice || pickNeuralVoice(speaker), neuralRate);
+      // 답 하나에 몇 초씩 걸리는 기기면 두 번째부터는 기기 목소리로 읽는다.
+      if (r.genSec > 2.5 && r.genSec > r.audioSec * 0.6 && ++slowHits >= 2) {
+        writeFlag(SLOW_KEY, true);
+        note("이 기기에서는 고품질 목소리가 느려 기본 목소리로 읽습니다");
+      }
+      if (seq !== speakSeq) return; // 그사이 학생이 다음 말을 보냈다
+      audio = audio || new Audio();
+      if (audio.src.startsWith("blob:")) URL.revokeObjectURL(audio.src);
+      audio.src = URL.createObjectURL(r.blob);
+      await audio.play();
+    } catch (err) {
+      console.warn("고품질 목소리 재생 실패", err);
+      if (seq === speakSeq) speakDevice(t);
+    } finally {
+      release();
+    }
   }
   function speak(text) {
-    if (!ttsOn || !synth || !tone) return;
+    if (!ttsOn) return;
     const t = speakableText(text);
     if (!t) return;
     stopSpeaking();
+    if (neuralUsable() && neuralState() === "ready") return void speakNeural(t, speakSeq);
+    speakDevice(t);
+  }
+  function speakDevice(t) {
+    if (!synth || !tone) return;
     const u = new SpeechSynthesisUtterance(t);
     u.voice = tone.voice;
     u.lang = tone.voice.lang;
@@ -194,10 +317,13 @@ export function initVoice({ input, micButton, ttsToggle, ttsWrap, onStatus }) {
     setSpeaker(next) {
       speaker = next && (next.sex === "male" || next.sex === "female") ? next : null;
       tone = voices.length ? chooseVoice(voices, speaker) : null;
+      neuralVoice = pickNeuralVoice(speaker);
+      neuralRate = neuralSpeed(speaker);
     },
     // 학생이 말을 보내거나 면담을 나갈 때 — 읽던 것과 듣던 것을 모두 멈춘다.
     stop() {
       stopSpeaking();
+      if (ttsOn) unlockAudio(); // 보내기를 누른 순간 — 아이폰에서 이어질 환자 목소리를 낼 수 있게
       if (listening) stopListening();
     },
   };

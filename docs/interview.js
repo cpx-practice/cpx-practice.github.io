@@ -121,6 +121,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     micButton: $("btnIvMic"),
     ttsToggle: $("ivTts"),
     ttsWrap: $("ivTtsWrap"),
+    ttsNote: $("ivTtsNote"), // 고품질 목소리 받는 중·"AI 합성 음성" 표시
     onStatus: (msg) => {
       ivStatus.textContent = msg;
     },
