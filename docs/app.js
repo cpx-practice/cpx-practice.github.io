@@ -185,6 +185,7 @@ const homeTab = initHomeTab({
   },
   goto: (view) => activateView(view),
   endpoint: INTERVIEW_ENDPOINT,
+  getToken: async () => (auth.currentUser ? auth.currentUser.getIdToken() : null),
 });
 
 // 기록 화면의 "목록 | 분석" 전환

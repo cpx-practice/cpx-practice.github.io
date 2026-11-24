@@ -19,8 +19,8 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/f
 import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
-import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal } from "./scoring.js";
-import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges, reopenText } from "./export.js";
+import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal, cleanMarks } from "./scoring.js";
+import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges, reopenText, freeCountText } from "./export.js";
 import { claimConfig, mergeCloud, cloudPayload } from "./aikeys.js";
 import { initVoice } from "./voice.js";
 
@@ -260,11 +260,12 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
   async function refreshFreeStatus() {
     const el = () => $("ivFreeStatus");
     try {
-      const st = await callWorker("/interview/ai/status");
+      // 로그인돼 있으면 토큰을 붙여 "오늘 3/5회 남음"을 받는다. 토큰을 못 붙이면 공용 정보만 받는다.
+      const st = await callWorker("/interview/ai/status", undefined, { withAuth: !!auth.currentUser });
       if (!el()) return;
       if (!st.enabled) el().textContent = "지금은 이 방식을 쓸 수 없습니다. 다른 AI를 고르거나 잠시 후 다시 확인해 주세요.";
       else if (!st.canStart) el().textContent = "지금은 무료 면담이 모두 소진됐습니다. " + reopenText(st.resetsAt);
-      else el().textContent = `오늘 무료 면담 가능 · 1인당 하루 ${st.perUserDaily}회`;
+      else el().textContent = freeCountText(st) || `오늘 무료 면담 가능 · 1인당 하루 ${st.perUserDaily}회`;
     } catch {
       if (el()) el().textContent = "남은 양을 확인하지 못했습니다.";
     }
@@ -1346,6 +1347,9 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     if (typeof record.history === "number") rec.historyScore = record.history;
     if (typeof record.pe === "number") rec.peScore = record.pe;
     if (typeof record.ppi === "number") rec.ppiScore = record.ppi;
+    // 항목별 표시(대화 확인으로 조정한 뒤의 값) — 홈 화면의 "자주 깎이는 항목" 추천에 쓴다.
+    const marks = cleanMarks(record.marks);
+    if (marks) rec.marks = marks;
     await setDoc(doc(db, "records", docId), rec);
   }
 

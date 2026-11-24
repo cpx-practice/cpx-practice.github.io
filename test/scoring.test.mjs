@@ -242,3 +242,25 @@ test("총점/등급 지시문 문구도 계산한 총점으로 바꾼다", () =>
   assert.match(out, /^총점: 13점 \(미흡\)$/m);
   assert.doesNotMatch(out, /70 미만/);
 });
+
+import { cleanMarks, weakItems } from "../docs/scoring.js";
+test("기록에 남길 항목 표시는 아는 키와 O/△/X/N 만", () => {
+  assert.deepEqual(cleanMarks({ redflag: "△", safety: "x", bogus: "O", ice: "잘함" }), { redflag: "△", safety: "X" });
+  assert.equal(cleanMarks(null), null);
+  assert.equal(cleanMarks({ bogus: "O" }), null);
+});
+test("자주 깎이는 항목은 최근 기록에서 평균이 낮은 순", () => {
+  const rows = [
+    { topic: "두통", marks: { redflag: "△", safety: "O", pe2: "N" } },
+    { topic: "복통", marks: { redflag: "X", safety: "O" } },
+    { topic: "가슴통증", marks: { redflag: "△", safety: "△" } },
+    { topic: "기침" }, // 항목 표시가 없는 예전 기록은 세지 않는다
+  ];
+  const w = weakItems(rows);
+  assert.equal(w[0].key, "redflag");
+  assert.equal(w[0].count, 3);
+  assert.equal(w[0].lastTopic, "두통");
+  assert.ok(!w.some((x) => x.key === "safety")); // 평균 0.83
+  assert.ok(!w.some((x) => x.key === "pe2")); // N 은 세지 않음
+  assert.deepEqual(weakItems(rows.slice(0, 2)), []); // 3회 미만이면 추천하지 않음
+});

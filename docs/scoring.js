@@ -58,6 +58,41 @@ function normMark(v) {
   return null;
 }
 
+/** 기록에 남길 항목별 표시 — 아는 항목 키와 O/△/X/N 만 (모델이 엉뚱한 값을 넣어도 저장되지 않게). */
+export function cleanMarks(marks) {
+  if (!marks || typeof marks !== "object") return null;
+  const out = {};
+  for (const sec of SECTIONS) for (const [k] of sec.items) {
+    const m = normMark(marks[k]);
+    if (m) out[k] = m;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+/**
+ * 최근 기록에서 자주 깎이는 항목 — 홈 화면 추천용. rows 는 최신순, 항목 표시(marks)가 있는 기록만 센다.
+ * 최근 n개 중 그 항목이 min 번 이상 채점됐고 평균 비율이 under 미만인 것을 낮은 순으로 돌려준다.
+ * N(해당없음)은 세지 않는다. lastTopic 은 그 항목이 가장 최근에 깎인(O 가 아닌) 기록의 주제.
+ */
+export function weakItems(rows, { n = 10, min = 3, under = 0.7 } = {}) {
+  const recent = (rows || []).filter((r) => r && r.marks && typeof r.marks === "object").slice(0, n);
+  const out = [];
+  for (const sec of SECTIONS) for (const [k, label] of sec.items) {
+    let sum = 0;
+    let cnt = 0;
+    let lastTopic = null;
+    for (const r of recent) {
+      const m = normMark(r.marks[k]);
+      if (!m || m === "N") continue;
+      sum += RATIO[m];
+      cnt++;
+      if (m !== "O" && lastTopic === null) lastTopic = r.topic || null;
+    }
+    if (cnt >= min && sum / cnt < under) out.push({ key: k, label, ratio: sum / cnt, count: cnt, lastTopic });
+  }
+  return out.sort((a, b) => a.ratio - b.ratio);
+}
+
 export function gradeFromTotal(total) {
   if (total >= 90) return "우수";
   if (total >= 80) return "양호";

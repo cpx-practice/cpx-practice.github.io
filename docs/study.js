@@ -291,6 +291,25 @@ export function initStudyTab({ onStartInterview, canInterview, getRecords } = {}
   let indexReady = null; // 목록은 한 번만 받는다. 결과 창에서 바로 열 때도 목록이 다 찬 뒤에 고르도록 promise 를 나눠 쓴다.
   let current = null;
   let topics = []; // study/index.json 의 주제 목록
+  // 주제 자료는 한 번 받으면 이 페이지에서는 다시 받지 않는다. 예전에는 열 때마다 서버에 다시 물어
+  // (cache: no-cache) 0.2~0.5초, 휴대폰 회선에서는 몇 초씩 "불러오는 중…"이 떠 있었다 (2026-11-24).
+  // 카드에 손가락·마우스가 닿는 순간 미리 받기 시작해, 누를 때쯤에는 대개 받아져 있다.
+  const topicCache = new Map(); // key → Promise<자료>
+  function getTopic(key) {
+    if (!topicCache.has(key)) {
+      const p = fetch(`study/${encodeURIComponent(key)}.json`, { cache: "no-cache" })
+        .then((res) => {
+          if (!res.ok) throw new Error(`study_${res.status}`);
+          return res.json();
+        })
+        .catch((err) => {
+          topicCache.delete(key); // 실패는 기억하지 않는다 — 다음에 다시 받는다
+          throw err;
+        });
+      topicCache.set(key, p);
+    }
+    return topicCache.get(key);
+  }
 
   function loadIndex() {
     indexReady ||= fetchIndex();
@@ -328,10 +347,9 @@ export function initStudyTab({ onStartInterview, canInterview, getRecords } = {}
         : `<p class="hint">주제를 고르면 감별 진단과 진단마다 핵심 단서, 채점표가 나옵니다.</p>`;
       return;
     }
-    body.innerHTML = `<p class="hint">불러오는 중…</p>`;
+    if (!topicCache.has(key)) body.innerHTML = `<p class="hint">불러오는 중…</p>`;
     try {
-      const res = await fetch(`study/${encodeURIComponent(key)}.json`, { cache: "no-cache" });
-      const d = await res.json();
+      const d = await getTopic(key);
       if (select.value !== key) return; // 그새 다른 주제를 골랐다
       current = d;
       // 가이드가 있으면 질문 흐름과 비교표가 중심이고, 진단별 카드는 "자세히", 채점표는 접어 둔다.
@@ -367,6 +385,12 @@ export function initStudyTab({ onStartInterview, canInterview, getRecords } = {}
     s?.classList.toggle("hide-hints", on);
     s?.querySelectorAll("li.revealed").forEach((li) => li.classList.remove("revealed"));
   });
+  const prefetch = (e) => {
+    const card = e.target.closest && e.target.closest(".tg-card[data-key]");
+    if (card) getTopic(card.dataset.key).catch(() => {});
+  };
+  body.addEventListener("pointerover", prefetch);
+  body.addEventListener("touchstart", prefetch, { passive: true });
   body.addEventListener("click", (e) => {
     const li = e.target.closest(".script.hide-hints .script-qs li.has-note");
     if (li) li.classList.toggle("revealed");

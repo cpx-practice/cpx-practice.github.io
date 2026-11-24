@@ -3,7 +3,8 @@
 // 자료는 모두 이미 불러온 내 기록(getRecords)과 공부 자료 목록(study/index.json)에서 계산한다.
 import { escapeHtml } from "./markdown.js";
 import { matchTopic } from "./topics.js";
-import { fmtDateTime, reopenText } from "./export.js";
+import { weakItems } from "./scoring.js";
+import { fmtDateTime, reopenText, freeCountText } from "./export.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => escapeHtml(String(s ?? ""));
@@ -50,7 +51,7 @@ function daysUntil(dateStr) {
   return Math.round((Date.UTC(y, m - 1, d) - today) / 86400000);
 }
 
-export function initHomeTab({ getRecords, canInterview, onStartInterview, onStudy, goto, endpoint } = {}) {
+export function initHomeTab({ getRecords, canInterview, onStartInterview, onStudy, goto, endpoint, getToken } = {}) {
   const body = $("homeBody");
   if (!body) return { refresh() {} };
   let topics = [];
@@ -71,7 +72,9 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     if (!endpoint || Date.now() - statusAt < 5 * 60 * 1000) return;
     statusAt = Date.now();
     try {
-      const res = await fetch(`${endpoint}/interview/ai/status`, { method: "POST" });
+      // 로그인돼 있으면 토큰을 붙여 내 오늘 사용 횟수도 받는다.
+      const token = getToken ? await getToken().catch(() => null) : null;
+      const res = await fetch(`${endpoint}/interview/ai/status`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       status = await res.json();
     } catch {
       status = null;
@@ -90,7 +93,7 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     let statusText = "";
     if (status && status.enabled) {
       statusText = status.canStart
-        ? "오늘 무료 면담 가능"
+        ? freeCountText(status) || "오늘 무료 면담 가능"
         : `무료 한도 소진 · ${reopenText(status.resetsAt).replace(" 다시 열립니다.", " 재개")} (내 Gemini 키로는 가능)`;
     }
     const hero =
@@ -183,6 +186,19 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
       const [label, v] = parts.sort((a, b) => a[1] - b[1])[0];
       const name = label.slice(0, -1);
       todo.push(`<li>최약 영역 <b>${esc(name)}</b> ${Math.round(v * 100)}% <span class="hint">(최근 10회)</span></li>`);
+    }
+    // 자주 깎이는 채점 항목 (항목별 표시를 저장하기 시작한 2026-11-24 이후 기록부터 센다)
+    const wi = weakItems(rows)[0];
+    if (wi) {
+      const t = wi.lastTopic && matchTopic(wi.lastTopic);
+      todo.push(
+        `<li>자주 깎이는 항목 <b>${esc(wi.label)}</b> ${Math.round(wi.ratio * 100)}% <span class="hint">(최근 ${wi.count}회)</span>` +
+          (t
+            ? ` — 최근 <b>${esc(t.name)}</b>에서 깎임 <button type="button" class="btn-link" data-act="study" data-topic="${esc(t.name)}">공부</button>` +
+              (canIv ? ` · <button type="button" class="btn-link" data-act="start" data-topic="${esc(t.name)}">다시 면담</button>` : "")
+            : "") +
+          `</li>`
+      );
     }
     // 최근 점수가 가장 낮은 주제(2회 이상이 아니어도 마지막 점수 기준)
     const weak = [...stats.entries()].filter(([, s]) => s.last !== null).sort((a, b) => a[1].last - b[1].last)[0];
