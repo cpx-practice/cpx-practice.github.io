@@ -436,6 +436,11 @@ html:has(.backdrop:not(.hidden)), body:has(.backdrop:not(.hidden)) { overflow: h
 .md .table-scroll { overflow-x: auto; margin: 8px 0 14px; }
 .md table { min-width: 360px; }
 .md th, .md td { font-size: 0.82rem; padding: 6px 8px; }
+/* 휴대폰에서는 채점표(항목·평가·점수·근거)가 360px 에 맞춰 근거 칸 오른쪽이 잘려 보였다 — 화면 폭에 맞추고 칸 여백을 줄인다. */
+@media (max-width: 480px) {
+  .md table { min-width: 0; width: 100%; }
+  .md th, .md td { padding: 6px 5px; }
+}
 
 /* 넓은 표는 패널 밖으로 넘치지 않고 표 안에서 가로 스크롤한다. */
 .table-scroll { overflow-x: auto; }
