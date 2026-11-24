@@ -3,7 +3,7 @@
 // 자료는 모두 이미 불러온 내 기록(getRecords)과 공부 자료 목록(study/index.json)에서 계산한다.
 import { escapeHtml } from "./markdown.js";
 import { matchTopic } from "./topics.js";
-import { fmtDateTime } from "./export.js";
+import { fmtDateTime, reopenText } from "./export.js";
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => escapeHtml(String(s ?? ""));
@@ -91,7 +91,7 @@ export function initHomeTab({ getRecords, canInterview, onStartInterview, onStud
     if (status && status.enabled) {
       statusText = status.canStart
         ? "오늘 무료 면담 가능"
-        : "오늘 무료 한도 소진 · 오전 9시 초기화 (내 Gemini 키로는 가능)";
+        : `무료 한도 소진 · ${reopenText(status.resetsAt).replace(" 다시 열립니다.", " 재개")} (내 Gemini 키로는 가능)`;
     }
     const hero =
       `<div class="panel home-hero">` +

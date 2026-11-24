@@ -22,6 +22,22 @@ export function fmtDateTime(ts) {
   return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
 }
 
+/**
+ * 무료 면담이 다시 열리는 때(워커 resetsAt, ISO) → "오늘 밤 12시쯤" 같은 말. 한국 시간 기준, 정시로 올려 말한다.
+ * 모두가 함께 쓰는 한도는 최근 24시간 합계로 막혀서 오전 9시에 풀리지 않을 수 있다 (2026-11-24).
+ */
+export function reopenText(iso, now = new Date()) {
+  const t = Date.parse(iso || "");
+  if (!Number.isFinite(t) || t <= now.getTime()) return "잠시 후 다시 열립니다.";
+  const kst = (ms) => new Date(ms + 9 * 3600000);
+  const at = kst(Math.ceil(t / 3600000) * 3600000);
+  const dayDiff = Math.round((Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()) - Date.UTC(kst(now.getTime()).getUTCFullYear(), kst(now.getTime()).getUTCMonth(), kst(now.getTime()).getUTCDate())) / 86400000);
+  const h = at.getUTCHours();
+  if (h === 0) return dayDiff <= 1 ? "오늘 밤 12시쯤 다시 열립니다." : "내일 밤 12시쯤 다시 열립니다.";
+  const part = h < 12 ? `오전 ${h}시` : h === 12 ? "낮 12시" : h < 18 ? `오후 ${h - 12}시` : `저녁 ${h - 12}시`;
+  return `${dayDiff === 0 ? "오늘" : dayDiff === 1 ? "내일" : "모레"} ${part}쯤 다시 열립니다.`;
+}
+
 // 문진 전사는 학생이 "평가"를 입력하기 전까지만이다. 웹 면담은 예전에 "평가" 입력과 그 뒤에 나온 채점문까지
 // 전사에 같이 저장했다 — 채점 결과는 "채점 결과" 탭에 따로 있으니, 이미 저장된 기록도 보여 줄 때 여기서 자른다.
 const EVAL_CUE_LINE = /^(?:의사|학생|사용자|나)\s*[:：]\s*평가\s*$/m;

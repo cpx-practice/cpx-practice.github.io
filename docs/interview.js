@@ -20,7 +20,7 @@ import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
 import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal } from "./scoring.js";
-import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges } from "./export.js";
+import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges, reopenText } from "./export.js";
 import { claimConfig, mergeCloud, cloudPayload } from "./aikeys.js";
 import { initVoice } from "./voice.js";
 
@@ -38,7 +38,7 @@ const PROVIDERS = {
     noKey: true,
     steps: [
       "API 키가 필요 없습니다. 로그인한 계정으로 바로 면담합니다.",
-      "모두가 함께 쓰는 무료 한도라 하루 면담 횟수가 정해져 있습니다 (매일 오전 9시 초기화).",
+      "모두가 함께 쓰는 무료 한도라 하루 면담 횟수가 정해져 있습니다 (1인당 횟수는 매일 오전 9시 초기화).",
       "더 많이 연습하려면 위에서 Gemini(무료 키) 등 내 키를 쓰는 방식을 고르세요.",
     ],
     models: [],
@@ -263,7 +263,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
       const st = await callWorker("/interview/ai/status");
       if (!el()) return;
       if (!st.enabled) el().textContent = "지금은 이 방식을 쓸 수 없습니다. 다른 AI를 고르거나 잠시 후 다시 확인해 주세요.";
-      else if (!st.canStart) el().textContent = "오늘 무료 면담이 모두 소진됐습니다. 오전 9시에 다시 열립니다.";
+      else if (!st.canStart) el().textContent = "지금은 무료 면담이 모두 소진됐습니다. " + reopenText(st.resetsAt);
       else el().textContent = `오늘 무료 면담 가능 · 1인당 하루 ${st.perUserDaily}회`;
     } catch {
       if (el()) el().textContent = "남은 양을 확인하지 못했습니다.";
@@ -799,7 +799,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
   function freeLimitMessage(data) {
     const code = data?.error;
     const other = " 더 연습하려면 \"AI 변경\"에서 Gemini(무료 키) 등을 고르세요.";
-    if (code === "daily_budget_exhausted") return "오늘 무료 면담 한도가 모두 소진됐습니다. 오전 9시에 다시 열립니다." + other;
+    if (code === "daily_budget_exhausted") return "모두가 함께 쓰는 무료 면담 한도가 소진됐습니다. " + reopenText(data.resetsAt) + other;
     if (code === "user_daily_limit") return `오늘 무료 면담을 모두 사용했습니다 (하루 ${data.limit}회). 오전 9시에 다시 열립니다.` + other;
     if (code === "rate_limited") return "요청이 너무 잦습니다. 잠시 후(10분 안에) 다시 시도해주세요.";
     if (code === "login_required" || code === "bad_token") return "로그인이 필요합니다. 다시 로그인한 뒤 시도해주세요.";
