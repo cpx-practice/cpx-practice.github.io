@@ -93,6 +93,28 @@ export function weakItems(rows, { n = 10, min = 3, under = 0.7 } = {}) {
   return out.sort((a, b) => a.ratio - b.ratio);
 }
 
+/**
+ * 같은 주제의 바로 앞 기록과 이번 채점을 견준다 — 채점 결과 창의 "지난번과 비교".
+ * rows 는 최신순(이번 기록은 아직 저장 전이라 들어 있지 않다), sameTopic(r) 로 같은 주제인지 판단한다.
+ * 앞 기록이 없으면 null. 항목 표시가 양쪽에 있으면 오른 항목·내린 항목 이름도 준다.
+ */
+export function compareWithPrevious(rows, sameTopic, record) {
+  const prev = (rows || []).find((r) => r && typeof r.totalScore === "number" && sameTopic(r));
+  if (!prev || typeof record?.total !== "number") return null;
+  const out = { prevScore: prev.totalScore, delta: record.total - prev.totalScore, better: [], worse: [] };
+  const a = prev.marks && typeof prev.marks === "object" ? prev.marks : null;
+  const b = record.marks && typeof record.marks === "object" ? record.marks : null;
+  if (a && b) {
+    for (const sec of SECTIONS) for (const [k, label] of sec.items) {
+      const x = normMark(a[k]);
+      const y = normMark(b[k]);
+      if (!x || !y || x === "N" || y === "N" || x === y) continue;
+      (RATIO[y] > RATIO[x] ? out.better : out.worse).push({ label, from: x, to: y });
+    }
+  }
+  return out;
+}
+
 export function gradeFromTotal(total) {
   if (total >= 90) return "우수";
   if (total >= 80) return "양호";

@@ -264,3 +264,18 @@ test("자주 깎이는 항목은 최근 기록에서 평균이 낮은 순", () =
   assert.ok(!w.some((x) => x.key === "pe2")); // N 은 세지 않음
   assert.deepEqual(weakItems(rows.slice(0, 2)), []); // 3회 미만이면 추천하지 않음
 });
+
+import { compareWithPrevious } from "../docs/scoring.js";
+test("같은 주제 지난번과 비교", () => {
+  const rows = [
+    { topic: "복통", totalScore: 50, marks: { redflag: "O" } },
+    { topic: "두통", totalScore: 62, marks: { redflag: "△", safety: "O", pe2: "N" } },
+    { topic: "두통", totalScore: 40 },
+  ];
+  const c = compareWithPrevious(rows, (r) => r.topic === "두통", { total: 81, marks: { redflag: "O", safety: "△", pe2: "O" } });
+  assert.equal(c.prevScore, 62);
+  assert.equal(c.delta, 19);
+  assert.deepEqual(c.better.map((x) => x.label), ["Red Flag/감별진단"]);
+  assert.deepEqual(c.worse.map((x) => x.label), ["Safety Netting"]);
+  assert.equal(compareWithPrevious(rows, (r) => r.topic === "기침", { total: 70 }), null);
+});

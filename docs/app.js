@@ -154,6 +154,7 @@ const interviewTab = initInterviewTab({
     activateView("study");
     studyTab.open(topicName, section);
   },
+  getRecords: () => currentRows,
 });
 
 // 공부 탭 — "이 주제로 면담 시작"은 면담 탭이 보이는 계정에서만 보인다.

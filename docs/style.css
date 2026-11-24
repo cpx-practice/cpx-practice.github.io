@@ -1917,3 +1917,8 @@ html { scrollbar-gutter: stable; }
 .mx-one dd:last-child { border-bottom: 0; }
 .mx[data-mode="all"] .mx-dx, .mx[data-mode="all"] .mx-ones { display: none; }
 .mx[data-mode="one"] .matrix-wrap { display: none; }
+
+/* 채점 결과: 같은 주제 지난번과 비교 */
+.iv-compare { margin: 8px 0 10px; padding: 8px 10px; border-radius: 8px; font-size: 0.88rem; line-height: 1.5; border: 1px solid var(--border); }
+.iv-compare.up { border-left: 4px solid #2e9d5b; }
+.iv-compare.down { border-left: 4px solid #c9483b; }

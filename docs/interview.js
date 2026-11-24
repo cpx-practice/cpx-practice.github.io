@@ -19,7 +19,8 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/f
 import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
-import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal, cleanMarks } from "./scoring.js";
+import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal, cleanMarks, compareWithPrevious } from "./scoring.js";
+import { matchTopic } from "./topics.js";
 import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges, reopenText, freeCountText } from "./export.js";
 import { claimConfig, mergeCloud, cloudPayload } from "./aikeys.js";
 import { initVoice } from "./voice.js";
@@ -126,7 +127,7 @@ async function redFlagQuestions(topic) {
   return qs;
 }
 
-export function initInterviewTab({ db, auth, endpoint, onStudy }) {
+export function initInterviewTab({ db, auth, endpoint, onStudy, getRecords }) {
   const keyPanel = $("ivKeyPanel");
   const startPanel = $("ivStartPanel");
   const chatPanel = $("ivChatPanel");
@@ -730,6 +731,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
             : ""}
           <button type="button" class="btn small" data-again="">무작위로 새 면담</button>
         </div>
+        ${compareHtml(record, topic)}
         ${scoreTableHtml(scored, items)}
         ${reviewHtml(scored, topic)}
         <div class="iv-eval-body md">${renderMarkdown(narrative)}</div>
@@ -740,6 +742,23 @@ export function initInterviewTab({ db, auth, endpoint, onStudy }) {
     stopTimer();
     resultReopen.classList.remove("hidden");
     openResult();
+  }
+
+  // 같은 주제를 전에 면담한 적이 있으면 그때와 견준다 — 무엇이 나아졌는지 바로 보이게.
+  function compareHtml(record, topic) {
+    const t = topic && matchTopic(topic);
+    if (!t || !getRecords) return "";
+    const cmp = compareWithPrevious(getRecords(), (r) => matchTopic(r.topic)?.name === t.name, record);
+    if (!cmp) return "";
+    const sign = cmp.delta > 0 ? `+${cmp.delta}` : `${cmp.delta}`;
+    const list = (arr) => arr.map((c) => `${esc(c.label)} ${esc(c.from)}→${esc(c.to)}`).join(", ");
+    return (
+      `<div class="iv-compare ${cmp.delta >= 0 ? "up" : "down"}">` +
+      `<b>지난번과 비교</b> ${cmp.prevScore}점 → ${esc(String(record.total))}점 (${sign})` +
+      (cmp.better.length ? `<div>나아진 항목: ${list(cmp.better)}</div>` : "") +
+      (cmp.worse.length ? `<div>떨어진 항목: ${list(cmp.worse)}</div>` : "") +
+      `</div>`
+    );
   }
 
   let typingRow = null;
