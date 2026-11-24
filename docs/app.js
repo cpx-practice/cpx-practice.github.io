@@ -1288,6 +1288,23 @@ function renderUsers(rows) {
 // 한도는 Cloudflare 뉴런 단위다. 토큰 수는 집계를 넣은 뒤의 면담부터 있다(없으면 "-").
 const nf = (n) => (typeof n === "number" ? n.toLocaleString("ko-KR") : "-");
 
+// 최근 24시간 시간대별 뉴런 막대 — Cloudflare 무료 한도가 직전 24시간 합계로 막히므로 어느 시간대가 몫을 차지하는지 본다.
+function windowBarsHtml(win) {
+  if (!win || !Array.isArray(win.hours) || !win.hours.length) return "";
+  const max = Math.max(1, ...win.hours.map((h) => h.neurons));
+  const kst = (iso) => new Date(Date.parse(iso + ":00:00Z") + 9 * 3600000).getUTCHours();
+  const bars = win.hours
+    .map((h) => {
+      const hh = kst(h.hour);
+      return `<span class="uw-bar" title="${hh}시 ${nf(h.neurons)}"><i style="height:${Math.round((h.neurons / max) * 100)}%"></i><em>${hh % 6 === 0 ? hh : ""}</em></span>`;
+    })
+    .join("");
+  const reopen = win.reopenAt
+    ? `새 면담은 ${escapeHtml(new Date(win.reopenAt).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }))}쯤 Workers AI 로 다시 열립니다 (그 전에는 Gemini).`
+    : "지금 Workers AI 로 새 면담을 시작할 수 있습니다.";
+  return `<div class="uw"><div class="uw-bars" role="img" aria-label="최근 25시간 시간대별 뉴런">${bars}</div><p class="hint">시간대별 뉴런(한국 시간, 왼쪽이 25시간 전) · ${reopen}</p></div>`;
+}
+
 function renderAiUsage(status, usage) {
   const sessions = Array.isArray(usage.sessions) ? usage.sessions : [];
   const cap = status?.capNeurons || 0;
@@ -1315,6 +1332,8 @@ function renderAiUsage(status, usage) {
     (withTokens.length
       ? `토큰 <b>${nf(tin + tout)}</b> (입력 ${nf(tin)} + 출력 ${nf(tout)}) — 토큰 집계가 있는 면담 ${withTokens.length}/${sessions.length}회 기준`
       : "토큰: 아직 집계된 면담이 없습니다(이 기능을 넣은 뒤의 면담부터 기록됩니다)");
+  const winEl = $("aiUsageWindow");
+  if (winEl) winEl.innerHTML = windowBarsHtml(usage.window);
   // 사용자 이름: 계정 목록(lastUserRows)에서 uid 로 찾는다. 사용자 기록을 넣기 전 면담은 uid 가 없다.
   const who = (uid) => {
     if (!uid) return "(기록 없음)";
