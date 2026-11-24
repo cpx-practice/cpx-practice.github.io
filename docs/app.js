@@ -1281,7 +1281,8 @@ function renderUsers(rows) {
 }
 
 // ---------- 관리자: AI 면담 사용량 (오늘) ----------
-// 워커가 면담마다 모아 둔 사용량(/interview/ai/usage, 관리자 전용)과 오늘 한도(/interview/ai/status)를 보여 준다.
+// 워커가 면담마다 모아 둔 사용량(/interview/ai/usage, 관리자 전용)과 한도(/interview/ai/status)를 보여 준다.
+// 뉴런은 Cloudflare 가 최근 24시간 합계로 막으므로 그 기준이다. 면담 목록은 오늘(UTC) 것이다.
 // 한도는 Cloudflare 뉴런 단위다. 토큰 수는 집계를 넣은 뒤의 면담부터 있다(없으면 "-").
 const nf = (n) => (typeof n === "number" ? n.toLocaleString("ko-KR") : "-");
 
@@ -1297,7 +1298,7 @@ function renderAiUsage(status, usage) {
   const modelTurns = sum("modelTurns");
   const localTurns = sum("localTurns");
   $("aiUsageSummary").innerHTML =
-    `뉴런 <b>${nf(used)}</b> / ${nf(cap)} (${pct}%) · 남은 양 ${nf(Math.max(0, cap - used))}<br>` +
+    `뉴런(최근 24시간) <b>${nf(used)}</b> / ${nf(cap)} (${pct}%) · 남은 양 ${nf(Math.max(0, cap - used))}<br>` +
     // Cloudflare 가 한도 비슷한 오류를 내면 워커가 그날 뉴런을 상한으로 고정한다 — 그때의 오류 원문(진짜 하루 한도였는지 판단용).
     (usage.capPin
       ? `<b>Cloudflare 오류로 한도 고정</b> (${escapeHtml(new Date(usage.capPin.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" }))}, ` +
