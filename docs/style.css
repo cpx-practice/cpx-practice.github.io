@@ -1929,3 +1929,7 @@ html { scrollbar-gutter: stable; }
 .uw-bar { flex: 1; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; position: relative; }
 .uw-bar i { display: block; background: var(--accent); border-radius: 2px 2px 0 0; min-height: 1px; }
 .uw-bar em { position: absolute; bottom: -14px; left: 0; font-size: 0.65rem; font-style: normal; color: var(--muted, #888); }
+
+/* 모의고사 결과 요약 */
+.iv-mock-summary { margin: 8px 0 10px; padding: 10px 12px; border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: 8px; font-size: 0.9rem; line-height: 1.6; }
+.iv-mock-summary ol { margin: 4px 0 4px 18px; padding: 0; }

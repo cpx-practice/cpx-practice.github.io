@@ -155,6 +155,7 @@ const interviewTab = initInterviewTab({
     studyTab.open(topicName, section);
   },
   getRecords: () => currentRows,
+  getFeatures: () => appConfig.features || {},
 });
 
 // 공부 탭 — "이 주제로 면담 시작"은 면담 탭이 보이는 계정에서만 보인다.
@@ -489,8 +490,11 @@ onAuthStateChanged(auth, async (user) => {
   setAdminUi(isAdmin);
   setInterviewTab(isAdmin, profile.aiInterview !== false);
   interviewTab?.setAdmin(isAdmin);
+  interviewTab?.setFeatures(appConfig.features || {});
   if (isAdmin) {
     setRequireApproval.checked = appConfig.requireApproval === true;
+    $("setFeatCompare").checked = appConfig.features?.compare === true;
+    $("setFeatMock").checked = appConfig.features?.mockExam === true;
     watchUsers();
     watchAllReports();
     loadAiUsage();
@@ -1191,6 +1195,25 @@ async function loadAppConfig() {
     // 못 읽으면 꺼진 것으로 본다 — 설정을 못 읽었다고 멀쩡한 유저를 잠그지 않는다.
     return { requireApproval: false };
   }
+}
+
+// 실험 기능 켜기·끄기 (config/app.features) — 관리자만 쓸 수 있다(firestore.rules: config/app 쓰기는 관리자).
+for (const [id, key] of [["setFeatCompare", "compare"], ["setFeatMock", "mockExam"]]) {
+  $(id)?.addEventListener("change", async (e) => {
+    const on = e.target.checked;
+    const features = { ...(appConfig.features || {}), [key]: on };
+    try {
+      await setDoc(doc(db, "config", "app"), { features, updatedAt: serverTimestamp() }, { merge: true });
+      appConfig.features = features;
+      interviewTab?.setFeatures(features);
+      adminSaved.textContent = on ? "켰습니다 · 모든 계정에 적용됩니다" : "껐습니다";
+      adminSaved.classList.remove("hidden");
+      setTimeout(() => adminSaved.classList.add("hidden"), 3000);
+    } catch {
+      e.target.checked = !on;
+      alert("설정을 저장하지 못했습니다. 잠시 후 다시 시도해주세요.");
+    }
+  });
 }
 
 setRequireApproval.addEventListener("change", async () => {

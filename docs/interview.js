@@ -19,7 +19,7 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/f
 import { TOPICS } from "./topics.js";
 import { chunkText } from "./image.js";
 import { escapeHtml as esc, renderMarkdown } from "./markdown.js";
-import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal, cleanMarks, compareWithPrevious } from "./scoring.js";
+import { scoreRecord, auditMarks, reconcileNarrative, reconcileTotal, cleanMarks, compareWithPrevious, weakItems } from "./scoring.js";
 import { matchTopic } from "./topics.js";
 import { parseEvalItems, stripEvalItems, findReason, applyMarkChanges, reopenText, freeCountText } from "./export.js";
 import { claimConfig, mergeCloud, cloudPayload } from "./aikeys.js";
@@ -127,7 +127,7 @@ async function redFlagQuestions(topic) {
   return qs;
 }
 
-export function initInterviewTab({ db, auth, endpoint, onStudy, getRecords }) {
+export function initInterviewTab({ db, auth, endpoint, onStudy, getRecords, getFeatures }) {
   const keyPanel = $("ivKeyPanel");
   const startPanel = $("ivStartPanel");
   const chatPanel = $("ivChatPanel");
@@ -725,12 +725,12 @@ export function initInterviewTab({ db, auth, endpoint, onStudy, getRecords }) {
           <span class="score">${esc(total)}</span>
         </div>
         ${topic ? `<div class="iv-eval-topic">케이스: ${esc(topic)}</div>` : ""}
-        <div class="iv-next">
+        ${mock ? mockNextHtml(record, topic) : `<div class="iv-next">
           ${topic && topic !== "무작위" && [...topicSelect.options].some((o) => o.value === topic)
             ? `<button type="button" class="btn small primary" data-again="${esc(topic)}">같은 주제로 다시</button>`
             : ""}
           <button type="button" class="btn small" data-again="">무작위로 새 면담</button>
-        </div>
+        </div>`}
         ${compareHtml(record, topic)}
         ${scoreTableHtml(scored, items)}
         ${reviewHtml(scored, topic)}
@@ -747,7 +747,7 @@ export function initInterviewTab({ db, auth, endpoint, onStudy, getRecords }) {
   // 같은 주제를 전에 면담한 적이 있으면 그때와 견준다 — 무엇이 나아졌는지 바로 보이게.
   function compareHtml(record, topic) {
     const t = topic && matchTopic(topic);
-    if (!t || !getRecords) return "";
+    if (!t || !getRecords || !(getFeatures && getFeatures().compare)) return "";
     const cmp = compareWithPrevious(getRecords(), (r) => matchTopic(r.topic)?.name === t.name, record);
     if (!cmp) return "";
     const sign = cmp.delta > 0 ? `+${cmp.delta}` : `${cmp.delta}`;
@@ -760,6 +760,49 @@ export function initInterviewTab({ db, auth, endpoint, onStudy, getRecords }) {
       `</div>`
     );
   }
+
+  // ---------------- 모의고사 (실험 기능 — 관리자가 켜야 시작 화면에 보인다) ----------------
+  // 무작위 주제를 정한 수만큼 연달아 면담하고, 끝나면 평균과 자주 깎인 항목을 한 번에 보여 준다.
+  // 시간 제한은 시작 화면의 "시간 제한"을 그대로 쓴다. 같은 모의고사 안에서는 주제가 겹치지 않게 고른다.
+  let mock = null; // { total, results: [{ topic, total, marks }] }
+  const mockWrap = $("ivMockWrap");
+  const mockSelect = $("ivMock");
+  function pickMockTopic() {
+    const used = new Set((mock?.results || []).map((r) => r.topic));
+    const opts = [...topicSelect.options].map((o) => o.value).filter((v) => v && !used.has(v));
+    return opts.length ? opts[Math.floor(Math.random() * opts.length)] : "";
+  }
+  function mockNextHtml(record, topic) {
+    mock.results.push({ topic: topic || "무작위", total: typeof record.total === "number" ? record.total : null, marks: cleanMarks(record.marks) });
+    const n = mock.results.length;
+    if (n < mock.total) {
+      return `<div class="iv-next"><span class="hint">모의고사 ${n}/${mock.total} 끝</span>` +
+        `<button type="button" class="btn small primary" data-mock-next>다음 문제 (${n + 1}/${mock.total})</button>` +
+        `<button type="button" class="btn small" data-mock-stop>그만하기</button></div>`;
+    }
+    const scored = mock.results.filter((r) => typeof r.total === "number");
+    const avg = scored.length ? Math.round(scored.reduce((s, r) => s + r.total, 0) / scored.length) : null;
+    const weak = weakItems(mock.results, { n: mock.total, min: 2 }).slice(0, 3);
+    const html =
+      `<div class="iv-mock-summary"><b>모의고사 결과</b> ${mock.total}문제${avg !== null ? ` · 평균 ${avg}점` : ""}` +
+      `<ol>${mock.results.map((r) => `<li>${esc(r.topic)} ${r.total ?? "-"}점</li>`).join("")}</ol>` +
+      (weak.length ? `<div>자주 깎인 항목: ${weak.map((w) => `${esc(w.label)} ${Math.round(w.ratio * 100)}%`).join(", ")}</div>` : "") +
+      `</div><div class="iv-next"><button type="button" class="btn small" data-again="">무작위로 새 면담</button></div>`;
+    mock = null;
+    return html;
+  }
+  $("ivResultBody").addEventListener("click", (e) => {
+    if (e.target.closest("[data-mock-stop]")) {
+      mock = null;
+      $("btnIvResultExit").click();
+      return;
+    }
+    if (!e.target.closest("[data-mock-next]")) return;
+    $("btnIvResultExit").click();
+    topicSelect.value = pickMockTopic();
+    topicSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    $("btnStartInterview").click();
+  });
 
   let typingRow = null;
   function showTyping() {
@@ -1128,6 +1171,13 @@ export function initInterviewTab({ db, auth, endpoint, onStudy, getRecords }) {
     startErr.classList.add("hidden");
     startAlt.classList.add("hidden");
     const btn = $("btnStartInterview");
+    // 모의고사 시작 — 첫 문제도 무작위 주제로 고르고, 시작 화면의 선택은 한 번만 쓴다.
+    if (!mock && mockSelect && Number(mockSelect.value) > 0 && getFeatures && getFeatures().mockExam) {
+      mock = { total: Number(mockSelect.value), results: [] };
+      mockSelect.value = "0";
+      topicSelect.value = pickMockTopic();
+      topicSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     btn.disabled = true;
     try {
       const payload = { topic: topicSelect.value || undefined };
@@ -1414,6 +1464,10 @@ export function initInterviewTab({ db, auth, endpoint, onStudy, getRecords }) {
   }
   topicSelect.addEventListener("change", loadScenarios);
   return {
+    setFeatures(f) {
+      mockWrap?.classList.toggle("hidden", !(f && f.mockExam));
+      if (!(f && f.mockExam) && mockSelect) mockSelect.value = "0";
+    },
     setAdmin(on) {
       adminOn = !!on;
       placeAdminFields(adminOn);

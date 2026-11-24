@@ -321,6 +321,15 @@
               <option value="15">15분</option>
             </select>
           </label>
+          <label class="ivfield hidden" id="ivMockWrap">
+            모의고사 <span class="hint">(무작위 주제 연속)</span>
+            <select id="ivMock">
+              <option value="0">안 함</option>
+              <option value="4">4문제</option>
+              <option value="6">6문제</option>
+              <option value="8">8문제</option>
+            </select>
+          </label>
           <label class="ivfield hidden" id="ivScenarioWrap">
             시나리오 <span class="hint">(관리자 점검용)</span>
             <select id="ivScenario"><option value="">무작위</option></select>
@@ -487,6 +496,19 @@
 
       <!-- ===== 관리자 ===== -->
       <div id="viewAdmin" class="hidden">
+        <div class="panel">
+          <h2>실험 기능</h2>
+          <label class="check big">
+            <input type="checkbox" id="setFeatCompare" />
+            <span>채점 결과에 같은 주제 지난번 점수와 비교 보이기</span>
+          </label>
+          <label class="check big">
+            <input type="checkbox" id="setFeatMock" />
+            <span>면담 시작 화면에 모의고사(무작위 주제 연속) 보이기</span>
+          </label>
+          <p class="hint">모든 계정에 바로 적용됩니다. 기본은 꺼져 있습니다.</p>
+        </div>
+
         <div class="panel">
           <h2>가입 승인제</h2>
           <label class="check big">
