@@ -1480,3 +1480,8 @@ function escAttr(str) {
   return escapeHtml(str).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+
+// 홈 화면에 추가했을 때 인터넷이 약해도 열리게 (sw.js). 지원하지 않는 브라우저는 그냥 넘어간다.
+if ("serviceWorker" in navigator && location.protocol === "https:") {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
